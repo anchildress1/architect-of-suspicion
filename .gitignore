@@ -1,0 +1,21 @@
+# Agent Stuff
+.agents/
+.verdent/
+.claude/
+.gemini/
+.codex/
+
+# Temporary Files
+*.tmp
+*.log
+.DS_Store
+
+# Javascript
+node_modules/
+dist/
+build/
+test_results/
+
+# Secrets
+.env*
+!.env.example
