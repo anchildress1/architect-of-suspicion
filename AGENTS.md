@@ -32,6 +32,7 @@ Do not duplicate information from those docs here.
 - ALWAYS double check accessibility standards
 - ALWAYS consider performance and optimize as you go
 - ALWAYS check secure coding practices for any change
+- ALWAYS test changes locally before pushing — at minimum: `pnpm install --frozen-lockfile`, `pnpm run lint`, `pnpm run test`, `pnpm run build`
 - Conventional commits enforced via commitlint + Lefthook
 - `Generated-By` trailer on all AI-generated commits
 - Prefer `async`/`await` over `.then()`/`.catch()` chains
