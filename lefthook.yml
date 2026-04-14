@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      run: pnpm exec eslint --max-warnings 0 {staged_files}
+      glob: "*.{ts,svelte}"
+    typecheck:
+      run: pnpm exec svelte-check --threshold error
+    format:
+      run: pnpm exec prettier --check {staged_files}
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
