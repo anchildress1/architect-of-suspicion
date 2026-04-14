@@ -44,7 +44,7 @@
   ```
 
 #### M0-2: Scaffold project
-- `npm create svelte@latest` with SvelteKit skeleton
+- `pnpm create svelte@latest` with SvelteKit skeleton
 - Install Tailwind CSS v4
 - Install Vitest
 - Configure adapter-node for Cloud Run
@@ -116,9 +116,8 @@ commit-msg:
 - Document in `app.css` as Tailwind `@theme` tokens
 
 #### M0-6: Add background images
-- Rename existing room images to `{room-name}.jpg` (drop old prefix)
-- Copy to `static/backgrounds/`
-- Optimize for web (WebP, reasonable file sizes)
+- Rename existing room images to `{room-name}.webp`
+- Place in `static/backgrounds/`
 - One image per room (9 rooms + 1 exterior)
 
 #### M0-7: Create `suspicion` schema

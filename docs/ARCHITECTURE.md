@@ -16,7 +16,7 @@ This is a greenfield project. The stack is chosen for this project's needs, not 
 | Framework | **SvelteKit** | Full-stack framework — handles SSR for SEO, server routes for API, and reactive UI for game state |
 | Styling | **Tailwind CSS v4** | Utility-first, custom design tokens for industrial steampunk aesthetic |
 | AI Model | **Claude SDK** (Anthropic) | Selected after model contest — best narrative voice and evaluation consistency |
-| Database | **Supabase** (`supascribe-notes` project) | Existing card index (276 cards), PostgreSQL with RLS |
+| Database | **Supabase** (`supascribe-notes` project) | Existing card index (288 non-deleted cards), PostgreSQL with RLS |
 | Deploy | **Cloud Run** on GCP project `anchildress1` | Container deploy, GCP DNS already mapped |
 
 SvelteKit handles both frontend and server routes. No separate API service. Server routes call Supabase and Claude SDK directly. This replaces the previous FastAPI + Cloud Run (2 services) design.
@@ -38,7 +38,7 @@ Portfolio piece needs SEO. Recruiters and AI agents need to find it under Ashley
 - **GCP Project:** `anchildress1`
 - **Domain:** Routed via GCP DNS (already configured)
 - **Cloud Run Service:** Single container running SvelteKit (adapter-node)
-- **Dockerfile:** Node.js runtime, `npm run build`, serve via adapter-node
+- **Dockerfile:** Node.js runtime, `pnpm run build`, serve via adapter-node
 
 ## Data Flow
 
@@ -281,7 +281,7 @@ architect-of-suspicion/
 ├── supabase/
 │   └── migrations/                    # suspicion schema DDL
 ├── static/
-│   └── backgrounds/                   # Room images ({room-name}.jpg)
+│   └── backgrounds/                   # Room images ({room-name}.webp)
 ├── docs/
 │   ├── PRD.md
 │   ├── ARCHITECTURE.md
@@ -299,14 +299,14 @@ architect-of-suspicion/
 
 - **Unit tests:** Vitest for game logic (state transitions, card filtering)
 - **Server route tests:** Mock Supabase + Claude SDK, test request/response contracts
-- **No E2E:** Overkill for this stage
+- **No E2E for now:** Unit and server route tests provide sufficient coverage at this stage
 - **AI evaluation testing:** Same card evaluated from multiple angles to verify score convergence
 
 ## Deployment
 
 ```bash
 # Build
-npm run build
+pnpm run build
 
 # Docker
 docker build -t architect-of-suspicion .

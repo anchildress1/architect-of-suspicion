@@ -28,7 +28,7 @@ Do not duplicate information from those docs here.
 - NEVER over-document or under-document
 - NEVER check in a secret or API key into the repo or public client
 - NEVER implement temporary solutions or quick fixes
-- ALWAYS write unit and e2e tests for all positive, negative, error, and edge cases
+- ALWAYS write unit tests for all positive, negative, error, and edge cases
 - ALWAYS double check accessibility standards
 - ALWAYS consider performance and optimize as you go
 - ALWAYS check secure coding practices for any change
