@@ -38,6 +38,33 @@ Do not duplicate information from those docs here.
 - No raw SQL in server routes — use Supabase client with parameterized queries
 - All server-side secrets via environment variables, never in source
 
+## Package Manager
+
+- **pnpm** is required — do not use npm or yarn
+- A `Makefile` provides shortcuts for common dev commands; prefer `make <target>` over raw CLI invocations
+- CI pipelines also use pnpm
+
+## Data
+
+- Card count: **288 non-deleted** (293 total rows including 5 soft-deleted)
+- Category breakdown: About (30), Awards (20), Constraints (10), Decisions (23), Experience (45), Experimentation (39), Philosophy (34), Work Style (87)
+- `About` cards are excluded from gameplay (see Invariants #9)
+- The `accusations` schema is **legacy and being dropped** — do not reference or create objects in it
+- The `suspicion` schema is **authoritative** for all game-state tables (`picks`, `sessions`, etc.)
+- RLS must be explicitly enabled on every new Supabase table
+
+## Background Images
+
+- Format: `.webp`, located in `static/backgrounds/`
+- One image per room plus `house-exterior.webp`
+- File names match room slugs exactly (e.g., `parlor.webp`, `control-room.webp`)
+
+## Testing
+
+- **Vitest** for unit tests
+- Test files colocated with source: `*.test.ts` next to the module they test
+- Server route tests mock Supabase client and Claude SDK — never hit real services in tests
+
 ## GitHub Actions: Action Pinning
 
 - `actions/*` references may use tagged major versions (e.g., `@v6`)
@@ -63,7 +90,7 @@ Do not duplicate information from those docs here.
 Single container on Cloud Run. No Firebase.
 
 ```bash
-npm run build
+pnpm build              # or: make build
 docker build -t architect-of-suspicion .
 docker push gcr.io/anchildress1/architect-of-suspicion
 gcloud run deploy architect-of-suspicion \
