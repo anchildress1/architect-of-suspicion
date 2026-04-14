@@ -35,15 +35,11 @@ CREATE POLICY "anon_insert_sessions" ON suspicion.sessions
   WITH CHECK (true);
 
 -- Anon can update only the verdict field (and updated_at)
+-- Column-level GRANT below restricts which columns can be written
 CREATE POLICY "anon_update_verdict" ON suspicion.sessions
   FOR UPDATE TO anon
   USING (true)
   WITH CHECK (true);
-
--- Anon can read their session (needed for game flow)
-CREATE POLICY "anon_select_sessions" ON suspicion.sessions
-  FOR SELECT TO anon
-  USING (true);
 
 -- RLS Policies for picks
 -- Anon can insert picks
@@ -51,17 +47,14 @@ CREATE POLICY "anon_insert_picks" ON suspicion.picks
   FOR INSERT TO anon
   WITH CHECK (true);
 
--- Anon can read picks (needed for verdict/cover letter)
-CREATE POLICY "anon_select_picks" ON suspicion.picks
-  FOR SELECT TO anon
-  USING (true);
-
+-- No anon SELECT on picks — reads go through server routes using secret key
 -- No DELETE policies — deletions are not allowed from anon
 
 -- Grant usage on suspicion schema to anon and authenticated
 GRANT USAGE ON SCHEMA suspicion TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON suspicion.sessions TO anon;
-GRANT SELECT, INSERT ON suspicion.picks TO anon;
+GRANT INSERT ON suspicion.sessions TO anon;
+GRANT UPDATE (verdict, updated_at) ON suspicion.sessions TO anon;
+GRANT INSERT ON suspicion.picks TO anon;
 
 -- Service role gets full access (used by server-side SvelteKit)
 GRANT ALL ON SCHEMA suspicion TO service_role;
