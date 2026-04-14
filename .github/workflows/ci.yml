@@ -42,7 +42,7 @@ jobs:
         run: pnpm exec svelte-check --threshold error
 
       - name: Test
-        run: pnpm run test -- --coverage
+        run: pnpm run test
 
       - name: SonarCloud scan
         if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork

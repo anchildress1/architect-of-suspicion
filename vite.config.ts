@@ -6,5 +6,10 @@ export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov', 'text'],
+      reportsDirectory: 'coverage',
+    },
   },
 });
