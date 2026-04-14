@@ -1,0 +1,11 @@
+# CodeQL Suppressions — Architect of Suspicion
+# Inline suppressions (// codeql[...]) are prohibited.
+# Every entry requires explicit user approval before merging.
+#
+# Format:
+#   - rule_id: <rule>
+#     path_pattern: <optional glob>
+#     reason: <why suppressed>
+#     approved_by: <name>
+#     approved_date: <YYYY-MM-DD>
+suppressions: []
