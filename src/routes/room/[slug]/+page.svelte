@@ -2,6 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
+  import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
   import EvidenceCard from '$lib/components/EvidenceCard.svelte';
   import type { Card, Classification } from '$lib/types';
@@ -13,13 +14,14 @@
   let hand = $state<Card[]>(untrack(() => [...data.cards]));
   let drawPool = $state<Card[]>(untrack(() => [...data.pool]));
   let exhausted = $derived(hand.length === 0 && drawPool.length === 0);
+  let evaluating = $state(false);
 
   onMount(() => {
     gameState.visitRoom(room.slug);
+    requestNarration('enter_room', room.slug);
   });
 
-  function handleClassify(card: Card, classification: Classification) {
-    gameState.addEvidence({ card, classification });
+  async function handleClassify(card: Card, classification: Classification) {
     gameState.addFeedEntry({
       id: crypto.randomUUID(),
       type: 'action',
@@ -28,14 +30,56 @@
     });
 
     const idx = hand.findIndex((c) => c.objectID === card.objectID);
-    if (idx === -1) return;
+    if (idx !== -1) {
+      if (drawPool.length > 0) {
+        const replacement = drawPool[0];
+        hand = [...hand.slice(0, idx), replacement, ...hand.slice(idx + 1)];
+        drawPool = drawPool.slice(1);
+      } else {
+        hand = [...hand.slice(0, idx), ...hand.slice(idx + 1)];
+      }
+    }
 
-    if (drawPool.length > 0) {
-      const replacement = drawPool[0];
-      hand = [...hand.slice(0, idx), replacement, ...hand.slice(idx + 1)];
-      drawPool = drawPool.slice(1);
-    } else {
-      hand = [...hand.slice(0, idx), ...hand.slice(idx + 1)];
+    const deliberatingId = crypto.randomUUID();
+    gameState.addFeedEntry({
+      id: deliberatingId,
+      type: 'narration',
+      text: 'The Architect deliberates...',
+      timestamp: Date.now(),
+    });
+
+    evaluating = true;
+
+    let reactionText: string | null = null;
+
+    try {
+      const res = await fetch('/api/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: gameState.current.sessionId,
+          claim: gameState.current.claim,
+          card_id: card.objectID,
+          classification,
+        }),
+      });
+
+      if (res.ok) {
+        const { ai_reaction } = await res.json();
+        reactionText = ai_reaction;
+      }
+    } finally {
+      gameState.removeFeedEntry(deliberatingId);
+      if (reactionText) {
+        gameState.addFeedEntry({
+          id: crypto.randomUUID(),
+          type: 'reaction',
+          text: reactionText,
+          timestamp: Date.now(),
+        });
+      }
+      gameState.addEvidence({ card, classification });
+      evaluating = false;
     }
   }
 </script>
@@ -92,7 +136,7 @@
         {:else}
           <div class="grid grid-cols-3 gap-4">
             {#each hand as card (card.objectID)}
-              <EvidenceCard {card} onClassify={handleClassify} />
+              <EvidenceCard {card} onClassify={handleClassify} disabled={evaluating} />
             {/each}
           </div>
         {/if}

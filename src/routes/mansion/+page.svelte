@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { roomsByGrid } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
+  import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
   const hasEvidence = $derived(gameState.current.evidence.length > 0);
@@ -17,6 +19,12 @@
     if (collected.length === 0) return '';
     return `?exclude=${collected.join(',')}`;
   }
+
+  onMount(() => {
+    if (gameState.current.roomsVisited.length >= 2) {
+      requestNarration('wander', 'mansion');
+    }
+  });
 </script>
 
 <svelte:head>

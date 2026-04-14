@@ -33,6 +33,9 @@ function createGameState() {
     addFeedEntry(entry: FeedEntry) {
       state.feed = [...state.feed, entry];
     },
+    removeFeedEntry(id: string) {
+      state.feed = state.feed.filter((e) => e.id !== id);
+    },
     setSessionId(id: string) {
       state.sessionId = id;
     },

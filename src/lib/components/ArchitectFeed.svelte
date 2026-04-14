@@ -15,14 +15,38 @@
     <p class="font-body text-parchment-dim text-sm italic">The Architect observes in silence...</p>
   {:else}
     {#each gameState.current.feed as entry (entry.id)}
-      <div
-        class="mb-2 text-sm"
-        class:text-parchment={entry.type === 'narration'}
-        class:text-brass={entry.type === 'action'}
-        class:text-copper={entry.type === 'reaction'}
-      >
-        <p class="font-body">{entry.text}</p>
+      <div class="feed-entry mb-3">
+        {#if entry.type === 'action'}
+          <p class="font-readout text-parchment-dim text-[11px] uppercase tracking-wider">
+            {entry.text}
+          </p>
+        {:else if entry.type === 'reaction'}
+          <p class="font-display text-brass text-sm leading-relaxed">
+            {entry.text}
+          </p>
+        {:else if entry.type === 'narration'}
+          <p class="font-body text-parchment-dim text-sm italic leading-relaxed">
+            {entry.text}
+          </p>
+        {/if}
       </div>
     {/each}
   {/if}
 </div>
+
+<style>
+  .feed-entry {
+    animation: feedFadeIn 0.4s ease-out;
+  }
+
+  @keyframes feedFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>

@@ -4,13 +4,14 @@
   interface Props {
     card: Card;
     onClassify: (card: Card, classification: Classification) => void;
+    disabled?: boolean;
   }
 
-  let { card, onClassify }: Props = $props();
+  let { card, onClassify, disabled = false }: Props = $props();
   let chosenClassification = $state<Classification | null>(null);
 
   function handleClassify(classification: Classification) {
-    if (chosenClassification) return;
+    if (chosenClassification || disabled) return;
     chosenClassification = classification;
     // Delay callback so the exit animation plays before the card is removed
     setTimeout(() => onClassify(card, classification), 300);
