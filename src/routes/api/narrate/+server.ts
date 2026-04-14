@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildNarrationPrompt, type NarrationAction } from '$lib/server/prompts/narrate';
+import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const VALID_ACTIONS: NarrationAction[] = ['enter_room', 'idle', 'wander'];
 
@@ -18,6 +19,9 @@ interface NarrateRequest {
 }
 
 export const POST: RequestHandler = async ({ request }) => {
+  const blocked = rateLimitGuard(request);
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await request.json();

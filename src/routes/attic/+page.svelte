@@ -7,29 +7,24 @@
 </svelte:head>
 
 <main
-  class="relative min-h-screen"
+  class="attic-view"
   style="background: url('/backgrounds/attic.webp') center/cover no-repeat fixed"
 >
   <!-- Dark overlay -->
-  <div class="bg-void/70 absolute inset-0"></div>
+  <div class="attic-overlay"></div>
 
   <!-- Content -->
-  <div class="relative z-10 mx-auto max-w-2xl px-6 py-12">
-    <a
-      href={resolve('/mansion')}
-      class="font-readout text-brass-dim hover:text-brass mb-8 inline-block text-xs uppercase tracking-wider transition-colors"
-    >
+  <div class="attic-content">
+    <a href={resolve('/mansion')} class="attic-back" aria-label="Return to mansion">
       &larr; Back to Mansion
     </a>
 
-    <h1 class="font-display text-brass mb-12 text-3xl">The Attic</h1>
+    <h1 class="attic-title">The Attic</h1>
 
     <!-- How to Play -->
-    <section class="mb-12">
-      <h2 class="font-display text-parchment border-b-brass/20 mb-4 border-b pb-2 text-xl">
-        How to Play
-      </h2>
-      <div class="font-body text-parchment-dim space-y-3 text-sm leading-relaxed">
+    <section class="attic-section">
+      <h2 class="attic-section-title">How to Play</h2>
+      <div class="attic-body">
         <p>
           A claim has been filed against Ashley Childress. Your task is to investigate the mansion,
           gather evidence, and render a verdict.
@@ -38,7 +33,7 @@
           Explore the rooms of the mansion. Each room contains cards representing different facets of
           Ashley's work and character. Examine each card and classify it as
           <strong class="text-brass">Proof</strong> (supporting the claim) or
-          <strong class="text-copper">Objection</strong> (refuting the claim).
+          <strong class="text-forge-orange">Objection</strong> (refuting the claim).
         </p>
         <p>
           When you have gathered enough evidence, return to the mansion view and choose to
@@ -53,11 +48,9 @@
     </section>
 
     <!-- About -->
-    <section class="mb-12">
-      <h2 class="font-display text-parchment border-b-brass/20 mb-4 border-b pb-2 text-xl">
-        About
-      </h2>
-      <div class="font-body text-parchment-dim space-y-3 text-sm leading-relaxed">
+    <section class="attic-section">
+      <h2 class="attic-section-title">About</h2>
+      <div class="attic-body">
         <p>
           Architect of Suspicion is an interactive investigative experience built as a portfolio
           piece. It explores themes of perception, judgment, and the stories we construct about
@@ -71,11 +64,9 @@
     </section>
 
     <!-- Credits -->
-    <section class="mb-12">
-      <h2 class="font-display text-parchment border-b-brass/20 mb-4 border-b pb-2 text-xl">
-        Credits
-      </h2>
-      <div class="font-body text-parchment-dim space-y-2 text-sm leading-relaxed">
+    <section class="attic-section">
+      <h2 class="attic-section-title">Credits</h2>
+      <div class="attic-body">
         <p><span class="text-brass">Design &amp; Development:</span> Ashley Childress</p>
         <p><span class="text-brass">AI Assistant:</span> Claude by Anthropic</p>
         <p>
@@ -85,3 +76,75 @@
     </section>
   </div>
 </main>
+
+<style>
+  .attic-view {
+    position: relative;
+    min-height: 100vh;
+  }
+
+  .attic-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 9, 12, 0.7);
+  }
+
+  .attic-content {
+    position: relative;
+    z-index: 1;
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .attic-back {
+    font-family: var(--font-readout);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 2rem;
+    transition: color 0.3s;
+  }
+
+  .attic-back:hover {
+    color: var(--color-brass);
+  }
+
+  .attic-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--color-brass);
+    margin-bottom: 3rem;
+  }
+
+  .attic-section {
+    margin-bottom: 3rem;
+  }
+
+  .attic-section-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    color: var(--color-parchment);
+    border-bottom: 1px solid rgba(196, 162, 78, 0.2);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .attic-body {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--color-parchment-dim);
+    line-height: 1.7;
+  }
+
+  .attic-body p {
+    margin-bottom: 0.75rem;
+  }
+
+  .attic-body p:last-child {
+    margin-bottom: 0;
+  }
+</style>

@@ -4,6 +4,7 @@ import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prompts/coverLetter';
+import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const FALLBACK_LETTER =
   'The gears of composition have seized. Though the verdict stands, the record must be penned by hand — for even The Architect cannot forge words from broken steam.';
@@ -18,6 +19,9 @@ interface GenerateLetterRequest {
 }
 
 export const POST: RequestHandler = async ({ request }) => {
+  const blocked = rateLimitGuard(request);
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await request.json();

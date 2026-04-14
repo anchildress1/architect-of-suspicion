@@ -92,49 +92,41 @@
   <ArchitectPanel />
 
   <main
-    class="relative flex flex-1 flex-col overflow-hidden"
+    class="room-main"
     style="background: url('{room.background}') center/cover no-repeat"
   >
     <!-- Dark overlay -->
-    <div class="bg-void/50 absolute inset-0"></div>
+    <div class="room-overlay"></div>
 
     <!-- Content -->
-    <div class="relative z-10 flex flex-1 flex-col">
+    <div class="room-content">
       <!-- Top bar -->
-      <header class="flex items-center justify-between px-6 py-4">
+      <header class="room-top-bar">
         <div>
-          <h1 class="font-display text-parchment text-lg">{room.name}</h1>
+          <h1 class="room-title">{room.name}</h1>
           {#if room.category}
-            <p class="font-readout text-brass-dim text-xs uppercase tracking-wider">
-              {room.category}
-            </p>
+            <p class="room-subtitle">{room.category}</p>
           {/if}
         </div>
-        <a
-          href={resolve('/mansion')}
-          class="font-readout text-brass-dim hover:text-brass text-xs uppercase tracking-wider transition-colors"
-        >
+        <a href={resolve('/mansion')} class="btn-back" aria-label="Return to mansion">
           Back to Mansion
         </a>
       </header>
 
       <!-- Card hand -->
-      <div class="flex flex-1 items-center justify-center p-6">
+      <div class="card-area">
         {#if exhausted}
-          <div class="text-center">
-            <p class="font-display text-brass mb-2 text-lg">Room Explored</p>
-            <p class="font-body text-parchment-dim text-sm">
+          <div class="room-exhausted">
+            <p class="room-exhausted-title">Room Explored</p>
+            <p class="room-exhausted-text">
               All evidence in this room has been examined.
             </p>
-            <a
-              href={resolve('/mansion')}
-              class="font-readout text-brass-dim hover:text-brass mt-4 inline-block text-xs uppercase tracking-wider transition-colors"
-            >
+            <a href={resolve('/mansion')} class="btn-back" aria-label="Return to mansion">
               Return to Mansion
             </a>
           </div>
         {:else}
-          <div class="grid grid-cols-3 gap-4">
+          <div class="card-grid">
             {#each hand as card (card.objectID)}
               <EvidenceCard {card} onClassify={handleClassify} disabled={evaluating} />
             {/each}
@@ -144,3 +136,116 @@
     </div>
   </main>
 </div>
+
+<style>
+  .room-main {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .room-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 9, 12, 0.5);
+  }
+
+  .room-content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top bar */
+  .room-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(to bottom, rgba(10, 12, 18, 0.9), transparent);
+  }
+
+  .room-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    font-weight: 700;
+    color: var(--color-parchment);
+    letter-spacing: 0.06em;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .room-subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-top: 0.25rem;
+  }
+
+  .btn-back {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+
+  .btn-back:hover {
+    color: var(--color-brass);
+  }
+
+  /* Card area */
+  .card-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  /* Exhausted state */
+  .room-exhausted {
+    text-align: center;
+  }
+
+  .room-exhausted-title {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    color: var(--color-brass);
+    margin-bottom: 0.5rem;
+  }
+
+  .room-exhausted-text {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--color-parchment-dim);
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 767px) {
+    .card-grid {
+      grid-template-columns: repeat(2, auto);
+      gap: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .card-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

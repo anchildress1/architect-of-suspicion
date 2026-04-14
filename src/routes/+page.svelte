@@ -42,55 +42,144 @@
   <title>Architect of Suspicion</title>
 </svelte:head>
 
-<main
-  class="bg-void flex min-h-screen flex-col items-center justify-center p-8"
-  style="background: radial-gradient(ellipse at center, rgba(19, 22, 31, 1) 0%, rgba(8, 9, 12, 1) 70%)"
->
-  <div class="fade-up flex max-w-2xl flex-col items-center text-center">
-    <p class="font-readout text-brass-dim mb-8 text-xs uppercase tracking-[0.3em]">
-      The case has been filed
-    </p>
+<main class="claim-view">
+  <div class="claim-container">
+    <p class="claim-prelude">The case has been filed</p>
 
-    <blockquote class="mb-8">
-      <span class="font-display text-brass-dim text-4xl leading-none select-none">&ldquo;</span>
-      <p class="font-display text-parchment -mt-6 text-3xl leading-relaxed md:text-4xl">
-        {gameState.current.claim}
-      </p>
-      <span class="font-display text-brass-dim mt-2 block text-right text-4xl leading-none select-none"
-        >&rdquo;</span
-      >
+    <blockquote class="claim-quote">
+      <span class="claim-mark claim-mark-open">&ldquo;</span>
+      <p class="claim-text">{gameState.current.claim}</p>
+      <span class="claim-mark claim-mark-close">&rdquo;</span>
     </blockquote>
 
-    <p class="font-body text-parchment-dim fade-up mb-12 text-sm italic" style="--fade-delay: 0.5s">
-      &mdash; filed by an anonymous informant
-    </p>
+    <p class="claim-attribution">&mdash; filed by an anonymous informant</p>
 
     <button
       onclick={enterMansion}
       disabled={entering}
-      class="font-display bg-brass/10 border-brass/30 text-brass hover:bg-brass/20 hover:border-brass/50 fade-up rounded border px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300 disabled:opacity-50"
-      style="--fade-delay: 1s"
+      class="claim-enter"
+      aria-label="Enter the mansion to begin investigation"
     >
       {entering ? 'Entering...' : 'Enter the Mansion'}
     </button>
 
     {#if errorMsg}
-      <p class="font-body text-forge-orange mt-4 text-sm">{errorMsg}</p>
+      <p class="claim-error" role="alert">{errorMsg}</p>
     {/if}
   </div>
 </main>
 
 <style>
-  .fade-up {
-    --fade-delay: 0s;
-    animation: fadeUp 1s ease-out var(--fade-delay) forwards;
+  .claim-view {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: radial-gradient(ellipse at center bottom, #1a1520 0%, var(--color-void) 70%);
+  }
+
+  .claim-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 42rem;
+  }
+
+  .claim-prelude {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 2rem;
     opacity: 0;
+    animation: fadeUp 1s 0.5s forwards;
+  }
+
+  .claim-quote {
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 1.2s 1.2s forwards;
+  }
+
+  .claim-mark {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    color: var(--color-brass);
+    line-height: 0.5;
+    display: block;
+  }
+
+  .claim-mark-open {
+    text-align: left;
+  }
+
+  .claim-mark-close {
+    text-align: right;
+    margin-top: 0.5rem;
+  }
+
+  .claim-text {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 700;
+    color: var(--color-parchment);
+    line-height: 1.3;
+    text-shadow: 0 0 40px rgba(196, 162, 78, 0.15);
+  }
+
+  .claim-attribution {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    opacity: 0;
+    animation: fadeUp 1s 2s forwards;
+  }
+
+  .claim-enter {
+    margin-top: 3rem;
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.8rem 2.5rem;
+    border: 1px solid var(--color-brass-dim);
+    background: rgba(196, 162, 78, 0.1);
+    color: var(--color-brass);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0;
+    animation: fadeUp 1s 2.8s forwards;
+  }
+
+  .claim-enter:hover:not(:disabled) {
+    border-color: var(--color-brass);
+    background: rgba(196, 162, 78, 0.15);
+    box-shadow: 0 0 20px rgba(196, 162, 78, 0.1);
+  }
+
+  .claim-enter:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .claim-error {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--color-forge-orange);
+    margin-top: 1rem;
   }
 
   @keyframes fadeUp {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translateY(12px);
     }
     to {
       opacity: 1;
