@@ -95,7 +95,7 @@ The `About` category exists in the cards table but is excluded from gameplay —
 
 ### Source
 
-Supabase project `supascribe-notes`, table `public.cards` (276 cards). Each card has:
+Supabase project `supascribe-notes`, table `public.cards` (293 total rows; 288 non-deleted). Each card has:
 
 ```
 objectID, title, blurb, fact, url, tags, projects, category, signal, created_at, updated_at, deleted_at
@@ -203,7 +203,7 @@ Fixed HTML template. Professional format. Not AI-generated — this is static co
 
 ### Background Images
 
-Pre-generated industrial steampunk mansion backgrounds exist for each room. File naming convention: `{room-name}.jpg` (e.g., `attic.jpg`, `gallery.jpg`, `house-exterior.jpg`). The UI is designed around these images — they are the primary visual layer, not decoration.
+Pre-generated industrial steampunk mansion backgrounds exist for each room. File naming convention: `static/backgrounds/{room-name}.webp` (e.g., `attic.webp`, `gallery.webp`, `house-exterior.webp`). The UI is designed around these images — they are the primary visual layer, not decoration.
 
 ## Design Principles
 
