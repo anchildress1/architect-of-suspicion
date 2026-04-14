@@ -27,6 +27,7 @@ Do not duplicate information from those docs here.
 - NEVER code for backwards compatibility
 - NEVER over-document or under-document
 - NEVER check in a secret or API key into the repo or public client
+- NEVER implement temporary solutions or quick fixes
 - ALWAYS write unit and e2e tests for all positive, negative, error, and edge cases
 - ALWAYS double check accessibility standards
 - ALWAYS consider performance and optimize as you go

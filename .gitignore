@@ -16,3 +16,6 @@ dist/
 build/
 test_results/
 
+# Secrets
+.env*
+!.env.example
