@@ -9,6 +9,11 @@ export interface Card {
   signal: number;
 }
 
+/** Card with server-only `fact` field included. */
+export interface FullCard extends Card {
+  fact: string;
+}
+
 export interface Evidence {
   card: Card;
   classification: Classification;
@@ -28,4 +33,9 @@ export interface GameState {
   evidence: Evidence[];
   feed: FeedEntry[];
   verdict: Verdict | null;
+}
+
+export interface CoverLetterResponse {
+  cover_letter: string;
+  architect_closing: string;
 }
