@@ -208,12 +208,12 @@ CREATE TABLE suspicion.picks (
 - `suspicion.picks`: anon can INSERT only
 - `public.cards`: anon can SELECT only (already configured)
 - No DELETE on any `suspicion` table from anon
-- Service role used for server-side operations
+- Secret key (`sb_secret_...`) used for server-side operations
 
 ## Security Considerations
 
 - **API keys:** Claude SDK key server-side only (Cloud Run env vars)
-- **Supabase:** Server routes use service role key. Client never talks to Supabase directly.
+- **Supabase:** Server routes use secret key (`sb_secret_...`). Client never talks to Supabase directly. Legacy `service_role` keys are deprecated — use the new secret key format.
 - **Rate limiting:** Basic IP-based rate limiting on server routes
 - **No auth:** No user accounts. No Supabase Auth. Anonymous sessions only.
 - **`fact` field protection:** The `fact` field is the core game mechanic. It must never appear in client responses. Server fetches full card data for evaluation; client receives `objectID`, `title`, `blurb`, `category`, `signal` only.
@@ -224,7 +224,7 @@ CREATE TABLE suspicion.picks (
 ```
 # Supabase
 SUPABASE_URL=<supascribe-notes project url>
-SUPABASE_SERVICE_ROLE_KEY=<key>
+SUPABASE_SECRET_KEY=<sb_secret_... key>
 
 # Claude SDK
 ANTHROPIC_API_KEY=<key>
