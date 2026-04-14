@@ -7,9 +7,9 @@ let _client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient {
   if (!_client) {
     const url = env.SUPABASE_URL;
-    const key = env.SUPABASE_SERVICE_ROLE_KEY;
+    const key = env.SUPABASE_SECRET_KEY;
     if (!url || !key) {
-      throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+      throw new Error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY environment variables');
     }
     _client = createClient(url, key);
   }
