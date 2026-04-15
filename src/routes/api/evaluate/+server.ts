@@ -5,6 +5,7 @@ import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildEvaluationPrompt } from '$lib/server/prompts/evaluate';
+import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const FALLBACK_REACTION =
   'The gears of judgement grind on, though the mechanism stutters. Even The Architect must pause when the steam runs thin.';
@@ -16,7 +17,10 @@ interface EvaluateRequest {
   classification?: string;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+  const blocked = rateLimitGuard(getClientAddress());
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await request.json();

@@ -42,3 +42,41 @@ body {
   color: var(--color-parchment);
   font-family: var(--font-body);
 }
+
+/* ============================================
+   GLOBAL FOCUS STATES — Accessibility
+   ============================================ */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   PAGE TRANSITION
+   ============================================ */
+.page-transition-enter {
+  animation: pageIn 0.4s ease-out forwards;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

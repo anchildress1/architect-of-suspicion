@@ -44,6 +44,7 @@ import { POST } from './+server';
 
 function makeRequest(body: unknown): Parameters<typeof POST>[0] {
   return {
+    getClientAddress: () => '127.0.0.1',
     request: new Request('http://localhost/api/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -148,6 +149,7 @@ describe('POST /api/evaluate', () => {
 
   it('returns 400 for invalid JSON body', async () => {
     const req = {
+      getClientAddress: () => '127.0.0.1',
       request: new Request('http://localhost/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

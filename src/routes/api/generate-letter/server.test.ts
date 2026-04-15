@@ -38,6 +38,7 @@ import { POST } from './+server';
 
 function makeRequest(body: unknown): Parameters<typeof POST>[0] {
   return {
+    getClientAddress: () => '127.0.0.1',
     request: new Request('http://localhost/api/generate-letter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -155,6 +156,7 @@ describe('POST /api/generate-letter', () => {
 
   it('returns 400 for invalid JSON body', async () => {
     const req = {
+      getClientAddress: () => '127.0.0.1',
       request: new Request('http://localhost/api/generate-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
