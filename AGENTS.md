@@ -32,6 +32,7 @@ Do not duplicate information from those docs here.
 - ALWAYS double check accessibility standards
 - ALWAYS consider performance and optimize as you go
 - ALWAYS check secure coding practices for any change
+- ALWAYS test changes locally before pushing — at minimum: `pnpm install --frozen-lockfile`, `pnpm run lint`, `pnpm run test`, `pnpm run build`
 - Conventional commits enforced via commitlint + Lefthook
 - `Generated-By` trailer on all AI-generated commits
 - Prefer `async`/`await` over `.then()`/`.catch()` chains
@@ -70,6 +71,14 @@ Do not duplicate information from those docs here.
 - `actions/*` references may use tagged major versions (e.g., `@v6`)
 - All other actions must be pinned to a commit SHA with the version in a
   comment (e.g., `@abc123 # v4.1.0`)
+
+## SonarCloud
+
+- Project key: `anchildress1_architect-of-suspicion`
+- All issues AND security hotspots at any severity must be resolved before merge
+- Check issues: search for open issues on the project or pull request
+- Check hotspots: search for security hotspots with status `TO_REVIEW`
+- No inline suppressions — fix the code or get explicit user approval
 
 ## CodeQL
 

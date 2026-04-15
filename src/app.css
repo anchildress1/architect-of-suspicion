@@ -1,0 +1,44 @@
+@import '@fontsource/cinzel/400.css';
+@import '@fontsource/cinzel/600.css';
+@import '@fontsource/cinzel/700.css';
+@import '@fontsource/rajdhani/400.css';
+@import '@fontsource/rajdhani/500.css';
+@import '@fontsource/rajdhani/600.css';
+@import '@fontsource/rajdhani/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/share-tech-mono/400.css';
+@import 'tailwindcss';
+
+@theme {
+  /* Colors — forge & foundry */
+  --color-void: #08090c;
+  --color-deep-navy: #0d1017;
+  --color-chamber: #13161f;
+  --color-iron: #1c1f2a;
+  --color-brass: #c4a24e;
+  --color-brass-dim: #8a7235;
+  --color-brass-glow: #e8c95a;
+  --color-copper: #c47a3a;
+  --color-amber: #d4a043;
+  --color-parchment: #d0ccc4;
+  --color-parchment-dim: #918d86;
+  --color-ink: #1a1a1a;
+  --color-cool-blue: #4a6d8c;
+  --color-pale-blue: #8aaccc;
+  --color-rivet: #5a5d66;
+  --color-plate: #2a2d36;
+  --color-forge-orange: #d4663a;
+
+  /* Typography */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-readout: 'Share Tech Mono', monospace;
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-parchment);
+  font-family: var(--font-body);
+}
