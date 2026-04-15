@@ -94,6 +94,7 @@
               <!-- Entry Hall: non-interactive, atmospheric -->
               <div class="room-door room-door-inert" aria-hidden="true">
                 <span class="room-name room-name-dim">{room.name}</span>
+                <span class="room-inert-label">No entry</span>
               </div>
             {:else if room.slug === 'attic'}
               <!-- Attic: links to /attic -->
@@ -297,8 +298,18 @@
     opacity: 0.25;
     pointer-events: none;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .room-inert-label {
+    font-family: var(--font-readout);
+    font-size: 0.45rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-parchment-dim);
   }
 
   .room-door-attic {
