@@ -1,10 +1,30 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { roomsByGrid } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
+  import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
   const hasEvidence = $derived(gameState.current.evidence.length > 0);
+
+  function roomEvidenceCount(category: string): number {
+    return gameState.current.evidence.filter((e) => e.card.category === category).length;
+  }
+
+  function excludeQuery(category: string): string {
+    const collected = gameState.current.evidence
+      .filter((e) => e.card.category === category)
+      .map((e) => e.card.objectID);
+    if (collected.length === 0) return '';
+    return `?exclude=${collected.join(',')}`;
+  }
+
+  onMount(() => {
+    if (gameState.current.roomsVisited.length >= 2) {
+      requestNarration('wander', 'mansion');
+    }
+  });
 </script>
 
 <svelte:head>
@@ -55,6 +75,8 @@
       <div class="flex flex-1 items-center justify-center p-6">
         <div class="grid grid-cols-3 gap-3">
           {#each roomsByGrid as room (room.slug)}
+            {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+            {@const count = roomEvidenceCount(room.category)}
             {#if room.slug === 'entry-hall'}
               <!-- Entry Hall: non-interactive, atmospheric -->
               <div
@@ -74,15 +96,23 @@
             {:else}
               <!-- Gameplay rooms -->
               <a
-                href={resolve('/room/[slug]', { slug: room.slug })}
-                class="bg-chamber/60 border-brass/20 hover:border-brass/50 hover:bg-chamber/80 group flex h-28 w-44 flex-col items-center justify-center rounded border backdrop-blur-sm transition-all duration-200"
+                href="{resolve('/room/[slug]', { slug: room.slug })}{excludeQuery(room.category)}"
+                class="group flex h-28 w-44 flex-col items-center justify-center rounded border backdrop-blur-sm transition-all duration-200 {visited
+                  ? 'bg-chamber/80 border-brass/40 shadow-[0_0_12px_rgba(196,162,78,0.08)]'
+                  : 'bg-chamber/60 border-brass/20 hover:border-brass/50 hover:bg-chamber/80'}"
               >
-                <span class="font-display text-parchment group-hover:text-brass-glow text-sm transition-colors">
+                <span
+                  class="font-display text-sm transition-colors {visited
+                    ? 'text-brass'
+                    : 'text-parchment group-hover:text-brass-glow'}"
+                >
                   {room.name}
                 </span>
                 <span class="font-readout text-brass-dim mt-1 text-xs">{room.category}</span>
-                {#if gameState.current.roomsVisited.includes(room.slug)}
-                  <span class="font-readout text-brass/40 mt-1 text-[10px] uppercase">Visited</span>
+                {#if visited}
+                  <span class="font-readout text-brass/60 mt-1 text-[10px] uppercase">
+                    {count > 0 ? `${count} card${count !== 1 ? 's' : ''}` : 'Visited'}
+                  </span>
                 {/if}
               </a>
             {/if}

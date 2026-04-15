@@ -1,11 +1,41 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
+  import { goto } from '$app/navigation';
   import { gameState } from '$lib/stores/gameState.svelte';
+
+  let entering = $state(false);
+  let errorMsg = $state('');
 
   onMount(() => {
     gameState.reset();
   });
+
+  async function enterMansion() {
+    if (entering) return;
+    entering = true;
+    errorMsg = '';
+
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ claim: gameState.current.claim }),
+      });
+
+      if (!res.ok) {
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.message ?? 'Failed to create session');
+      }
+
+      const { session_id } = await res.json();
+      gameState.setSessionId(session_id);
+      goto(resolve('/mansion'));
+    } catch (err) {
+      errorMsg = err instanceof Error ? err.message : 'Something went wrong';
+      entering = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -35,13 +65,18 @@
       &mdash; filed by an anonymous informant
     </p>
 
-    <a
-      href={resolve('/mansion')}
-      class="font-display bg-brass/10 border-brass/30 text-brass hover:bg-brass/20 hover:border-brass/50 fade-up rounded border px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300"
+    <button
+      onclick={enterMansion}
+      disabled={entering}
+      class="font-display bg-brass/10 border-brass/30 text-brass hover:bg-brass/20 hover:border-brass/50 fade-up rounded border px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300 disabled:opacity-50"
       style="--fade-delay: 1s"
     >
-      Enter the Mansion
-    </a>
+      {entering ? 'Entering...' : 'Enter the Mansion'}
+    </button>
+
+    {#if errorMsg}
+      <p class="font-body text-forge-orange mt-4 text-sm">{errorMsg}</p>
+    {/if}
   </div>
 </main>
 
