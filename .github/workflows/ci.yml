@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Sync SvelteKit
+        run: pnpm exec svelte-kit sync
+
       - name: Lint
         run: pnpm run lint
 
