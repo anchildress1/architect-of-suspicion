@@ -7,10 +7,10 @@ import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prom
 import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const FALLBACK_LETTER =
-  'The gears of composition have seized. Though the verdict stands, the record must be penned by hand — for even The Architect cannot forge words from broken steam.';
+  'The record could not be composed. The verdict stands, but the letter will have to be written by hand.';
 
 const FALLBACK_CLOSING =
-  'The trial is done. The gears fall silent, and the record stands as written.';
+  'The investigation is concluded. The record speaks for itself.';
 
 interface GenerateLetterRequest {
   session_id?: string;

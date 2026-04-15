@@ -18,8 +18,11 @@
   let evaluatingIdx = $state<number | null>(null);
 
   onMount(() => {
+    const alreadyVisited = gameState.current.roomsVisited.includes(room.slug);
     gameState.visitRoom(room.slug);
-    requestNarration('enter_room', room.slug);
+    if (!alreadyVisited) {
+      requestNarration('enter_room', room.slug);
+    }
   });
 
   async function handleClassify(card: Card, classification: Classification) {

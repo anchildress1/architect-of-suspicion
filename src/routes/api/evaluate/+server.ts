@@ -8,7 +8,7 @@ import { buildEvaluationPrompt } from '$lib/server/prompts/evaluate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const FALLBACK_REACTION =
-  'The gears of judgement grind on, though the mechanism stutters. Even The Architect must pause when the steam runs thin.';
+  'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
 
 interface EvaluateRequest {
   session_id?: string;

@@ -8,7 +8,7 @@ import { rateLimitGuard } from '$lib/server/rateLimit';
 const VALID_ACTIONS: NarrationAction[] = ['enter_room', 'idle', 'wander'];
 
 const FALLBACK_DIALOGUE =
-  'The gears turn. The mansion watches. And so, it seems, do I.';
+  'Go on, then. I was going to comment, but I suppose you can draw your own conclusions.';
 
 interface NarrateRequest {
   claim?: string;

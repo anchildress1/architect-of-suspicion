@@ -8,6 +8,8 @@
   import VerdictConfirmation from '$lib/components/VerdictConfirmation.svelte';
   import type { Verdict } from '$lib/types';
 
+  let wanderNarrated = false;
+
   const hasEvidence = $derived(gameState.current.evidence.length > 0);
   const playableRoomCount = roomsByGrid.filter((r) => r.isPlayable).length;
   const visitedCount = $derived(gameState.current.roomsVisited.length);
@@ -34,7 +36,8 @@
   }
 
   onMount(() => {
-    if (gameState.current.roomsVisited.length >= 2) {
+    if (!wanderNarrated && gameState.current.roomsVisited.length >= 2) {
+      wanderNarrated = true;
       requestNarration('wander', 'mansion');
     }
   });
