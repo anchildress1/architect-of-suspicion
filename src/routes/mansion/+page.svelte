@@ -48,40 +48,11 @@
 <div class="flex h-screen overflow-hidden">
   <ArchitectPanel />
 
-  <main
-    class="mansion-main"
-    style="background: url('/backgrounds/house-exterior.webp') center/cover no-repeat"
-  >
-    <!-- Dark overlay -->
-    <div class="mansion-overlay"></div>
-
-    <!-- Content -->
-    <div class="mansion-content">
-      <!-- Top bar -->
-      <header class="top-bar">
-        <h1 class="top-bar-title">Architect of Suspicion</h1>
-        <div class="top-bar-actions">
-          <button
-            class="btn btn-accuse"
-            disabled={!hasEvidence}
-            onclick={() => openVerdict('accuse')}
-            aria-label="Accuse the subject"
-          >
-            Accuse
-          </button>
-          <button
-            class="btn btn-pardon"
-            disabled={!hasEvidence}
-            onclick={() => openVerdict('pardon')}
-            aria-label="Pardon the subject"
-          >
-            Pardon
-          </button>
-        </div>
-      </header>
-
-      <!-- Claim reminder + progress -->
-      <div class="claim-reminder">
+  <main class="mansion-main">
+    <!-- Top bar -->
+    <header class="top-bar">
+      <h1 class="top-bar-title">Architect of Suspicion</h1>
+      <div class="top-bar-meta">
         <p class="claim-reminder-text">
           &ldquo;{gameState.current.claim}&rdquo;
         </p>
@@ -89,27 +60,51 @@
           {visitedCount} of {playableRoomCount} rooms explored &middot; {gameState.current.evidence.length} evidence collected
         </p>
       </div>
+      <div class="top-bar-actions">
+        <button
+          class="btn btn-accuse"
+          disabled={!hasEvidence}
+          onclick={() => openVerdict('accuse')}
+          aria-label="Accuse the subject"
+        >
+          Accuse
+        </button>
+        <button
+          class="btn btn-pardon"
+          disabled={!hasEvidence}
+          onclick={() => openVerdict('pardon')}
+          aria-label="Pardon the subject"
+        >
+          Pardon
+        </button>
+      </div>
+    </header>
 
-      <!-- 3x3 Room Grid -->
-      <div class="mansion-grid-area">
-        <nav class="mansion-grid" aria-label="Mansion rooms">
+    <!-- Board: house image with room grid overlay -->
+    <div class="board-area">
+      <div class="board-frame">
+        <img
+          class="board-bg"
+          src="/backgrounds/house-exterior.webp"
+          alt="The Mansion exterior"
+          draggable="false"
+        />
+        <div class="board-overlay"></div>
+        <nav class="board-grid" aria-label="Mansion rooms">
           {#each roomsByGrid as room (room.slug)}
             {@const visited = gameState.current.roomsVisited.includes(room.slug)}
             {@const count = roomEvidenceCount(room.category)}
             {#if room.slug === 'entry-hall'}
-              <!-- Entry Hall: non-interactive, atmospheric -->
               <div class="room-door room-door-inert" aria-hidden="true">
                 <span class="room-name room-name-dim">{room.name}</span>
                 <span class="room-inert-label">No entry</span>
               </div>
             {:else if room.slug === 'attic'}
-              <!-- Attic: links to /attic -->
               <a href={resolve('/attic')} class="room-door room-door-attic">
                 <span class="room-name">{room.name}</span>
                 <span class="room-category">{room.category}</span>
               </a>
             {:else}
-              <!-- Gameplay rooms -->
               <a
                 href="{resolve('/room/[slug]', { slug: room.slug })}{excludeQuery(room.category)}"
                 class="room-door"
@@ -144,64 +139,78 @@
 
 <style>
   .mansion-main {
-    position: relative;
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-  }
-
-  .mansion-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(8, 9, 12, 0.6);
-  }
-
-  .mansion-content {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    background: var(--color-void);
   }
 
   /* Top bar */
   .top-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.5rem;
-    background: linear-gradient(to bottom, rgba(10, 12, 18, 0.9), transparent);
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: rgba(10, 12, 18, 0.95);
+    border-bottom: 1px solid rgba(196, 162, 78, 0.1);
+    flex-shrink: 0;
   }
 
   .top-bar-title {
     font-family: var(--font-display);
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
+    white-space: nowrap;
+  }
+
+  .top-bar-meta {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+  }
+
+  .claim-reminder-text {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--color-parchment);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .progress-indicator {
+    font-family: var(--font-readout);
+    font-size: 0.45rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-top: 0.15rem;
   }
 
   .top-bar-actions {
     display: flex;
     gap: 0.5rem;
+    flex-shrink: 0;
   }
 
   /* Buttons */
   .btn {
     font-family: var(--font-display);
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    padding: 0.6rem 1.2rem;
+    padding: 0.4rem 0.8rem;
     border: 1px solid rgba(196, 162, 78, 0.2);
     background: rgba(19, 22, 31, 0.8);
     color: var(--color-parchment-dim);
     cursor: pointer;
     transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
   }
 
   .btn:hover:not(:disabled) {
@@ -231,71 +240,78 @@
     color: var(--color-parchment-dim);
   }
 
-  .claim-reminder {
-    padding: 0 1.5rem;
-    text-align: center;
-  }
-
-  .claim-reminder-text {
-    font-family: var(--font-display);
-    font-size: 0.85rem;
-    font-style: italic;
-    color: var(--color-parchment);
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
-  }
-
-  .progress-indicator {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-top: 0.35rem;
-  }
-
-  /* Grid area */
-  .mansion-grid-area {
+  /* Board area — centers the house frame */
+  .board-area {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem 1.5rem;
     min-height: 0;
+    padding: 0.5rem;
+    overflow: hidden;
   }
 
-  .mansion-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    max-width: 600px;
+  /* Board frame — maintains image aspect ratio */
+  .board-frame {
+    position: relative;
+    aspect-ratio: 2528 / 1696;
     width: 100%;
+    max-height: 100%;
+  }
+
+  .board-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .board-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 9, 12, 0.35);
+    pointer-events: none;
+  }
+
+  /* Room grid — positioned over the windows */
+  .board-grid {
+    position: absolute;
+    top: 6%;
+    bottom: 14%;
+    left: 10%;
+    right: 10%;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    grid-template-rows: 1.1fr 1fr 1fr;
+    gap: 2.5% 3%;
   }
 
   /* Room tiles */
   .room-door {
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(17, 25, 40, 0.72);
-    backdrop-filter: blur(14px) saturate(140%);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    padding: 1.25rem;
+    border: 1px solid rgba(196, 162, 78, 0.2);
+    background: rgba(8, 9, 12, 0.55);
+    backdrop-filter: blur(6px);
+    padding: 0.5rem 0.6rem;
     cursor: pointer;
     transition: all 0.4s ease;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    aspect-ratio: 4 / 3;
     overflow: hidden;
     text-decoration: none;
+    border-radius: 2px;
   }
 
   .room-door:hover {
-    border-color: rgba(196, 162, 78, 0.45);
-    background: rgba(196, 162, 78, 0.06);
-    transform: translateY(-2px);
+    border-color: rgba(196, 162, 78, 0.6);
+    background: rgba(196, 162, 78, 0.12);
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.4),
-      0 0 1px var(--color-brass-dim);
+      0 0 20px rgba(196, 162, 78, 0.15),
+      inset 0 0 20px rgba(196, 162, 78, 0.05);
   }
 
   .room-door:hover .room-top-line {
@@ -308,37 +324,38 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--color-brass-dim), transparent);
+    background: linear-gradient(90deg, transparent, var(--color-brass), transparent);
     opacity: 0;
     transition: opacity 0.4s;
   }
 
   .room-door-visited {
-    border-color: rgba(196, 162, 78, 0.4);
+    border-color: rgba(196, 162, 78, 0.45);
+    background: rgba(196, 162, 78, 0.08);
     box-shadow: 0 0 12px rgba(196, 162, 78, 0.08);
   }
 
   .room-door-inert {
     border-color: rgba(196, 162, 78, 0.08);
-    opacity: 0.25;
+    opacity: 0.3;
     pointer-events: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 0.15rem;
   }
 
   .room-inert-label {
     font-family: var(--font-readout);
-    font-size: 0.45rem;
+    font-size: 0.4rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--color-parchment-dim);
   }
 
   .room-door-attic {
-    border-color: rgba(196, 162, 78, 0.12);
+    border-color: rgba(196, 162, 78, 0.15);
     opacity: 0.55;
     display: flex;
     flex-direction: column;
@@ -347,14 +364,14 @@
   }
 
   .room-door-attic:hover {
-    opacity: 0.8;
+    opacity: 0.85;
   }
 
   .room-name {
     font-family: var(--font-display);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     color: var(--color-parchment);
     display: block;
     transition: color 0.3s;
@@ -362,7 +379,7 @@
 
   .room-name-dim {
     color: var(--color-brass-dim);
-    font-size: 0.75rem;
+    font-size: 0.65rem;
   }
 
   .room-name-visited {
@@ -375,11 +392,11 @@
 
   .room-category {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
+    font-size: 0.45rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-top: 0.25rem;
+    margin-top: 0.15rem;
     display: block;
   }
 
@@ -389,7 +406,7 @@
 
   .room-visited-label {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 0.45rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: rgba(196, 162, 78, 0.6);
@@ -397,10 +414,10 @@
 
   .room-status {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    width: 6px;
-    height: 6px;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: var(--color-brass-dim);
     opacity: 0;
@@ -413,14 +430,28 @@
   }
 
   @media (max-width: 767px) {
-    .mansion-grid {
-      grid-template-columns: repeat(2, 1fr);
-      max-width: 100%;
+    .top-bar {
+      flex-wrap: wrap;
     }
 
-    .room-door {
-      aspect-ratio: auto;
-      min-height: 5rem;
+    .top-bar-meta {
+      order: 3;
+      flex-basis: 100%;
+    }
+
+    .board-grid {
+      top: 4%;
+      bottom: 12%;
+      left: 6%;
+      right: 6%;
+    }
+
+    .room-name {
+      font-size: 0.6rem;
+    }
+
+    .room-category {
+      font-size: 0.35rem;
     }
   }
 </style>
