@@ -15,6 +15,7 @@
   let drawPool = $state<Card[]>(untrack(() => [...data.pool]));
   let exhausted = $derived(hand.length === 0 && drawPool.length === 0);
   let evaluating = $state(false);
+  let evaluatingIdx = $state<number | null>(null);
 
   onMount(() => {
     gameState.visitRoom(room.slug);
@@ -31,6 +32,7 @@
     });
 
     evaluating = true;
+    evaluatingIdx = hand.findIndex((c) => c.objectID === card.objectID);
 
     try {
       const res = await fetch('/api/evaluate', {
@@ -98,6 +100,7 @@
       });
     } finally {
       evaluating = false;
+      evaluatingIdx = null;
     }
   }
 </script>
@@ -145,8 +148,19 @@
           </div>
         {:else}
           <div class="card-grid">
-            {#each hand as card (card.objectID)}
-              <EvidenceCard {card} onClassify={handleClassify} disabled={evaluating} />
+            {#each hand as card, i (card.objectID)}
+              {#if evaluatingIdx === i}
+                <div class="card-shimmer" aria-label="Evaluating evidence">
+                  <div class="shimmer-accent"></div>
+                  <div class="shimmer-body">
+                    <div class="shimmer-line shimmer-line-short"></div>
+                    <div class="shimmer-line shimmer-line-long"></div>
+                    <div class="shimmer-line shimmer-line-med"></div>
+                  </div>
+                </div>
+              {:else}
+                <EvidenceCard {card} onClassify={handleClassify} disabled={evaluating} />
+              {/if}
             {/each}
           </div>
         {/if}
@@ -268,6 +282,77 @@
     font-size: 0.9rem;
     color: var(--color-parchment-dim);
     margin-bottom: 1rem;
+  }
+
+  /* Shimmer placeholder during evaluation */
+  .card-shimmer {
+    display: flex;
+    flex-direction: column;
+    width: 15rem;
+    min-height: 13rem;
+    background: linear-gradient(
+      165deg,
+      rgba(28, 31, 42, 0.95) 0%,
+      rgba(19, 22, 31, 0.92) 50%,
+      rgba(13, 16, 23, 0.95) 100%
+    );
+    border: 1px solid rgba(196, 162, 78, 0.25);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    animation: shimmerPulse 1.5s ease-in-out infinite;
+  }
+
+  .shimmer-accent {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--color-brass-dim), transparent);
+    animation: shimmerSlide 1.5s ease-in-out infinite;
+  }
+
+  .shimmer-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem 1.125rem;
+  }
+
+  .shimmer-line {
+    height: 0.75rem;
+    background: rgba(196, 162, 78, 0.06);
+    border-radius: 0.25rem;
+  }
+
+  .shimmer-line-short {
+    width: 40%;
+  }
+
+  .shimmer-line-long {
+    width: 85%;
+  }
+
+  .shimmer-line-med {
+    width: 60%;
+  }
+
+  @keyframes shimmerPulse {
+    0%, 100% {
+      border-color: rgba(196, 162, 78, 0.15);
+    }
+    50% {
+      border-color: rgba(196, 162, 78, 0.35);
+    }
+  }
+
+  @keyframes shimmerSlide {
+    0% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.3;
+    }
   }
 
   @media (max-width: 900px) {
