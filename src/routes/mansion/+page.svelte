@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import { rooms } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
@@ -64,7 +65,7 @@
             {:else if room.slug === 'attic'}
               <!-- Attic: links to /attic -->
               <a
-                href="/attic"
+                href={resolve('/attic')}
                 class="bg-chamber/60 border-brass/20 hover:border-brass/50 hover:bg-chamber/80 flex h-28 w-44 flex-col items-center justify-center rounded border transition-all duration-200"
               >
                 <span class="font-display text-parchment text-sm">{room.name}</span>
@@ -73,7 +74,7 @@
             {:else}
               <!-- Gameplay rooms -->
               <a
-                href="/room/{room.slug}"
+                href={resolve('/room/[slug]', { slug: room.slug })}
                 class="bg-chamber/60 border-brass/20 hover:border-brass/50 hover:bg-chamber/80 group flex h-28 w-44 flex-col items-center justify-center rounded border backdrop-blur-sm transition-all duration-200"
               >
                 <span class="font-display text-parchment group-hover:text-brass-glow text-sm transition-colors">

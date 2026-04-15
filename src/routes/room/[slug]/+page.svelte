@@ -1,11 +1,12 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
   import { getRoomBySlug } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
-  const room = $derived(getRoomBySlug(page.params.slug));
+  const room = $derived(getRoomBySlug(page.params.slug ?? ''));
 
   onMount(() => {
     if (room) {
@@ -42,7 +43,7 @@
             {/if}
           </div>
           <a
-            href="/mansion"
+            href={resolve('/mansion')}
             class="font-readout text-brass-dim hover:text-brass text-xs uppercase tracking-wider transition-colors"
           >
             Back to Mansion
@@ -52,7 +53,7 @@
         <!-- Card slots placeholder -->
         <div class="flex flex-1 items-center justify-center p-6">
           <div class="grid grid-cols-3 gap-4">
-            {#each Array(6) as _, i}
+            {#each [0, 1, 2, 3, 4, 5] as i (i)}
               <div
                 class="bg-chamber/40 border-brass/15 flex h-48 w-36 flex-col items-center justify-center rounded border border-dashed"
               >

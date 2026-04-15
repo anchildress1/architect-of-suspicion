@@ -4,10 +4,7 @@
   let feedContainer: HTMLDivElement | undefined = $state();
 
   $effect(() => {
-    // Reading feed.length establishes a reactive dependency so
-    // this effect re-runs whenever entries are added.
-    const _len = gameState.current.feed.length;
-    if (feedContainer) {
+    if (gameState.current.feed.length > 0 && feedContainer) {
       feedContainer.scrollTop = feedContainer.scrollHeight;
     }
   });

@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { resolve } from '$app/paths';
+</script>
+
 <svelte:head>
   <title>The Attic | Architect of Suspicion</title>
 </svelte:head>
@@ -12,7 +16,7 @@
   <!-- Content -->
   <div class="relative z-10 mx-auto max-w-2xl px-6 py-12">
     <a
-      href="/mansion"
+      href={resolve('/mansion')}
       class="font-readout text-brass-dim hover:text-brass mb-8 inline-block text-xs uppercase tracking-wider transition-colors"
     >
       &larr; Back to Mansion

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
 
   onMount(() => {
@@ -35,7 +36,7 @@
     </p>
 
     <a
-      href="/mansion"
+      href={resolve('/mansion')}
       class="font-display bg-brass/10 border-brass/30 text-brass hover:bg-brass/20 hover:border-brass/50 fade-up rounded border px-8 py-3 text-sm uppercase tracking-widest transition-all duration-300"
       style="--fade-delay: 1s"
     >
