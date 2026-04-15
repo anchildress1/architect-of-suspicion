@@ -8,5 +8,6 @@ export const claims = [
 ];
 
 export function getRandomClaim(): string {
-  return claims[Math.floor(Math.random() * claims.length)];
+  const index = crypto.getRandomValues(new Uint32Array(1))[0] % claims.length;
+  return claims[index];
 }
