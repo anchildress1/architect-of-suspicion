@@ -234,7 +234,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    min-height: 0;
   }
 
   .mansion-grid {
@@ -257,7 +258,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    aspect-ratio: 1;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
     text-decoration: none;
   }
