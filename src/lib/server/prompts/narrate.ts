@@ -32,7 +32,7 @@ export function buildNarrationPrompt(context: NarrationContext): string {
 
 ${actionDescription}
 
-State: visited [${visitedList}], ${totalEvidence} evidence (${evidenceCount.proof} proof, ${evidenceCount.objection} objections).
+State: visited [${visitedList}], ${totalEvidence} total (${evidenceCount.proof} proof, ${evidenceCount.objection} objections).
 
 Write 1 sentence as The Architect. Be specific:
 - If entering a room: comment on what KIND of evidence they'll find there (the ${room} contains ${room === 'gallery' ? 'awards and recognition' : room === 'control-room' ? 'constraints and limitations' : room === 'parlor' ? 'decisions and trade-offs' : room === 'library' ? 'philosophy and principles' : room === 'workshop' ? 'experiments and prototypes' : room === 'cellar' ? 'work habits and patterns' : room === 'back-hall' ? 'experience and history' : 'evidence'}) and needle them about what it might mean for the claim.
@@ -41,5 +41,5 @@ Write 1 sentence as The Architect. Be specific:
 
 Keep it SHORT. 1 sentence. Reference the claim directly. No generic atmosphere.
 
-Respond with ONLY the dialogue text.`;
+Respond with ONLY the dialogue text, no JSON.`;
 }
