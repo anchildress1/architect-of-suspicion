@@ -147,6 +147,7 @@
     .verdict-columns {
       grid-template-columns: 1fr 1fr;
       gap: 3rem;
+      align-items: start;
     }
   }
 
@@ -154,6 +155,7 @@
     border-radius: 0.5rem;
     padding: 1.5rem;
     backdrop-filter: blur(8px);
+    align-self: start;
   }
 
   @media (min-width: 1024px) {
