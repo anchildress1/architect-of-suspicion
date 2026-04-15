@@ -54,6 +54,11 @@
 
     <p class="claim-attribution">&mdash; filed by an anonymous informant</p>
 
+    <p class="claim-intro">
+      An interactive investigation into a software engineer&rsquo;s career.
+      Explore rooms, collect evidence, render your verdict.
+    </p>
+
     <button
       onclick={enterMansion}
       disabled={entering}
@@ -141,8 +146,20 @@
     animation: fadeUp 1s 2s forwards;
   }
 
+  .claim-intro {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--color-parchment-dim);
+    line-height: 1.6;
+    max-width: 28rem;
+    text-align: center;
+    margin-top: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 2s forwards;
+  }
+
   .claim-enter {
-    margin-top: 3rem;
+    margin-top: 2rem;
     font-family: var(--font-display);
     font-size: 0.8rem;
     font-weight: 600;
