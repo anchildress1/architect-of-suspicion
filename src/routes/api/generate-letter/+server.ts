@@ -131,5 +131,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     console.error('[generate-letter] Claude API failure:', err instanceof Error ? err.message : err);
   }
 
+  await suspicion
+    .from('sessions')
+    .update({
+      cover_letter: coverLetter,
+      architect_closing: architectClosing,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('session_id', session_id);
+
   return json({ cover_letter: coverLetter, architect_closing: architectClosing });
 };

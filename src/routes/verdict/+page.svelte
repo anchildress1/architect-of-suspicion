@@ -7,6 +7,8 @@
   import Resume from '$lib/components/Resume.svelte';
   import type { Verdict } from '$lib/types';
 
+  let { data } = $props();
+
   let coverLetter = $state('');
   let architectClosing = $state('');
   let claim = $state('');
@@ -14,22 +16,31 @@
   let ready = $state(false);
 
   onMount(() => {
+    // Try sessionStorage first (fast path)
     const stored = sessionStorage.getItem('verdictResult');
-    if (!stored) {
-      goto(resolve('/'));
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        coverLetter = parsed.cover_letter;
+        architectClosing = parsed.architect_closing;
+        claim = parsed.claim;
+        verdict = parsed.verdict;
+        ready = true;
+        return;
+      } catch { /* fall through to server data */ }
+    }
+
+    // Fall back to server-loaded data from DB
+    if (data.session) {
+      coverLetter = data.session.cover_letter;
+      architectClosing = data.session.architect_closing;
+      claim = data.session.claim;
+      verdict = data.session.verdict as Verdict;
+      ready = true;
       return;
     }
 
-    try {
-      const data = JSON.parse(stored);
-      coverLetter = data.cover_letter;
-      architectClosing = data.architect_closing;
-      claim = data.claim;
-      verdict = data.verdict;
-      ready = true;
-    } catch {
-      goto(resolve('/'));
-    }
+    goto(resolve('/'));
   });
 
   function playAgain() {

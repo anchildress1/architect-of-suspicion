@@ -54,10 +54,11 @@
           architect_closing: data.architect_closing,
           claim: gameState.current.claim,
           verdict,
+          session_id: gameState.current.sessionId,
         }),
       );
 
-      goto(resolve('/verdict'));
+      goto(resolve(`/verdict?session=${gameState.current.sessionId}`));
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : 'Something went wrong';
       loading = false;
