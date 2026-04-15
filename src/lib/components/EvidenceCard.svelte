@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { Card, Classification } from '$lib/types';
 
   interface Props {
@@ -9,13 +10,18 @@
 
   let { card, onClassify, disabled = false }: Props = $props();
   let chosenClassification = $state<Classification | null>(null);
+  let animationTimer: ReturnType<typeof setTimeout> | null = null;
 
   function handleClassify(classification: Classification) {
     if (chosenClassification || disabled) return;
     chosenClassification = classification;
     // Delay callback so the exit animation plays before the card is removed
-    setTimeout(() => onClassify(card, classification), 300);
+    animationTimer = setTimeout(() => onClassify(card, classification), 300);
   }
+
+  onDestroy(() => {
+    if (animationTimer) clearTimeout(animationTimer);
+  });
 </script>
 
 <div

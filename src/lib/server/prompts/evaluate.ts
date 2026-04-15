@@ -1,13 +1,4 @@
-import type { Classification } from '$lib/types';
-
-interface FullCard {
-  objectID: string;
-  title: string;
-  blurb: string;
-  fact: string;
-  category: string;
-  signal: number;
-}
+import type { Classification, FullCard } from '$lib/types';
 
 interface PickHistoryEntry {
   card_id: string;

@@ -5,8 +5,11 @@
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
+  import VerdictConfirmation from '$lib/components/VerdictConfirmation.svelte';
+  import type { Verdict } from '$lib/types';
 
   const hasEvidence = $derived(gameState.current.evidence.length > 0);
+  let pendingVerdict = $state<Verdict | null>(null);
 
   function roomEvidenceCount(category: string): number {
     return gameState.current.evidence.filter((e) => e.card.category === category).length;
@@ -18,6 +21,14 @@
       .map((e) => e.card.objectID);
     if (collected.length === 0) return '';
     return `?exclude=${collected.join(',')}`;
+  }
+
+  function openVerdict(v: Verdict) {
+    pendingVerdict = v;
+  }
+
+  function cancelVerdict() {
+    pendingVerdict = null;
   }
 
   onMount(() => {
@@ -52,12 +63,14 @@
           <button
             class="font-readout border-brass/30 text-brass hover:bg-brass/10 rounded border px-4 py-1.5 text-xs uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-30"
             disabled={!hasEvidence}
+            onclick={() => openVerdict('accuse')}
           >
             Accuse
           </button>
           <button
             class="font-readout border-brass/30 text-brass hover:bg-brass/10 rounded border px-4 py-1.5 text-xs uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-30"
             disabled={!hasEvidence}
+            onclick={() => openVerdict('pardon')}
           >
             Pardon
           </button>
@@ -121,4 +134,8 @@
       </div>
     </div>
   </main>
+
+  {#if pendingVerdict}
+    <VerdictConfirmation verdict={pendingVerdict} oncancel={cancelVerdict} />
+  {/if}
 </div>
