@@ -1,6 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import { rooms } from '$lib/rooms';
+  import { roomsByGrid } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
@@ -54,7 +54,7 @@
       <!-- 3x3 Room Grid -->
       <div class="flex flex-1 items-center justify-center p-6">
         <div class="grid grid-cols-3 gap-3">
-          {#each rooms as room (room.slug)}
+          {#each roomsByGrid as room (room.slug)}
             {#if room.slug === 'entry-hall'}
               <!-- Entry Hall: non-interactive, atmospheric -->
               <div

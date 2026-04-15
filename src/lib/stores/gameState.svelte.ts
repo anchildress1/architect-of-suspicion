@@ -4,7 +4,7 @@ import { getRandomClaim } from '$lib/claims';
 function createGameState() {
   let state = $state<GameState>({
     sessionId: null,
-    claim: getRandomClaim(),
+    claim: '',
     roomsVisited: [],
     evidence: [],
     feed: [],

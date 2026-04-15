@@ -1,16 +1,16 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
-  import { onMount } from 'svelte';
   import { getRoomBySlug } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
   const room = $derived(getRoomBySlug(page.params.slug ?? ''));
 
-  onMount(() => {
-    if (room) {
-      gameState.visitRoom(room.slug);
+  $effect(() => {
+    const slug = page.params.slug;
+    if (slug) {
+      gameState.visitRoom(slug);
     }
   });
 </script>

@@ -92,6 +92,10 @@ export const rooms: RoomConfig[] = [
   },
 ];
 
+export const roomsByGrid: RoomConfig[] = rooms.toSorted(
+  (a, b) => a.row - b.row || a.col - b.col,
+);
+
 export function getRoomBySlug(slug: string): RoomConfig | undefined {
   return rooms.find((r) => r.slug === slug);
 }

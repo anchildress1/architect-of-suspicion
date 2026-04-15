@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rooms, getRoomBySlug } from './rooms';
+import { rooms, roomsByGrid, getRoomBySlug } from './rooms';
 
 describe('rooms', () => {
   it('has exactly 9 rooms', () => {
@@ -45,6 +45,22 @@ describe('rooms', () => {
     for (const room of rooms) {
       expect(room.background).toMatch(/^\/backgrounds\/.+\.webp$/);
     }
+  });
+});
+
+describe('roomsByGrid', () => {
+  it('is sorted by row then col', () => {
+    for (let i = 1; i < roomsByGrid.length; i++) {
+      const prev = roomsByGrid[i - 1];
+      const curr = roomsByGrid[i];
+      const prevOrder = prev.row * 10 + prev.col;
+      const currOrder = curr.row * 10 + curr.col;
+      expect(currOrder).toBeGreaterThan(prevOrder);
+    }
+  });
+
+  it('contains all 9 rooms', () => {
+    expect(roomsByGrid).toHaveLength(9);
   });
 });
 
