@@ -14,6 +14,11 @@
 
   let loading = $state(false);
   let errorMsg = $state('');
+  let overlayEl = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    overlayEl?.focus();
+  });
 
   const isAccuse = $derived(verdict === 'accuse');
 
@@ -60,9 +65,11 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
+  bind:this={overlayEl}
   class="fixed inset-0 z-50 flex items-center justify-center bg-void/90 backdrop-blur-sm"
+  tabindex="-1"
+  role="presentation"
   onkeydown={(e) => {
     if (e.key === 'Escape' && !loading) oncancel();
   }}

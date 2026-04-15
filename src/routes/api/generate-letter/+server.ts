@@ -38,8 +38,9 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   const supabase = getSupabase();
+  const suspicion = supabase.schema('suspicion');
 
-  const { data: picks, error: picksError } = await supabase
+  const { data: picks, error: picksError } = await suspicion
     .from('picks')
     .select('card_id, classification')
     .eq('session_id', session_id)
@@ -82,10 +83,10 @@ export const POST: RequestHandler = async ({ request }) => {
       classification: p.classification as 'proof' | 'objection',
     }));
 
-  const { error: sessionError } = await supabase
+  const { error: sessionError } = await suspicion
     .from('sessions')
     .update({ verdict, updated_at: new Date().toISOString() })
-    .eq('id', session_id);
+    .eq('session_id', session_id);
 
   if (sessionError) {
     error(500, 'Failed to update session');

@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Supabase mocks ---
 const mockFrom = vi.fn();
+const mockSchemaFrom = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
     from: (...args: unknown[]) => mockFrom(...args),
+    schema: () => ({
+      from: (...args: unknown[]) => mockSchemaFrom(...args),
+    }),
   }),
 }));
 
@@ -82,19 +86,8 @@ function setupMocks(options?: {
   const picks = options?.picks ?? mockPicks;
   const cards = options?.cards ?? mockCards;
 
+  // public schema: cards
   mockFrom.mockImplementation((table: string) => {
-    if (table === 'picks') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: picks,
-              error: options?.picksError ?? null,
-            }),
-          }),
-        }),
-      };
-    }
     if (table === 'cards') {
       return {
         select: vi.fn().mockReturnValue({
@@ -102,6 +95,23 @@ function setupMocks(options?: {
             is: vi.fn().mockResolvedValue({
               data: cards,
               error: options?.cardsError ?? null,
+            }),
+          }),
+        }),
+      };
+    }
+    return {};
+  });
+
+  // suspicion schema: picks + sessions
+  mockSchemaFrom.mockImplementation((table: string) => {
+    if (table === 'picks') {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: picks,
+              error: options?.picksError ?? null,
             }),
           }),
         }),
@@ -163,7 +173,7 @@ describe('POST /api/generate-letter', () => {
 
     await POST(makeRequest(validBody));
 
-    expect(mockFrom).toHaveBeenCalledWith('picks');
+    expect(mockSchemaFrom).toHaveBeenCalledWith('picks');
   });
 
   it('fetches full card data for each pick', async () => {
@@ -185,7 +195,7 @@ describe('POST /api/generate-letter', () => {
 
     await POST(makeRequest(validBody));
 
-    expect(mockFrom).toHaveBeenCalledWith('sessions');
+    expect(mockSchemaFrom).toHaveBeenCalledWith('sessions');
   });
 
   it('returns cover letter and closing from Claude', async () => {
