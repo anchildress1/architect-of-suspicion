@@ -9,6 +9,8 @@
   import type { Verdict } from '$lib/types';
 
   const hasEvidence = $derived(gameState.current.evidence.length > 0);
+  const playableRoomCount = roomsByGrid.filter((r) => r.isPlayable).length;
+  const visitedCount = $derived(gameState.current.roomsVisited.length);
   let pendingVerdict = $state<Verdict | null>(null);
 
   function roomEvidenceCount(category: string): number {
@@ -77,10 +79,13 @@
         </div>
       </header>
 
-      <!-- Claim reminder -->
+      <!-- Claim reminder + progress -->
       <div class="claim-reminder">
-        <p class="font-body text-parchment-dim text-center text-sm italic">
+        <p class="claim-reminder-text">
           &ldquo;{gameState.current.claim}&rdquo;
+        </p>
+        <p class="progress-indicator">
+          {visitedCount} of {playableRoomCount} rooms explored &middot; {gameState.current.evidence.length} evidence collected
         </p>
       </div>
 
@@ -227,6 +232,24 @@
 
   .claim-reminder {
     padding: 0 1.5rem;
+    text-align: center;
+  }
+
+  .claim-reminder-text {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--color-parchment);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+  }
+
+  .progress-indicator {
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-top: 0.35rem;
   }
 
   /* Grid area */
