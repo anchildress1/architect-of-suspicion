@@ -104,10 +104,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const { error: pickError } = await suspicion.from('picks').insert({
     session_id,
     card_id,
-    card_title: card.title,
     classification,
     ai_score: aiScore,
-    ai_reaction: aiReaction,
+    ai_reaction_text: aiReaction,
   });
 
   if (pickError) {

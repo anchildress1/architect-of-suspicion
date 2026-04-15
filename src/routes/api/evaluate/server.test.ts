@@ -210,10 +210,9 @@ describe('POST /api/evaluate', () => {
       expect.objectContaining({
         session_id: 'test-session-uuid',
         card_id: 'card-123',
-        card_title: 'AI Tools Usage',
         classification: 'proof',
         ai_score: 0.6,
-        ai_reaction: 'The gears align!',
+        ai_reaction_text: 'The gears align!',
       }),
     );
   });

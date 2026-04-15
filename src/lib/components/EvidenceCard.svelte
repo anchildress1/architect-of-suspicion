@@ -15,7 +15,6 @@
   function handleClassify(classification: Classification) {
     if (chosenClassification || disabled) return;
     chosenClassification = classification;
-    // Delay callback so the exit animation plays before the card is removed
     animationTimer = setTimeout(() => onClassify(card, classification), 350);
   }
 
@@ -31,9 +30,11 @@
   role="article"
   aria-label="Evidence: {card.title}"
 >
-  <div class="card-indicator"></div>
+  <!-- Top accent line -->
+  <div class="card-accent"></div>
 
   <div class="card-body">
+    <div class="card-category">{card.category ?? 'Evidence'}</div>
     <h3 class="card-title">{card.title}</h3>
     <p class="card-blurb">{card.blurb}</p>
   </div>
@@ -46,14 +47,17 @@
         class="card-action card-action-proof"
         aria-label="Classify {card.title} as proof"
       >
+        <span class="action-icon">&#9670;</span>
         Proof
       </button>
+      <div class="action-divider"></div>
       <button
         onclick={() => handleClassify('objection')}
         disabled={disabled}
         class="card-action card-action-objection"
         aria-label="Classify {card.title} as objection"
       >
+        <span class="action-icon">&#9671;</span>
         Objection
       </button>
     </div>
@@ -65,118 +69,133 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    width: 10rem;
-    height: 14rem;
-    background: rgba(19, 22, 31, 0.8);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(196, 162, 78, 0.2);
-    border-radius: 0.375rem;
+    width: 15rem;
+    min-height: 13rem;
+    background: linear-gradient(
+      165deg,
+      rgba(28, 31, 42, 0.95) 0%,
+      rgba(19, 22, 31, 0.92) 50%,
+      rgba(13, 16, 23, 0.95) 100%
+    );
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(196, 162, 78, 0.15);
+    border-radius: 0.5rem;
     overflow: hidden;
     transition:
-      border-color 0.4s ease,
-      transform 0.4s ease,
-      box-shadow 0.4s ease,
+      border-color 0.3s ease,
+      transform 0.3s ease,
+      box-shadow 0.3s ease,
       opacity 0.35s ease;
   }
 
   .evidence-card:hover {
-    border-color: rgba(196, 162, 78, 0.45);
-    transform: translateY(-3px);
+    border-color: rgba(196, 162, 78, 0.4);
+    transform: translateY(-4px);
     box-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.5),
-      0 0 1px rgba(196, 162, 78, 0.3);
+      0 16px 48px rgba(0, 0, 0, 0.6),
+      0 0 20px rgba(196, 162, 78, 0.08),
+      inset 0 1px 0 rgba(196, 162, 78, 0.1);
   }
 
-  .evidence-card::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
+  .card-accent {
+    height: 2px;
     background: linear-gradient(90deg, transparent, var(--color-brass-dim), transparent);
-    opacity: 0;
-    transition: opacity 0.4s;
+    opacity: 0.5;
+    transition: opacity 0.3s;
   }
 
-  .evidence-card:hover::after {
+  .evidence-card:hover .card-accent {
     opacity: 1;
-  }
-
-  .card-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1.5px solid var(--color-brass-dim);
-    margin: 0.75rem 0.75rem 0;
-    flex-shrink: 0;
-    transition: all 0.3s;
-  }
-
-  .evidence-card:hover .card-indicator {
-    border-color: var(--color-brass);
-    box-shadow: 0 0 6px rgba(196, 162, 78, 0.3);
+    background: linear-gradient(90deg, transparent, var(--color-brass), transparent);
   }
 
   .card-body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0.5rem 0.75rem 0.75rem;
-    overflow: hidden;
+    padding: 1rem 1.125rem 0.75rem;
+    gap: 0.375rem;
+  }
+
+  .card-category {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    opacity: 0.7;
   }
 
   .card-title {
     font-family: var(--font-display);
-    font-size: 0.82rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     color: var(--color-parchment);
-    line-height: 1.4;
-    margin-bottom: 0.5rem;
+    line-height: 1.35;
   }
 
   .card-blurb {
     font-family: var(--font-body);
-    font-size: 0.82rem;
-    font-weight: 500;
+    font-size: 0.85rem;
+    font-weight: 400;
     color: var(--color-parchment-dim);
-    line-height: 1.5;
+    line-height: 1.55;
     flex: 1;
+    margin-top: 0.25rem;
   }
 
   .card-actions {
     display: flex;
+    align-items: stretch;
     border-top: 1px solid rgba(196, 162, 78, 0.1);
+    background: rgba(8, 9, 12, 0.4);
+  }
+
+  .action-divider {
+    width: 1px;
+    background: rgba(196, 162, 78, 0.1);
   }
 
   .card-action {
     flex: 1;
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.15em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-family: var(--font-readout);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    padding: 0.5rem;
+    padding: 0.65rem 0.5rem;
     border: none;
     background: none;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.25s;
     text-align: center;
   }
 
   .card-action:disabled {
-    opacity: 0.4;
+    opacity: 0.3;
     cursor: not-allowed;
+  }
+
+  .action-icon {
+    font-size: 0.5rem;
+    transition: transform 0.25s;
+  }
+
+  .card-action:hover:not(:disabled) .action-icon {
+    transform: scale(1.3);
   }
 
   .card-action-proof {
     color: var(--color-brass-dim);
-    border-right: 1px solid rgba(196, 162, 78, 0.1);
   }
 
   .card-action-proof:hover:not(:disabled) {
     color: var(--color-brass);
-    background: rgba(196, 162, 78, 0.06);
+    background: rgba(196, 162, 78, 0.08);
   }
 
   .card-action-objection {
@@ -185,7 +204,7 @@
 
   .card-action-objection:hover:not(:disabled) {
     color: #e87a50;
-    background: rgba(212, 102, 58, 0.06);
+    background: rgba(212, 102, 58, 0.08);
   }
 
   /* Exit animations */

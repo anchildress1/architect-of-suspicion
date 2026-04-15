@@ -22,24 +22,6 @@
   });
 
   async function handleClassify(card: Card, classification: Classification) {
-    gameState.addFeedEntry({
-      id: crypto.randomUUID(),
-      type: 'action',
-      text: `Classified "${card.title}" as ${classification}`,
-      timestamp: Date.now(),
-    });
-
-    const idx = hand.findIndex((c) => c.objectID === card.objectID);
-    if (idx !== -1) {
-      if (drawPool.length > 0) {
-        const replacement = drawPool[0];
-        hand = [...hand.slice(0, idx), replacement, ...hand.slice(idx + 1)];
-        drawPool = drawPool.slice(1);
-      } else {
-        hand = [...hand.slice(0, idx), ...hand.slice(idx + 1)];
-      }
-    }
-
     const deliberatingId = crypto.randomUUID();
     gameState.addFeedEntry({
       id: deliberatingId,
@@ -49,8 +31,6 @@
     });
 
     evaluating = true;
-
-    let reactionText: string | null = null;
 
     try {
       const res = await fetch('/api/evaluate', {
@@ -64,21 +44,59 @@
         }),
       });
 
-      if (res.ok) {
-        const { ai_reaction } = await res.json();
-        reactionText = ai_reaction;
+      if (!res.ok) {
+        gameState.removeFeedEntry(deliberatingId);
+        gameState.addFeedEntry({
+          id: crypto.randomUUID(),
+          type: 'narration',
+          text: 'The gears seize — this evidence could not be processed.',
+          timestamp: Date.now(),
+        });
+        return;
       }
-    } finally {
+
+      const { ai_reaction } = await res.json();
+
+      // Only advance state after successful evaluation
+      gameState.addFeedEntry({
+        id: crypto.randomUUID(),
+        type: 'action',
+        text: `Classified "${card.title}" as ${classification}`,
+        timestamp: Date.now(),
+      });
       gameState.removeFeedEntry(deliberatingId);
-      if (reactionText) {
+
+      if (ai_reaction) {
         gameState.addFeedEntry({
           id: crypto.randomUUID(),
           type: 'reaction',
-          text: reactionText,
+          text: ai_reaction,
           timestamp: Date.now(),
         });
       }
+
       gameState.addEvidence({ card, classification });
+
+      // Replace card in hand from draw pool
+      const idx = hand.findIndex((c) => c.objectID === card.objectID);
+      if (idx !== -1) {
+        if (drawPool.length > 0) {
+          const replacement = drawPool[0];
+          hand = [...hand.slice(0, idx), replacement, ...hand.slice(idx + 1)];
+          drawPool = drawPool.slice(1);
+        } else {
+          hand = [...hand.slice(0, idx), ...hand.slice(idx + 1)];
+        }
+      }
+    } catch {
+      gameState.removeFeedEntry(deliberatingId);
+      gameState.addFeedEntry({
+        id: crypto.randomUUID(),
+        type: 'narration',
+        text: 'The gears seize — this evidence could not be processed.',
+        timestamp: Date.now(),
+      });
+    } finally {
       evaluating = false;
     }
   }
@@ -149,7 +167,12 @@
   .room-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(8, 9, 12, 0.5);
+    background: linear-gradient(
+      to bottom,
+      rgba(8, 9, 12, 0.7) 0%,
+      rgba(8, 9, 12, 0.4) 40%,
+      rgba(8, 9, 12, 0.6) 100%
+    );
   }
 
   .room-content {
@@ -158,6 +181,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
   }
 
   /* Top bar */
@@ -165,13 +189,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.5rem;
-    background: linear-gradient(to bottom, rgba(10, 12, 18, 0.9), transparent);
+    padding: 1rem 2rem;
+    background: linear-gradient(to bottom, rgba(10, 12, 18, 0.95), transparent);
+    flex-shrink: 0;
   }
 
   .room-title {
     font-family: var(--font-display);
-    font-size: clamp(1.2rem, 3vw, 1.8rem);
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
     font-weight: 700;
     color: var(--color-parchment);
     letter-spacing: 0.06em;
@@ -179,8 +204,8 @@
   }
 
   .room-subtitle {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
     letter-spacing: 0.25em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -188,38 +213,47 @@
   }
 
   .btn-back {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-family: var(--font-readout);
+    font-size: 0.6rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     text-decoration: none;
-    transition: color 0.3s;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid rgba(196, 162, 78, 0.2);
+    border-radius: 0.25rem;
+    transition: all 0.25s;
   }
 
   .btn-back:hover {
     color: var(--color-brass);
+    border-color: rgba(196, 162, 78, 0.4);
+    background: rgba(196, 162, 78, 0.06);
   }
 
   /* Card area */
   .card-area {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 1.5rem 2rem 2rem;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .card-grid {
     display: grid;
-    grid-template-columns: repeat(3, auto);
-    gap: 1rem;
-    justify-content: center;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    max-width: 52rem;
+    width: 100%;
   }
 
   /* Exhausted state */
   .room-exhausted {
     text-align: center;
+    align-self: center;
   }
 
   .room-exhausted-title {
@@ -236,16 +270,17 @@
     margin-bottom: 1rem;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 900px) {
     .card-grid {
-      grid-template-columns: repeat(2, auto);
-      gap: 0.75rem;
+      grid-template-columns: repeat(2, 1fr);
+      max-width: 34rem;
     }
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 540px) {
     .card-grid {
       grid-template-columns: 1fr;
+      max-width: 17rem;
     }
   }
 </style>
