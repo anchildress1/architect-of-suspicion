@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   try {
     const client = getClaudeClient();
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 200,
       system: ARCHITECT_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],

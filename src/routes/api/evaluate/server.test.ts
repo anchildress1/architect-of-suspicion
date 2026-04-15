@@ -191,7 +191,7 @@ describe('POST /api/evaluate', () => {
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const callArgs = mockCreate.mock.calls[0][0];
-    expect(callArgs.model).toBe('claude-sonnet-4-5-20250514');
+    expect(callArgs.model).toBe('claude-sonnet-4-6');
     expect(callArgs.messages[0].content).toContain('Ashley depends on AI too much');
     expect(callArgs.messages[0].content).toContain('AI Tools Usage');
     expect(callArgs.messages[0].content).toContain('proof');

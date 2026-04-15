@@ -227,7 +227,7 @@ describe('POST /api/generate-letter', () => {
 
     expect(mockCreate).toHaveBeenCalledTimes(2);
     const letterCall = mockCreate.mock.calls[0][0];
-    expect(letterCall.model).toBe('claude-sonnet-4-5-20250514');
+    expect(letterCall.model).toBe('claude-sonnet-4-6');
     expect(letterCall.max_tokens).toBe(2000);
 
     const closingCall = mockCreate.mock.calls[1][0];
