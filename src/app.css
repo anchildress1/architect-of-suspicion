@@ -83,8 +83,9 @@ body::after {
    GLOBAL FOCUS STATES — Accessibility
    ============================================ */
 :focus-visible {
-  outline: 2px solid var(--color-brass);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-brass-glow);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 /* ============================================
@@ -122,4 +123,29 @@ body::after {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================
+   HIGH CONTRAST — WCAG 2.2
+   ============================================ */
+@media (prefers-contrast: more) {
+  :root {
+    --color-parchment-dim: #d0ccc4;
+    --color-brass-dim: #c4a24e;
+    --color-rivet: #8a8d96;
+  }
+
+  body::before,
+  body::after {
+    display: none;
+  }
+}
+
+/* ============================================
+   MINIMUM TOUCH TARGETS — WCAG 2.2 (2.5.8)
+   ============================================ */
+button,
+[role='button'],
+a {
+  min-height: 24px;
 }
