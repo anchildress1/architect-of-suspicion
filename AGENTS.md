@@ -72,6 +72,14 @@ Do not duplicate information from those docs here.
 - All other actions must be pinned to a commit SHA with the version in a
   comment (e.g., `@abc123 # v4.1.0`)
 
+## SonarCloud
+
+- Project key: `anchildress1_architect-of-suspicion`
+- All issues AND security hotspots at any severity must be resolved before merge
+- Check issues: search for open issues on the project or pull request
+- Check hotspots: search for security hotspots with status `TO_REVIEW`
+- No inline suppressions — fix the code or get explicit user approval
+
 ## CodeQL
 
 - Any finding at any severity fails the build
