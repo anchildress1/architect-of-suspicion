@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
   import type { Verdict, CoverLetterResponse } from '$lib/types';
 
@@ -51,7 +52,7 @@
         }),
       );
 
-      goto('/verdict');
+      goto(resolve('/verdict'));
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : 'Something went wrong';
       loading = false;

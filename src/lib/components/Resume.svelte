@@ -29,7 +29,7 @@
   <section class="mb-5">
     <h3 class="font-display text-brass mb-3 text-sm uppercase tracking-widest">Skills</h3>
     <div class="flex flex-wrap gap-2">
-      {#each ['Full-Stack Development', 'Cloud Infrastructure', 'AI Integration', 'TypeScript', 'Python', 'SvelteKit', 'React', 'Node.js', 'AWS', 'Supabase'] as skill}
+      {#each ['Full-Stack Development', 'Cloud Infrastructure', 'AI Integration', 'TypeScript', 'Python', 'SvelteKit', 'React', 'Node.js', 'AWS', 'Supabase'] as skill (skill)}
         <span class="font-readout bg-iron/60 text-parchment-dim rounded px-2.5 py-1 text-xs">{skill}</span>
       {/each}
     </div>

@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Supabase mocks ---
 const mockFrom = vi.fn();
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockOrder = vi.fn();
-const mockIn = vi.fn();
-const mockIs = vi.fn();
-const mockUpdate = vi.fn();
-const mockUpdateEq = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
@@ -89,10 +82,8 @@ function setupMocks(options?: {
   const picks = options?.picks ?? mockPicks;
   const cards = options?.cards ?? mockCards;
 
-  let picksCallCount = 0;
   mockFrom.mockImplementation((table: string) => {
     if (table === 'picks') {
-      picksCallCount++;
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({

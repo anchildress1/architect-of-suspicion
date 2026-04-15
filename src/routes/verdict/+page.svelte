@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
   import CoverLetter from '$lib/components/CoverLetter.svelte';
   import Resume from '$lib/components/Resume.svelte';
@@ -15,7 +16,7 @@
   onMount(() => {
     const stored = sessionStorage.getItem('verdictResult');
     if (!stored) {
-      goto('/');
+      goto(resolve('/'));
       return;
     }
 
@@ -27,14 +28,14 @@
       verdict = data.verdict;
       ready = true;
     } catch {
-      goto('/');
+      goto(resolve('/'));
     }
   });
 
   function playAgain() {
     sessionStorage.removeItem('verdictResult');
     gameState.reset();
-    goto('/');
+    goto(resolve('/'));
   }
 </script>
 

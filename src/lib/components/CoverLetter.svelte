@@ -51,7 +51,7 @@
   </blockquote>
 
   <div class="font-body text-parchment space-y-4 text-sm leading-relaxed select-text">
-    {#each letter.split('\n\n') as paragraph}
+    {#each letter.split('\n\n') as paragraph, i (i)}
       {#if paragraph.trim()}
         <p>{paragraph.trim()}</p>
       {/if}
