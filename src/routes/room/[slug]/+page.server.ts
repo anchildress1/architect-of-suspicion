@@ -5,7 +5,7 @@ import { error } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, url }) => {
   const room = getRoomBySlug(params.slug);
-  if (!room || !room.isPlayable) {
+  if (!room?.isPlayable) {
     error(404, 'Room not found');
   }
 
