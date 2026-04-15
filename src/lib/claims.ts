@@ -7,7 +7,15 @@ export const claims = [
   'Ashley resists standard practices',
 ];
 
+function uniformRandomIndex(length: number): number {
+  const limit = Math.floor(0x100000000 / length) * length;
+  let value: number;
+  do {
+    value = crypto.getRandomValues(new Uint32Array(1))[0];
+  } while (value >= limit);
+  return value % length;
+}
+
 export function getRandomClaim(): string {
-  const index = crypto.getRandomValues(new Uint32Array(1))[0] % claims.length;
-  return claims[index];
+  return claims[uniformRandomIndex(claims.length)];
 }
