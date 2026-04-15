@@ -95,9 +95,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
       aiScore = Math.max(-1.0, Math.min(1.0, parsed.score));
       aiReaction = parsed.reaction;
     }
-  } catch {
-    // Claude call or parse failed — use fallback values
-    // aiScore stays 0.0, aiReaction stays fallback
+  } catch (err) {
+    console.error('[evaluate] Claude API or parse failure:', err instanceof Error ? err.message : err);
   }
 
   // INVARIANT: Write to suspicion.picks BEFORE returning to client

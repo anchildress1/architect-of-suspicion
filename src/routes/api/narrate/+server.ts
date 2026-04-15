@@ -69,8 +69,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     if (text.trim()) {
       dialogue = text.trim();
     }
-  } catch {
-    // Claude call failed — use fallback dialogue
+  } catch (err) {
+    console.error('[narrate] Claude API failure:', err instanceof Error ? err.message : err);
   }
 
   return json({ dialogue });

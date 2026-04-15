@@ -127,8 +127,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
     if (letterText) coverLetter = letterText;
     if (closingText) architectClosing = closingText;
-  } catch {
-    // Fallback values already set
+  } catch (err) {
+    console.error('[generate-letter] Claude API failure:', err instanceof Error ? err.message : err);
   }
 
   return json({ cover_letter: coverLetter, architect_closing: architectClosing });
