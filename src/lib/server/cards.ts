@@ -6,10 +6,20 @@ const SAFE_FIELDS = 'objectID, title, blurb, category, signal';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Return an unbiased random integer in [0, length) using rejection sampling. */
+function uniformRandomIndex(length: number): number {
+  const limit = Math.floor(0x100000000 / length) * length;
+  let value: number;
+  do {
+    value = crypto.getRandomValues(new Uint32Array(1))[0];
+  } while (value >= limit);
+  return value % length;
+}
+
 function fisherYatesShuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    const j = uniformRandomIndex(i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;

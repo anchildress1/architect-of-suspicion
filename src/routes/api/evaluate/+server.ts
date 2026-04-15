@@ -40,8 +40,9 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   const supabase = getSupabase();
+  const suspicion = supabase.schema('suspicion');
 
-  // Fetch full card including fact — server only
+  // Fetch full card including fact — server only (public schema)
   const { data: card, error: cardError } = await supabase
     .from('cards')
     .select('objectID, title, blurb, fact, category, signal')
@@ -53,8 +54,8 @@ export const POST: RequestHandler = async ({ request }) => {
     error(404, 'Card not found');
   }
 
-  // Fetch pick history for context
-  const { data: picks } = await supabase
+  // Fetch pick history for context (suspicion schema)
+  const { data: picks } = await suspicion
     .from('picks')
     .select('card_id, card_title, classification')
     .eq('session_id', session_id)
@@ -96,7 +97,7 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   // INVARIANT: Write to suspicion.picks BEFORE returning to client
-  const { error: pickError } = await supabase.from('picks').insert({
+  const { error: pickError } = await suspicion.from('picks').insert({
     session_id,
     card_id,
     card_title: card.title,

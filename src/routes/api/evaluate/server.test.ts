@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Supabase mocks ---
 const mockFrom = vi.fn();
+const mockSchemaFrom = vi.fn();
 const mockSelect = vi.fn();
 const mockEq = vi.fn();
 const mockIs = vi.fn();
@@ -12,6 +13,9 @@ const mockInsert = vi.fn();
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
     from: (...args: unknown[]) => mockFrom(...args),
+    schema: () => ({
+      from: (...args: unknown[]) => mockSchemaFrom(...args),
+    }),
   }),
 }));
 
@@ -68,15 +72,21 @@ function setupFromMock(card: Record<string, unknown> | null, picks: unknown[] = 
   setupPicksQueryMock(picks);
   setupInsertMock(insertError);
 
-  let callCount = 0;
+  // public schema: only cards
   mockFrom.mockImplementation((table: string) => {
     if (table === 'cards') {
       return { select: mockSelect };
     }
+    return {};
+  });
+
+  // suspicion schema: picks (history query + insert)
+  let schemaCallCount = 0;
+  mockSchemaFrom.mockImplementation((table: string) => {
     if (table === 'picks') {
-      callCount++;
+      schemaCallCount++;
       // First picks call is the history query, second is insert
-      if (callCount === 1) {
+      if (schemaCallCount === 1) {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
