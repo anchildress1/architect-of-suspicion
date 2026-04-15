@@ -28,15 +28,18 @@ export function buildNarrationPrompt(context: NarrationContext): string {
       break;
   }
 
-  return `The investigation concerns the claim: "${claim}"
+  return `Claim: "${claim}"
 
 ${actionDescription}
 
-Current state:
-- Rooms visited: ${visitedList}
-- Evidence collected: ${totalEvidence} total (${evidenceCount.proof} proof, ${evidenceCount.objection} objections)
+State: visited [${visitedList}], ${totalEvidence} evidence (${evidenceCount.proof} proof, ${evidenceCount.objection} objections).
 
-Write 1-2 sentences of atmospheric commentary as The Architect, reacting to this moment. Be theatrical and use steampunk/industrial imagery. Do NOT reference scores, do NOT help the player, do NOT break character.
+Write 1 sentence as The Architect. Be specific:
+- If entering a room: comment on what KIND of evidence they'll find there (the ${room} contains ${room === 'gallery' ? 'awards and recognition' : room === 'control-room' ? 'constraints and limitations' : room === 'parlor' ? 'decisions and trade-offs' : room === 'library' ? 'philosophy and principles' : room === 'workshop' ? 'experiments and prototypes' : room === 'cellar' ? 'work habits and patterns' : room === 'back-hall' ? 'experience and history' : 'evidence'}) and needle them about what it might mean for the claim.
+- If wandering: mock their indecision. Reference how many rooms they've visited vs how many remain.
+- If idling: question whether they're afraid of what they'll find.
 
-Respond with ONLY the dialogue text — no JSON, no quotation marks wrapping the entire response, no attribution.`;
+Keep it SHORT. 1 sentence. Reference the claim directly. No generic atmosphere.
+
+Respond with ONLY the dialogue text.`;
 }
