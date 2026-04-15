@@ -13,6 +13,11 @@ export default ts.config(
         parser: ts.parser,
       },
     },
+    rules: {
+      // TypeScript handles undefined-variable checks; ESLint's no-undef
+      // doesn't understand DOM globals inside Svelte script blocks.
+      'no-undef': 'off',
+    },
   },
   {
     ignores: ['build/', 'dist/', '.svelte-kit/', 'node_modules/'],
