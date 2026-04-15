@@ -4,6 +4,17 @@ import type { Card } from '$lib/types';
 /** Safe fields to return — never expose fact, tags, projects, url, or timestamps. */
 const SAFE_FIELDS = 'objectID, title, blurb, category, signal';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function fisherYatesShuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 /**
  * Fetch cards from Supabase by category, excluding previously collected IDs.
  * Returns all matching cards shuffled; caller decides how many to take.
@@ -12,6 +23,8 @@ export async function fetchCardsByCategory(
   category: string,
   exclude: string[] = [],
 ): Promise<{ cards: Card[]; error: string | null }> {
+  const safeExclude = exclude.filter((id) => UUID_RE.test(id));
+
   let query = getSupabase()
     .from('cards')
     .select(SAFE_FIELDS)
@@ -20,8 +33,8 @@ export async function fetchCardsByCategory(
     .is('deleted_at', null)
     .limit(50);
 
-  if (exclude.length > 0) {
-    query = query.not('objectID', 'in', `(${exclude.join(',')})`);
+  if (safeExclude.length > 0) {
+    query = query.not('objectID', 'in', `(${safeExclude.join(',')})`);
   }
 
   const { data, error } = await query;
@@ -30,7 +43,6 @@ export async function fetchCardsByCategory(
     return { cards: [], error: 'Failed to fetch cards' };
   }
 
-  // Shuffle results
-  const cards = (data ?? []).sort(() => Math.random() - 0.5) as Card[];
+  const cards = fisherYatesShuffle(data ?? []) as Card[];
   return { cards, error: null };
 }

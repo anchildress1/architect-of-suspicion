@@ -9,6 +9,14 @@
   function roomEvidenceCount(category: string): number {
     return gameState.current.evidence.filter((e) => e.card.category === category).length;
   }
+
+  function excludeQuery(category: string): string {
+    const collected = gameState.current.evidence
+      .filter((e) => e.card.category === category)
+      .map((e) => e.card.objectID);
+    if (collected.length === 0) return '';
+    return `?exclude=${collected.join(',')}`;
+  }
 </script>
 
 <svelte:head>
@@ -80,7 +88,7 @@
             {:else}
               <!-- Gameplay rooms -->
               <a
-                href={resolve('/room/[slug]', { slug: room.slug })}
+                href="{resolve('/room/[slug]', { slug: room.slug })}{excludeQuery(room.category)}"
                 class="group flex h-28 w-44 flex-col items-center justify-center rounded border backdrop-blur-sm transition-all duration-200 {visited
                   ? 'bg-chamber/80 border-brass/40 shadow-[0_0_12px_rgba(196,162,78,0.08)]'
                   : 'bg-chamber/60 border-brass/20 hover:border-brass/50 hover:bg-chamber/80'}"

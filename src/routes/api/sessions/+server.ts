@@ -16,12 +16,13 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   const { data, error: dbError } = await getSupabase()
+    .schema('suspicion')
     .from('sessions')
     .insert({ claim_text: claim.trim() })
     .select('session_id')
     .single();
 
-  if (dbError) {
+  if (dbError || !data?.session_id) {
     error(500, 'Failed to create session');
   }
 

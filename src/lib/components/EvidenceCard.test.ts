@@ -28,7 +28,7 @@ describe('EvidenceCard data contract', () => {
 
   it('card does not contain hidden fields', () => {
     const card = makeMockCard();
-    const cardObj = card as Record<string, unknown>;
+    const cardObj = card as unknown as Record<string, unknown>;
     expect(cardObj['fact']).toBeUndefined();
     expect(cardObj['tags']).toBeUndefined();
     expect(cardObj['projects']).toBeUndefined();

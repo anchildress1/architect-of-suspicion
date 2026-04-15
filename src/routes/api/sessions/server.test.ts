@@ -5,10 +5,11 @@ const mockSelect = vi.fn();
 const mockSingle = vi.fn();
 
 const mockFrom = vi.fn();
+const mockSchema = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
-    from: (...args: unknown[]) => mockFrom(...args),
+    schema: (...args: unknown[]) => mockSchema(...args),
   }),
 }));
 
@@ -39,12 +40,14 @@ describe('POST /api/sessions', () => {
   });
 
   it('creates a session and returns session_id', async () => {
-    mockFrom.mockReturnValue({
-      insert: mockInsert.mockReturnValue({
-        select: mockSelect.mockReturnValue({
-          single: mockSingle.mockResolvedValue({
-            data: { session_id: 'test-uuid' },
-            error: null,
+    mockSchema.mockReturnValue({
+      from: mockFrom.mockReturnValue({
+        insert: mockInsert.mockReturnValue({
+          select: mockSelect.mockReturnValue({
+            single: mockSingle.mockResolvedValue({
+              data: { session_id: 'test-uuid' },
+              error: null,
+            }),
           }),
         }),
       }),
@@ -54,6 +57,7 @@ describe('POST /api/sessions', () => {
     const body = await res.json();
 
     expect(body.session_id).toBe('test-uuid');
+    expect(mockSchema).toHaveBeenCalledWith('suspicion');
     expect(mockFrom).toHaveBeenCalledWith('sessions');
     expect(mockInsert).toHaveBeenCalledWith({ claim_text: 'Test claim' });
   });
@@ -71,12 +75,31 @@ describe('POST /api/sessions', () => {
   });
 
   it('handles database errors', async () => {
-    mockFrom.mockReturnValue({
-      insert: mockInsert.mockReturnValue({
-        select: mockSelect.mockReturnValue({
-          single: mockSingle.mockResolvedValue({
-            data: null,
-            error: { message: 'DB error' },
+    mockSchema.mockReturnValue({
+      from: mockFrom.mockReturnValue({
+        insert: mockInsert.mockReturnValue({
+          select: mockSelect.mockReturnValue({
+            single: mockSingle.mockResolvedValue({
+              data: null,
+              error: { message: 'DB error' },
+            }),
+          }),
+        }),
+      }),
+    });
+
+    await expect(POST(makeRequest({ claim: 'Test claim' }))).rejects.toThrow('Failed to create session');
+  });
+
+  it('handles null data with no db error', async () => {
+    mockSchema.mockReturnValue({
+      from: mockFrom.mockReturnValue({
+        insert: mockInsert.mockReturnValue({
+          select: mockSelect.mockReturnValue({
+            single: mockSingle.mockResolvedValue({
+              data: null,
+              error: null,
+            }),
           }),
         }),
       }),
