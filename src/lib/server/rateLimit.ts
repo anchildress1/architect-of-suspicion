@@ -83,23 +83,14 @@ export function checkRateLimit(ip: string): RateLimitResult {
 }
 
 /**
- * Extract client IP from a SvelteKit request event.
- * Checks common proxy headers, falls back to 'unknown'.
- */
-export function getClientIp(request: Request): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    request.headers.get('x-real-ip') ??
-    'unknown'
-  );
-}
-
-/**
- * Check rate limit for a request and return a 429 Response if exceeded.
+ * Check rate limit for a client and return a 429 Response if exceeded.
  * Returns null when the request is within limits.
+ *
+ * @param clientAddress - Use `event.getClientAddress()` from SvelteKit
+ *   to get the trusted client IP (set by the platform/proxy, not spoofable).
  */
-export function rateLimitGuard(request: Request): Response | null {
-  const ip = getClientIp(request);
+export function rateLimitGuard(clientAddress: string): Response | null {
+  const ip = clientAddress || 'unknown';
   const limit = checkRateLimit(ip);
   if (!limit.allowed) {
     return new Response(

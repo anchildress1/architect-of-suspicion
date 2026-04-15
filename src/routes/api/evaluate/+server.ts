@@ -17,8 +17,8 @@ interface EvaluateRequest {
   classification?: string;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
-  const blocked = rateLimitGuard(request);
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+  const blocked = rateLimitGuard(getClientAddress());
   if (blocked) return blocked;
 
   let body: unknown;

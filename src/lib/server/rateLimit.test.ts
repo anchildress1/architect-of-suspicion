@@ -8,7 +8,7 @@ vi.mock('$env/dynamic/private', () => ({
   },
 }));
 
-import { checkRateLimit, getClientIp, rateLimitGuard, _resetStore } from './rateLimit';
+import { checkRateLimit, rateLimitGuard, _resetStore } from './rateLimit';
 
 describe('rateLimit', () => {
   beforeEach(() => {
@@ -63,55 +63,30 @@ describe('rateLimit', () => {
   });
 });
 
-describe('getClientIp', () => {
-  it('extracts IP from x-forwarded-for header', () => {
-    const req = new Request('http://localhost', {
-      headers: { 'x-forwarded-for': '203.0.113.50, 70.41.3.18' },
-    });
-    expect(getClientIp(req)).toBe('203.0.113.50');
-  });
-
-  it('extracts IP from x-real-ip header', () => {
-    const req = new Request('http://localhost', {
-      headers: { 'x-real-ip': '203.0.113.99' },
-    });
-    expect(getClientIp(req)).toBe('203.0.113.99');
-  });
-
-  it('falls back to unknown when no headers present', () => {
-    const req = new Request('http://localhost');
-    expect(getClientIp(req)).toBe('unknown');
-  });
-});
-
 describe('rateLimitGuard', () => {
   beforeEach(() => {
     _resetStore();
   });
 
   it('returns null when within limits', () => {
-    const req = new Request('http://localhost', {
-      headers: { 'x-forwarded-for': '10.0.0.50' },
-    });
-    expect(rateLimitGuard(req)).toBeNull();
+    expect(rateLimitGuard('10.0.0.50')).toBeNull();
   });
 
   it('returns a 429 Response when limit exceeded', async () => {
-    const makeReq = () =>
-      new Request('http://localhost', {
-        headers: { 'x-forwarded-for': '10.0.0.60' },
-      });
-
     for (let i = 0; i < 5; i++) {
-      rateLimitGuard(makeReq());
+      rateLimitGuard('10.0.0.60');
     }
 
-    const response = rateLimitGuard(makeReq());
+    const response = rateLimitGuard('10.0.0.60');
     expect(response).not.toBeNull();
     expect(response!.status).toBe(429);
     expect(response!.headers.get('Retry-After')).toBeTruthy();
 
     const body = await response!.json();
     expect(body.message).toContain('Too many requests');
+  });
+
+  it('falls back to unknown for empty address', () => {
+    expect(rateLimitGuard('')).toBeNull();
   });
 });
