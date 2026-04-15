@@ -15,6 +15,8 @@
   let loading = $state(false);
   let errorMsg = $state('');
   let overlayEl = $state<HTMLDivElement | null>(null);
+  let armProgress = $state(0);
+  let armTimer: ReturnType<typeof setInterval> | null = null;
 
   $effect(() => {
     overlayEl?.focus();
@@ -22,8 +24,33 @@
 
   const isAccuse = $derived(verdict === 'accuse');
 
+  function clearArmTimer() {
+    if (armTimer) {
+      clearInterval(armTimer);
+      armTimer = null;
+    }
+  }
+
+  function startArm() {
+    if (loading || armProgress > 0) return;
+    clearArmTimer();
+    armProgress = 5;
+    armTimer = setInterval(() => {
+      armProgress = Math.min(100, armProgress + 7);
+      if (armProgress >= 100) {
+        clearArmTimer();
+      }
+    }, 55);
+  }
+
+  function stopArm() {
+    clearArmTimer();
+    armProgress = 0;
+  }
+
   async function confirm() {
-    if (loading) return;
+    if (loading || armProgress < 100) return;
+    clearArmTimer();
     loading = true;
     errorMsg = '';
 
@@ -62,6 +89,7 @@
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : 'Something went wrong';
       loading = false;
+      armProgress = 0;
     }
   }
 </script>
@@ -131,14 +159,34 @@
         <button onclick={oncancel} class="verdict-btn verdict-btn-cancel">
           Reconsider
         </button>
-        <button
-          onclick={confirm}
-          class="verdict-btn"
-          class:verdict-btn-accuse={isAccuse}
-          class:verdict-btn-confirm={!isAccuse}
-        >
-          {isAccuse ? 'Accuse' : 'Pardon'}
-        </button>
+        <div class="verdict-arm-wrap">
+          <button
+            onclick={confirm}
+            onmousedown={startArm}
+            onmouseup={stopArm}
+            onmouseleave={stopArm}
+            onkeydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') startArm();
+            }}
+            onkeyup={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') stopArm();
+            }}
+            class="verdict-btn verdict-btn-arm"
+            class:verdict-btn-accuse={isAccuse}
+            class:verdict-btn-confirm={!isAccuse}
+            aria-label={isAccuse ? 'Hold to confirm accuse verdict' : 'Hold to confirm pardon verdict'}
+          >
+            Hold to {isAccuse ? 'Accuse' : 'Pardon'}
+          </button>
+          <div class="arm-track" aria-hidden="true">
+            <div
+              class="arm-fill"
+              class:arm-fill-accuse={isAccuse}
+              class:arm-fill-pardon={!isAccuse}
+              style="width: {armProgress}%"
+            ></div>
+          </div>
+        </div>
       </div>
     {/if}
   </div>
@@ -302,11 +350,11 @@
   /* Buttons */
   .verdict-buttons {
     display: flex;
-    gap: 1rem;
+    gap: 0.9rem;
+    align-items: flex-start;
   }
 
   .verdict-btn {
-    flex: 1;
     font-family: var(--font-display);
     font-size: 0.75rem;
     font-weight: 600;
@@ -316,6 +364,38 @@
     border-radius: 0.25rem;
     cursor: pointer;
     transition: all 0.3s ease;
+  }
+
+  .verdict-arm-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .verdict-btn-arm {
+    width: 100%;
+  }
+
+  .arm-track {
+    height: 4px;
+    background: rgba(196, 162, 78, 0.14);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid rgba(196, 162, 78, 0.2);
+  }
+
+  .arm-fill {
+    height: 100%;
+    transition: width 0.06s linear;
+  }
+
+  .arm-fill-accuse {
+    background: linear-gradient(90deg, rgba(212, 102, 58, 0.65), var(--color-forge-orange));
+  }
+
+  .arm-fill-pardon {
+    background: linear-gradient(90deg, rgba(196, 162, 78, 0.55), var(--color-brass-glow));
   }
 
   .verdict-btn-cancel {

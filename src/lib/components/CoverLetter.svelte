@@ -59,19 +59,37 @@
 </div>
 
 <style>
+  .cover-letter {
+    position: relative;
+    border: 1px solid rgba(196, 162, 78, 0.2);
+    background: linear-gradient(180deg, rgba(20, 24, 34, 0.5), rgba(12, 14, 20, 0.5));
+    padding: 1rem;
+  }
+
+  .cover-letter::before {
+    content: '';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid rgba(196, 162, 78, 0.25);
+    opacity: 0.6;
+  }
+
   .cover-letter-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.2rem;
   }
 
   .cover-letter-title {
     font-family: var(--font-display);
-    font-size: 1.1rem;
-    letter-spacing: 0.15em;
+    font-size: 1rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--color-brass);
+    color: var(--color-brass-glow);
   }
 
   .cover-letter-verdict {
@@ -123,9 +141,9 @@
 
   .cover-letter-body p {
     font-family: var(--font-body);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     color: var(--color-parchment);
-    line-height: 1.7;
+    line-height: 1.72;
     margin-bottom: 1rem;
     opacity: 0;
     animation: letterFadeIn 0.6s ease-out forwards;

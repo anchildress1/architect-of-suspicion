@@ -48,14 +48,18 @@
 
 <style>
   .resume {
+    border: 1px solid rgba(145, 141, 134, 0.22);
+    background: rgba(10, 12, 18, 0.38);
+    padding: 1rem;
     user-select: text;
   }
 
   .resume-name {
-    font-family: var(--font-display);
+    font-family: var(--font-body);
     font-size: 1.5rem;
-    color: var(--color-parchment);
-    letter-spacing: 0.04em;
+    color: #e5e7eb;
+    letter-spacing: 0.01em;
+    font-weight: 700;
   }
 
   .resume-role {
@@ -63,7 +67,7 @@
     font-size: 0.6rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: #9ca3af;
     margin-top: 0.25rem;
   }
 
@@ -78,11 +82,11 @@
   }
 
   .resume-section-title {
-    font-family: var(--font-display);
+    font-family: var(--font-readout);
     font-size: 0.8rem;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--color-brass);
+    color: #d1d5db;
     margin-bottom: 0.75rem;
   }
 
@@ -100,13 +104,13 @@
   .resume-entry-meta {
     font-family: var(--font-readout);
     font-size: 0.6rem;
-    color: var(--color-parchment-dim);
+    color: #9ca3af;
   }
 
   .resume-list {
     font-family: var(--font-body);
     font-size: 0.75rem;
-    color: var(--color-parchment-dim);
+    color: #d1d5db;
     line-height: 1.7;
     margin-top: 0.35rem;
     list-style: disc inside;
@@ -125,10 +129,11 @@
   .resume-skill {
     font-family: var(--font-readout);
     font-size: 0.6rem;
-    color: var(--color-parchment-dim);
-    background: rgba(28, 31, 42, 0.6);
+    color: #d1d5db;
+    background: rgba(31, 41, 55, 0.5);
     padding: 0.3rem 0.6rem;
-    border-radius: 0.25rem;
+    border-radius: 0.15rem;
+    border: 1px solid rgba(107, 114, 128, 0.32);
   }
 
   .resume-disclaimer {

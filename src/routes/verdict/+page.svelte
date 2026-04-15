@@ -71,10 +71,12 @@
       <!-- Two-column layout -->
       <div class="verdict-columns">
         <div class="verdict-card verdict-card-primary">
+          <p class="verdict-card-label">Sealed Dossier</p>
           <CoverLetter letter={coverLetter} {claim} {verdict} />
         </div>
 
         <div class="verdict-card verdict-card-secondary">
+          <p class="verdict-card-label verdict-card-label-secondary">Corporate Record</p>
           <h2 class="font-display text-brass mb-6 text-lg tracking-widest uppercase">The Subject</h2>
           <Resume />
         </div>
@@ -102,12 +104,25 @@
       rgba(13, 16, 23, 1) 40%,
       rgba(8, 9, 12, 1) 100%
     );
+    position: relative;
+  }
+
+  .verdict-main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(196, 162, 78, 0.1), transparent 35%),
+      radial-gradient(circle at 88% 92%, rgba(212, 102, 58, 0.08), transparent 36%);
   }
 
   .verdict-wrapper {
     max-width: 80rem;
     margin: 0 auto;
     padding: 3rem 1.5rem 4rem;
+    position: relative;
+    z-index: 1;
   }
 
   /* Header */
@@ -169,6 +184,19 @@
     align-self: start;
   }
 
+  .verdict-card-label {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 1rem;
+  }
+
+  .verdict-card-label-secondary {
+    color: rgba(145, 141, 134, 0.95);
+  }
+
   @media (min-width: 1024px) {
     .verdict-card {
       padding: 2rem;
@@ -176,15 +204,15 @@
   }
 
   .verdict-card-primary {
-    background: rgba(17, 25, 40, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(17, 25, 40, 0.78);
+    border: 1px solid rgba(196, 162, 78, 0.22);
     backdrop-filter: blur(16px) saturate(150%);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
   .verdict-card-secondary {
-    background: rgba(17, 25, 40, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(28, 31, 42, 0.45);
+    border: 1px solid rgba(145, 141, 134, 0.22);
     backdrop-filter: blur(12px) saturate(130%);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   }

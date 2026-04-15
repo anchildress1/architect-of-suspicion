@@ -14,6 +14,8 @@
   let hand = $state<Card[]>(untrack(() => [...data.cards]));
   let drawPool = $state<Card[]>(untrack(() => [...data.pool]));
   let exhausted = $derived(hand.length === 0 && drawPool.length === 0);
+  let totalEvaluated = $derived(gameState.current.evidence.length);
+  let roomTension = $derived(totalEvaluated >= 10 ? 'high' : totalEvaluated >= 5 ? 'mid' : 'low');
   let evaluating = $state(false);
   let evaluatingIdx = $state<number | null>(null);
 
@@ -118,6 +120,7 @@
 
   <main
     class="room-main"
+    data-tension={roomTension}
     style="background: url('{room.background}') center/cover no-repeat"
   >
     <!-- Dark overlay -->
@@ -133,6 +136,7 @@
             <p class="room-subtitle">{room.category}</p>
           {/if}
         </div>
+        <p class="room-ledger">Hand {hand.length} / Pool {drawPool.length}</p>
         <a href={resolve('/mansion')} class="btn-back" aria-label="Return to mansion">
           Back to Mansion
         </a>
@@ -161,6 +165,7 @@
                     <div class="shimmer-line shimmer-line-long"></div>
                     <div class="shimmer-line shimmer-line-med"></div>
                   </div>
+                  <div class="shimmer-stamp">Processing</div>
                 </div>
               {:else}
                 <EvidenceCard {card} onClassify={handleClassify} disabled={evaluating} />
@@ -180,6 +185,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background-color: var(--color-void);
   }
 
   .room-overlay {
@@ -187,9 +193,9 @@
     inset: 0;
     background: linear-gradient(
       to bottom,
-      rgba(8, 9, 12, 0.7) 0%,
-      rgba(8, 9, 12, 0.4) 40%,
-      rgba(8, 9, 12, 0.6) 100%
+      rgba(8, 9, 12, 0.78) 0%,
+      rgba(8, 9, 12, 0.45) 40%,
+      rgba(8, 9, 12, 0.68) 100%
     );
   }
 
@@ -207,27 +213,42 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 2rem;
+    gap: 1rem;
+    padding: 0.95rem 1.4rem;
     background: linear-gradient(to bottom, rgba(10, 12, 18, 0.95), transparent);
     flex-shrink: 0;
   }
 
   .room-title {
     font-family: var(--font-display);
-    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
     font-weight: 700;
     color: var(--color-parchment);
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
   }
 
   .room-subtitle {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.25em;
+    font-size: 0.52rem;
+    letter-spacing: 0.23em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-top: 0.25rem;
+  }
+
+  .room-ledger {
+    margin-left: auto;
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    border: 1px solid rgba(196, 162, 78, 0.2);
+    background: rgba(8, 9, 12, 0.64);
+    padding: 0.2rem 0.45rem;
+    border-radius: 1px;
+    white-space: nowrap;
   }
 
   .btn-back {
@@ -255,7 +276,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 1.5rem 2rem 2rem;
+    padding: 1.3rem 1.5rem 1.8rem;
     overflow-y: auto;
     min-height: 0;
   }
@@ -263,8 +284,8 @@
   .card-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
-    max-width: 52rem;
+    gap: 1rem;
+    max-width: 54rem;
     width: 100%;
   }
 
@@ -292,8 +313,8 @@
   .card-shimmer {
     display: flex;
     flex-direction: column;
-    width: 15rem;
-    min-height: 13rem;
+    width: 16rem;
+    min-height: 12.75rem;
     background: linear-gradient(
       165deg,
       rgba(28, 31, 42, 0.95) 0%,
@@ -301,7 +322,7 @@
       rgba(13, 16, 23, 0.95) 100%
     );
     border: 1px solid rgba(196, 162, 78, 0.25);
-    border-radius: 0.5rem;
+    border-radius: 0.3rem;
     overflow: hidden;
     animation: shimmerPulse 1.5s ease-in-out infinite;
   }
@@ -318,6 +339,17 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 1.25rem 1.125rem;
+  }
+
+  .shimmer-stamp {
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    border-top: 1px solid rgba(196, 162, 78, 0.15);
+    padding: 0.45rem 0.6rem;
+    background: rgba(8, 9, 12, 0.5);
   }
 
   .shimmer-line {
@@ -360,9 +392,27 @@
   }
 
   @media (max-width: 900px) {
+    .room-ledger {
+      display: none;
+    }
+
+    .room-top-bar {
+      padding: 0.85rem 1rem;
+    }
+
+    .card-area {
+      padding: 1rem;
+    }
+
     .card-grid {
       grid-template-columns: repeat(2, 1fr);
       max-width: 34rem;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .room-top-bar {
+      flex-wrap: wrap;
     }
   }
 
@@ -370,6 +420,47 @@
     .card-grid {
       grid-template-columns: 1fr;
       max-width: 17rem;
+    }
+  }
+
+  .room-main[data-tension='mid'] .room-title {
+    color: var(--color-brass-glow);
+  }
+
+  .room-main[data-tension='high'] .room-overlay {
+    background:
+      radial-gradient(circle at 70% 10%, rgba(240, 141, 60, 0.18), transparent 30%),
+      linear-gradient(
+        to bottom,
+        rgba(8, 9, 12, 0.82) 0%,
+        rgba(8, 9, 12, 0.52) 40%,
+        rgba(8, 9, 12, 0.72) 100%
+      );
+  }
+
+  .room-main[data-tension='high'] .room-title,
+  .room-main[data-tension='high'] .room-subtitle,
+  .room-main[data-tension='high'] .room-ledger {
+    color: var(--color-ember);
+    text-shadow: 0 0 8px rgba(240, 141, 60, 0.2);
+  }
+
+  .room-main[data-tension='high'] .card-grid {
+    animation: boilerPulse 4s ease-in-out infinite;
+  }
+
+  @keyframes boilerPulse {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .room-main[data-tension='high'] .card-grid {
+      animation: none;
     }
   }
 </style>

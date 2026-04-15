@@ -10,6 +10,7 @@
 
   let { card, onClassify, disabled = false }: Props = $props();
   let chosenClassification = $state<Classification | null>(null);
+  let expanded = $state(false);
   let animationTimer: ReturnType<typeof setTimeout> | null = null;
 
   function handleClassify(classification: Classification) {
@@ -27,6 +28,7 @@
   class="evidence-card"
   class:exit-proof={chosenClassification === 'proof'}
   class:exit-objection={chosenClassification === 'objection'}
+  class:is-expanded={expanded}
   role="article"
   aria-label="Evidence: {card.title}"
 >
@@ -36,7 +38,15 @@
   <div class="card-body">
     <div class="card-category">{card.category ?? 'Evidence'}</div>
     <h3 class="card-title">{card.title}</h3>
-    <p class="card-blurb">{card.blurb}</p>
+    <button
+      class="card-summary-toggle"
+      onclick={() => (expanded = !expanded)}
+      aria-expanded={expanded}
+      aria-label={expanded ? 'Hide evidence summary' : 'Show evidence summary'}
+    >
+      {expanded ? 'Fold summary' : 'Read summary'}
+    </button>
+    <p class="card-blurb" class:card-blurb-expanded={expanded}>{card.blurb}</p>
   </div>
 
   {#if !chosenClassification}
@@ -69,18 +79,21 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    width: 15rem;
-    min-height: 13rem;
+    width: 16rem;
+    min-height: 12.75rem;
     background: linear-gradient(
       165deg,
-      rgba(28, 31, 42, 0.88) 0%,
-      rgba(19, 22, 31, 0.85) 50%,
-      rgba(13, 16, 23, 0.9) 100%
+      rgba(30, 34, 44, 0.9) 0%,
+      rgba(21, 24, 33, 0.88) 50%,
+      rgba(10, 12, 18, 0.92) 100%
     );
     backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-    border-radius: 0.5rem;
+    border: 1px solid rgba(196, 162, 78, 0.18);
+    box-shadow:
+      0 6px 28px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.34);
+    border-radius: 0.3rem;
     overflow: hidden;
     transition:
       border-color 0.3s ease,
@@ -90,18 +103,18 @@
   }
 
   .evidence-card:hover {
-    border-color: rgba(196, 162, 78, 0.4);
+    border-color: rgba(196, 162, 78, 0.5);
     transform: translateY(-4px);
     box-shadow:
-      0 16px 48px rgba(0, 0, 0, 0.6),
-      0 0 20px rgba(196, 162, 78, 0.08),
-      inset 0 1px 0 rgba(196, 162, 78, 0.1);
+      0 16px 40px rgba(0, 0, 0, 0.52),
+      0 0 20px rgba(196, 162, 78, 0.12),
+      inset 0 1px 0 rgba(196, 162, 78, 0.12);
   }
 
   .card-accent {
-    height: 2px;
+    height: 3px;
     background: linear-gradient(90deg, transparent, var(--color-brass-dim), transparent);
-    opacity: 0.5;
+    opacity: 0.7;
     transition: opacity 0.3s;
   }
 
@@ -114,14 +127,14 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 1rem 1.125rem 0.75rem;
-    gap: 0.375rem;
+    padding: 1rem 1rem 0.7rem;
+    gap: 0.4rem;
   }
 
   .card-category {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
+    font-size: 0.52rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     opacity: 0.7;
@@ -129,28 +142,63 @@
 
   .card-title {
     font-family: var(--font-display);
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     letter-spacing: 0.03em;
     color: var(--color-parchment);
-    line-height: 1.35;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+
+  .card-summary-toggle {
+    width: fit-content;
+    border: 1px solid rgba(196, 162, 78, 0.18);
+    background: rgba(10, 12, 18, 0.46);
+    color: var(--color-brass-dim);
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.22rem 0.4rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .card-summary-toggle:hover {
+    border-color: rgba(196, 162, 78, 0.42);
+    color: var(--color-brass-glow);
   }
 
   .card-blurb {
     font-family: var(--font-body);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 400;
     color: var(--color-parchment-dim);
-    line-height: 1.55;
+    line-height: 1.5;
     flex: 1;
-    margin-top: 0.25rem;
+    margin-top: 0.1rem;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition:
+      max-height 0.3s ease,
+      opacity 0.25s ease;
+  }
+
+  .card-blurb-expanded {
+    max-height: 7.5rem;
+    opacity: 1;
+  }
+
+  .is-expanded {
+    min-height: 14.4rem;
   }
 
   .card-actions {
     display: flex;
     align-items: stretch;
-    border-top: 1px solid rgba(196, 162, 78, 0.1);
-    background: rgba(8, 9, 12, 0.4);
+    border-top: 1px solid rgba(196, 162, 78, 0.16);
+    background: rgba(8, 9, 12, 0.58);
   }
 
   .action-divider {
@@ -165,10 +213,10 @@
     justify-content: center;
     gap: 0.4rem;
     font-family: var(--font-readout);
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    padding: 0.65rem 0.5rem;
+    padding: 0.7rem 0.45rem;
     border: none;
     background: none;
     cursor: pointer;
@@ -191,7 +239,7 @@
   }
 
   .card-action-proof {
-    color: var(--color-brass-dim);
+    color: var(--color-brass);
   }
 
   .card-action-proof:hover:not(:disabled) {
@@ -200,7 +248,7 @@
   }
 
   .card-action-objection {
-    color: var(--color-forge-orange);
+    color: var(--color-ember);
   }
 
   .card-action-objection:hover:not(:disabled) {
@@ -211,11 +259,11 @@
   /* Exit animations */
   .exit-proof {
     opacity: 0;
-    transform: translateY(-20px) scale(0.95);
+    transform: translateY(-28px) scale(0.92);
   }
 
   .exit-objection {
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(28px) scale(0.92);
   }
 </style>

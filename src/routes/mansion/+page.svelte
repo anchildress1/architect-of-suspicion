@@ -13,6 +13,10 @@
   const hasEvidence = $derived(gameState.current.evidence.length > 0);
   const playableRoomCount = roomsByGrid.filter((r) => r.isPlayable).length;
   const visitedCount = $derived(gameState.current.roomsVisited.length);
+  const evidenceCount = $derived(gameState.current.evidence.length);
+  const tensionTier = $derived(
+    evidenceCount >= 10 ? 'high' : evidenceCount >= 5 ? 'mid' : 'low',
+  );
   let pendingVerdict = $state<Verdict | null>(null);
 
   function roomEvidenceCount(category: string): number {
@@ -51,7 +55,7 @@
 <div class="flex h-screen overflow-hidden">
   <ArchitectPanel />
 
-  <main class="mansion-main">
+  <main class="mansion-main" data-tension={tensionTier}>
     <!-- Top bar -->
     <header class="top-bar">
       <h1 class="top-bar-title">Architect of Suspicion</h1>
@@ -60,7 +64,7 @@
           &ldquo;{gameState.current.claim}&rdquo;
         </p>
         <p class="progress-indicator">
-          {visitedCount} of {playableRoomCount} rooms explored &middot; {gameState.current.evidence.length} evidence collected
+          {visitedCount} of {playableRoomCount} rooms explored &middot; {evidenceCount} evidence logged
         </p>
       </div>
       <div class="top-bar-actions">
@@ -93,6 +97,7 @@
           draggable="false"
         />
         <div class="board-overlay"></div>
+        <div class="board-hud mechanical-label">Select chamber</div>
         <nav class="board-grid" aria-label="Mansion rooms">
           {#each roomsByGrid as room (room.slug)}
             {@const visited = gameState.current.roomsVisited.includes(room.slug)}
@@ -146,27 +151,44 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: var(--color-void);
+    background:
+      radial-gradient(circle at top center, rgba(240, 141, 60, 0.08), transparent 38%),
+      var(--color-void);
+    position: relative;
+  }
+
+  .mansion-main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 100% 100%, rgba(196, 162, 78, 0.08), transparent 36%),
+      linear-gradient(180deg, rgba(8, 9, 12, 0.12), rgba(8, 9, 12, 0.42));
+    z-index: 0;
   }
 
   /* Top bar */
   .top-bar {
+    position: relative;
+    z-index: 2;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 1rem;
-    background: rgba(10, 12, 18, 0.95);
-    border-bottom: 1px solid rgba(196, 162, 78, 0.1);
+    gap: 1.1rem;
+    padding: 0.6rem 1rem;
+    background: rgba(10, 12, 18, 0.86);
+    border-bottom: 1px solid rgba(196, 162, 78, 0.16);
     flex-shrink: 0;
+    backdrop-filter: blur(8px);
   }
 
   .top-bar-title {
     font-family: var(--font-display);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: var(--color-brass-glow);
     white-space: nowrap;
   }
 
@@ -178,7 +200,7 @@
 
   .claim-reminder-text {
     font-family: var(--font-display);
-    font-size: 0.75rem;
+    font-size: 0.82rem;
     font-style: italic;
     color: var(--color-parchment);
     white-space: nowrap;
@@ -188,8 +210,8 @@
 
   .progress-indicator {
     font-family: var(--font-readout);
-    font-size: 0.45rem;
-    letter-spacing: 0.12em;
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-top: 0.15rem;
@@ -204,16 +226,19 @@
   /* Buttons */
   .btn {
     font-family: var(--font-display);
-    font-size: 0.6rem;
+    font-size: 0.62rem;
     font-weight: 600;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    padding: 0.4rem 0.8rem;
-    border: 1px solid rgba(196, 162, 78, 0.2);
-    background: rgba(19, 22, 31, 0.8);
+    padding: 0.45rem 0.82rem;
+    border: 1px solid rgba(196, 162, 78, 0.28);
+    background: rgba(19, 22, 31, 0.9);
     color: var(--color-parchment-dim);
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
   }
 
   .btn:hover:not(:disabled) {
@@ -245,12 +270,14 @@
 
   /* Board area — centers the house frame */
   .board-area {
+    position: relative;
+    z-index: 1;
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 0;
-    padding: 0.5rem;
+    padding: 0.8rem;
     overflow: hidden;
   }
 
@@ -260,6 +287,10 @@
     aspect-ratio: 2528 / 1696;
     width: 100%;
     max-height: 100%;
+    border: 1px solid rgba(196, 162, 78, 0.2);
+    box-shadow:
+      0 20px 40px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .board-bg {
@@ -275,8 +306,22 @@
   .board-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(8, 9, 12, 0.35);
+    background:
+      radial-gradient(ellipse at center, rgba(255, 255, 255, 0.02), transparent 45%),
+      rgba(8, 9, 12, 0.4);
     pointer-events: none;
+  }
+
+  .board-hud {
+    position: absolute;
+    top: 0.65rem;
+    left: 0.75rem;
+    z-index: 2;
+    font-size: 0.48rem;
+    color: var(--color-brass-dim);
+    background: rgba(8, 9, 12, 0.7);
+    border: 1px solid rgba(196, 162, 78, 0.2);
+    padding: 0.16rem 0.35rem;
   }
 
   /* Room grid — positioned over the windows */
@@ -289,16 +334,16 @@
     display: grid;
     grid-template-columns: 1fr 1.5fr 1fr;
     grid-template-rows: 1.1fr 1fr 1fr;
-    gap: 2.5% 3%;
+    gap: 2.3% 2.8%;
   }
 
   /* Room tiles */
   .room-door {
     position: relative;
-    border: 1px solid rgba(196, 162, 78, 0.2);
-    background: rgba(8, 9, 12, 0.55);
+    border: 1px solid rgba(196, 162, 78, 0.24);
+    background: rgba(8, 9, 12, 0.58);
     backdrop-filter: blur(6px);
-    padding: 0.5rem 0.6rem;
+    padding: 0.5rem 0.58rem;
     cursor: pointer;
     transition: all 0.4s ease;
     display: flex;
@@ -306,14 +351,17 @@
     justify-content: space-between;
     overflow: hidden;
     text-decoration: none;
-    border-radius: 2px;
+    border-radius: 1px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.25);
   }
 
   .room-door:hover {
-    border-color: rgba(196, 162, 78, 0.6);
-    background: rgba(196, 162, 78, 0.12);
+    border-color: rgba(196, 162, 78, 0.7);
+    background: rgba(196, 162, 78, 0.16);
     box-shadow:
-      0 0 20px rgba(196, 162, 78, 0.15),
+      0 0 24px rgba(196, 162, 78, 0.18),
       inset 0 0 20px rgba(196, 162, 78, 0.05);
   }
 
@@ -372,7 +420,7 @@
 
   .room-name {
     font-family: var(--font-display);
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.06em;
     color: var(--color-parchment);
@@ -395,8 +443,8 @@
 
   .room-category {
     font-family: var(--font-readout);
-    font-size: 0.45rem;
-    letter-spacing: 0.15em;
+    font-size: 0.5rem;
+    letter-spacing: 0.17em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-top: 0.15rem;
@@ -409,8 +457,8 @@
 
   .room-visited-label {
     font-family: var(--font-readout);
-    font-size: 0.45rem;
-    letter-spacing: 0.08em;
+    font-size: 0.46rem;
+    letter-spacing: 0.11em;
     text-transform: uppercase;
     color: rgba(196, 162, 78, 0.6);
   }
@@ -419,8 +467,8 @@
     position: absolute;
     top: 0.4rem;
     right: 0.4rem;
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--color-brass-dim);
     opacity: 0;
@@ -430,6 +478,23 @@
   .room-status-visited {
     opacity: 1;
     background: var(--color-brass);
+  }
+
+  .mansion-main[data-tension='mid'] .room-door-visited {
+    border-color: rgba(196, 162, 78, 0.55);
+    box-shadow:
+      0 0 18px rgba(196, 162, 78, 0.16),
+      inset 0 0 20px rgba(196, 162, 78, 0.06);
+  }
+
+  .mansion-main[data-tension='high'] .board-overlay {
+    background:
+      radial-gradient(circle at 20% 15%, rgba(240, 141, 60, 0.12), transparent 36%),
+      rgba(8, 9, 12, 0.5);
+  }
+
+  .mansion-main[data-tension='high'] .top-bar-title {
+    color: var(--color-ember);
   }
 
   @media (max-width: 767px) {
