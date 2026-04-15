@@ -42,6 +42,7 @@
 
 <svelte:head>
   <title>The Mansion | Architect of Suspicion</title>
+  <link rel="preload" as="image" href="/backgrounds/house-exterior.webp" fetchpriority="high" />
 </svelte:head>
 
 <div class="flex h-screen overflow-hidden">

@@ -107,6 +107,7 @@
 
 <svelte:head>
   <title>{room.name} | Architect of Suspicion</title>
+  <link rel="preload" as="image" href={room.background} fetchpriority="high" />
 </svelte:head>
 
 <div class="flex h-screen overflow-hidden">
