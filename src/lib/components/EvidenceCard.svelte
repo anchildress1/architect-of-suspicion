@@ -73,12 +73,13 @@
     min-height: 13rem;
     background: linear-gradient(
       165deg,
-      rgba(28, 31, 42, 0.95) 0%,
-      rgba(19, 22, 31, 0.92) 50%,
-      rgba(13, 16, 23, 0.95) 100%
+      rgba(28, 31, 42, 0.88) 0%,
+      rgba(19, 22, 31, 0.85) 50%,
+      rgba(13, 16, 23, 0.9) 100%
     );
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(196, 162, 78, 0.15);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
     border-radius: 0.5rem;
     overflow: hidden;
     transition:

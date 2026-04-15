@@ -25,9 +25,10 @@
     width: 300px;
     height: 100%;
     flex-shrink: 0;
-    background: rgba(10, 12, 18, 0.96);
-    border-right: 1px solid rgba(196, 162, 78, 0.2);
-    backdrop-filter: blur(20px);
+    background: rgba(17, 25, 40, 0.78);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
   }
 
   .architect-header {

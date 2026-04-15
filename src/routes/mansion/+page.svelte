@@ -273,9 +273,10 @@
   /* Room tiles */
   .room-door {
     position: relative;
-    border: 1px solid rgba(196, 162, 78, 0.2);
-    background: rgba(19, 22, 31, 0.8);
-    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(17, 25, 40, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     padding: 1.25rem;
     cursor: pointer;
     transition: all 0.4s ease;

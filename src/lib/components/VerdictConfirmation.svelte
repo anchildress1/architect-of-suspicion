@@ -156,14 +156,17 @@
   }
 
   .verdict-dialog {
-    background: var(--color-chamber);
-    border: 1px solid rgba(196, 162, 78, 0.3);
-    border-radius: 0.5rem;
+    background: rgba(17, 25, 40, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
     padding: 2rem;
     margin: 1rem;
     width: 100%;
     max-width: 28rem;
-    box-shadow: 0 0 40px rgba(196, 162, 78, 0.08);
+    backdrop-filter: blur(20px) saturate(150%);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      0 0 40px rgba(196, 162, 78, 0.06);
   }
 
   /* Loading state */

@@ -165,13 +165,17 @@
   }
 
   .verdict-card-primary {
-    background: rgba(19, 22, 31, 0.6);
-    border: 1px solid rgba(196, 162, 78, 0.2);
+    background: rgba(17, 25, 40, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
   .verdict-card-secondary {
-    background: rgba(19, 22, 31, 0.4);
-    border: 1px solid rgba(196, 162, 78, 0.1);
+    background: rgba(17, 25, 40, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px) saturate(130%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   }
 
   /* Actions */
