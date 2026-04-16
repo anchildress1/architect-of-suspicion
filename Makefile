@@ -1,5 +1,6 @@
 .PHONY: dev dev-open build preview test test-watch lint typecheck format check \
-       docker-build docker-run clean install prepare help
+       docker-build docker-run clean install prepare help \
+       seed-claims seed-claims-dry
 
 # ─── Development ──────────────────────────────────────────────────────
 
@@ -51,6 +52,14 @@ install: ## Install dependencies
 
 prepare: ## Run SvelteKit sync
 	pnpm run prepare
+
+# ─── Claim Engine ─────────────────────────────────────────────────────
+
+seed-claims: ## Run the claim engine pipeline (writes to Supabase)
+	pnpm run seed-claims
+
+seed-claims-dry: ## Run the claim engine pipeline, print results only
+	CLAIM_ENGINE_DRY_RUN=true pnpm run seed-claims
 
 # ─── Cleanup ──────────────────────────────────────────────────────────
 
