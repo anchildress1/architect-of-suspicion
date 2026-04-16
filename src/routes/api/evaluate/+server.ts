@@ -8,7 +8,7 @@ import { buildEvaluationPrompt } from '$lib/server/prompts/evaluate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const FALLBACK_REACTION =
-  'The gears of judgement grind on, though the mechanism stutters. Even The Architect must pause when the steam runs thin.';
+  'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
 
 interface EvaluateRequest {
   session_id?: string;
@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   try {
     const client = getClaudeClient();
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250514',
+      model: 'claude-haiku-4-5',
       max_tokens: 500,
       system: ARCHITECT_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
@@ -95,19 +95,17 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
       aiScore = Math.max(-1.0, Math.min(1.0, parsed.score));
       aiReaction = parsed.reaction;
     }
-  } catch {
-    // Claude call or parse failed — use fallback values
-    // aiScore stays 0.0, aiReaction stays fallback
+  } catch (err) {
+    console.error('[evaluate] Claude API or parse failure:', err instanceof Error ? err.message : err);
   }
 
   // INVARIANT: Write to suspicion.picks BEFORE returning to client
   const { error: pickError } = await suspicion.from('picks').insert({
     session_id,
     card_id,
-    card_title: card.title,
     classification,
     ai_score: aiScore,
-    ai_reaction: aiReaction,
+    ai_reaction_text: aiReaction,
   });
 
   if (pickError) {

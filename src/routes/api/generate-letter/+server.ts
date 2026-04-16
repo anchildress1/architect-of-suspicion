@@ -7,10 +7,10 @@ import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prom
 import { rateLimitGuard } from '$lib/server/rateLimit';
 
 const FALLBACK_LETTER =
-  'The gears of composition have seized. Though the verdict stands, the record must be penned by hand — for even The Architect cannot forge words from broken steam.';
+  'The record could not be composed. The verdict stands, but the letter will have to be written by hand.';
 
 const FALLBACK_CLOSING =
-  'The trial is done. The gears fall silent, and the record stands as written.';
+  'The investigation is concluded. The record speaks for itself.';
 
 interface GenerateLetterRequest {
   session_id?: string;
@@ -107,13 +107,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
     const [letterResponse, closingResponse] = await Promise.all([
       client.messages.create({
-        model: 'claude-sonnet-4-5-20250514',
+        model: 'claude-haiku-4-5',
         max_tokens: 2000,
         system: ARCHITECT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: letterPrompt }],
       }),
       client.messages.create({
-        model: 'claude-sonnet-4-5-20250514',
+        model: 'claude-haiku-4-5',
         max_tokens: 200,
         system: ARCHITECT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: closingPrompt }],
@@ -127,9 +127,18 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
     if (letterText) coverLetter = letterText;
     if (closingText) architectClosing = closingText;
-  } catch {
-    // Fallback values already set
+  } catch (err) {
+    console.error('[generate-letter] Claude API failure:', err instanceof Error ? err.message : err);
   }
+
+  await suspicion
+    .from('sessions')
+    .update({
+      cover_letter: coverLetter,
+      architect_closing: architectClosing,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('session_id', session_id);
 
   return json({ cover_letter: coverLetter, architect_closing: architectClosing });
 };

@@ -28,6 +28,7 @@ Do not duplicate information from those docs here.
 - NEVER over-document or under-document
 - NEVER check in a secret or API key into the repo or public client
 - NEVER implement temporary solutions or quick fixes
+- NEVER code higher than 15 cognitive complexity
 - ALWAYS write unit tests for all positive, negative, error, and edge cases
 - ALWAYS double check accessibility standards
 - ALWAYS consider performance and optimize as you go

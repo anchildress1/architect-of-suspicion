@@ -191,7 +191,7 @@ describe('POST /api/evaluate', () => {
 
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const callArgs = mockCreate.mock.calls[0][0];
-    expect(callArgs.model).toBe('claude-sonnet-4-5-20250514');
+    expect(callArgs.model).toBe('claude-haiku-4-5');
     expect(callArgs.messages[0].content).toContain('Ashley depends on AI too much');
     expect(callArgs.messages[0].content).toContain('AI Tools Usage');
     expect(callArgs.messages[0].content).toContain('proof');
@@ -210,10 +210,9 @@ describe('POST /api/evaluate', () => {
       expect.objectContaining({
         session_id: 'test-session-uuid',
         card_id: 'card-123',
-        card_title: 'AI Tools Usage',
         classification: 'proof',
         ai_score: 0.6,
-        ai_reaction: 'The gears align!',
+        ai_reaction_text: 'The gears align!',
       }),
     );
   });

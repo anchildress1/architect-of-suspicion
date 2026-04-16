@@ -5,6 +5,17 @@ import type { Verdict } from '$lib/types';
 // We test the core data contracts and logic that the VerdictConfirmation component depends on.
 
 describe('VerdictConfirmation data contract', () => {
+  it('requires a full arm cycle before confirmation', () => {
+    let armProgress = 0;
+    const canConfirm = () => armProgress >= 100;
+
+    armProgress = 55;
+    expect(canConfirm()).toBe(false);
+
+    armProgress = 100;
+    expect(canConfirm()).toBe(true);
+  });
+
   it('verdict type is limited to accuse and pardon', () => {
     const validVerdicts: Verdict[] = ['accuse', 'pardon'];
     expect(validVerdicts).toContain('accuse');

@@ -1,15 +1,22 @@
 <script lang="ts">
   import '../app.css';
-  import { page } from '$app/state';
+  import { onNavigate } from '$app/navigation';
   import MobileGate from '$lib/components/MobileGate.svelte';
 
   let { children } = $props();
+
+  onNavigate((navigation) => {
+    if (!document.startViewTransition) return;
+
+    return new Promise((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+    });
+  });
 </script>
 
 <MobileGate />
 
-{#key page.url.pathname}
-  <div class="page-transition-enter">
-    {@render children()}
-  </div>
-{/key}
+{@render children()}

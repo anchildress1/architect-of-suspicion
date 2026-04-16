@@ -8,7 +8,7 @@ import { rateLimitGuard } from '$lib/server/rateLimit';
 const VALID_ACTIONS: NarrationAction[] = ['enter_room', 'idle', 'wander'];
 
 const FALLBACK_DIALOGUE =
-  'The gears turn. The mansion watches. And so, it seems, do I.';
+  'Go on, then. I was going to comment, but I suppose you can draw your own conclusions.';
 
 interface NarrateRequest {
   claim?: string;
@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   try {
     const client = getClaudeClient();
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250514',
+      model: 'claude-haiku-4-5',
       max_tokens: 200,
       system: ARCHITECT_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
@@ -69,8 +69,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     if (text.trim()) {
       dialogue = text.trim();
     }
-  } catch {
-    // Claude call failed — use fallback dialogue
+  } catch (err) {
+    console.error('[narrate] Claude API failure:', err instanceof Error ? err.message : err);
   }
 
   return json({ dialogue });

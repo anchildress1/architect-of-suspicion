@@ -7,7 +7,7 @@
 </script>
 
 <div class="evidence-tally" aria-label="Evidence tally">
-  <h3 class="tally-header">Evidence Collected</h3>
+  <h3 class="tally-header">Evidence Ledger</h3>
 
   <div class="tally-row">
     <span class="tally-label tally-label-proof">Proof</span>
@@ -28,33 +28,35 @@
 
 <style>
   .evidence-tally {
-    padding: 0.75rem 1.25rem;
-    border-top: 1px solid rgba(196, 162, 78, 0.12);
-    background: rgba(10, 12, 18, 0.5);
+    position: relative;
+    z-index: 1;
+    padding: 0.9rem 1rem;
+    border-top: 1px solid rgba(196, 162, 78, 0.32);
+    background: rgba(14, 17, 24, 0.78);
   }
 
   .tally-header {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.15em;
+    font-size: 0.52rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.55rem;
   }
 
   .tally-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.2rem 0;
+    padding: 0.28rem 0;
   }
 
   .tally-label {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    min-width: 4rem;
+    min-width: 4.6rem;
   }
 
   .tally-label-proof {
@@ -67,11 +69,12 @@
 
   .tally-bar {
     flex: 1;
-    height: 2px;
-    margin: 0 0.75rem;
-    background: rgba(196, 162, 78, 0.08);
+    height: 4px;
+    margin: 0 0.7rem;
+    background: rgba(196, 162, 78, 0.14);
     position: relative;
     overflow: hidden;
+    border-radius: 1px;
   }
 
   .tally-bar-fill {
@@ -92,9 +95,9 @@
 
   .tally-count {
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     color: var(--color-parchment-dim);
-    min-width: 1rem;
+    min-width: 1.25rem;
     text-align: right;
   }
 </style>

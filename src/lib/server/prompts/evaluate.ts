@@ -22,28 +22,30 @@ export function buildEvaluationPrompt(
           .join('\n')
       : '  (No prior evidence collected)';
 
-  return `A player is investigating the claim: "${claim}"
+  return `Claim under investigation: "${claim}"
 
-They have just examined evidence card "${card.title}" and classified it as **${classification}**.
+The player classified "${card.title}" as **${classification}**.
 
-Card details (hidden from player):
-- Title: ${card.title}
-- Summary: ${card.blurb}
+What the player sees:
+- Title: "${card.title}"
+- Summary: "${card.blurb}"
+
+What you know (hidden from player):
 - Full context: ${card.fact}
 - Category: ${card.category}
 
-Prior evidence collected by this player:
+Prior picks:
 ${historyBlock}
 
-Your task:
-1. Evaluate how well the player's classification of "${classification}" aligns with what the card's full context actually suggests about the claim "${claim}".
-2. Score the classification from -1.0 to 1.0:
-   - Positive scores mean the classification ALIGNS with reality (the player read the evidence correctly)
-   - Negative scores mean the classification is MISALIGNED (the player misread the evidence)
-   - Magnitude indicates confidence: 0.1 = very ambiguous, 0.9 = clear-cut
-   - Use the full range — avoid clustering around 0
-3. Write a theatrical reaction as The Architect (2-4 sentences). React to this specific evidence AND the overall trajectory of the investigation so far.
+Tasks:
+1. Score from -1.0 to 1.0 — does classifying this as "${classification}" make sense given the full context and the claim?
+   Positive = player read it right. Negative = player misread it. Use the full range.
+2. Write your reaction (1-2 sentences). You MUST:
+   - Name the specific detail from the card (a technology, a decision, a metric — something concrete the player can see)
+   - Connect it explicitly to the claim "${claim}"
+   - React to WHETHER their classification makes sense — mock them if it doesn't, grudgingly acknowledge if it does
+   - Example tone: "So you think Ashley earning a Gold Homer suggests she ${classification === 'proof' ? 'proves' : 'disproves'} the claim. ${classification === 'proof' ? 'Interesting leap.' : 'A generous reading, perhaps.'}"
 
-Respond with ONLY valid JSON in this exact format:
-{ "score": <number between -1.0 and 1.0>, "reaction": "<your theatrical reaction>" }`;
+Respond with ONLY valid JSON:
+{ "score": <number>, "reaction": "<your reaction>" }`;
 }

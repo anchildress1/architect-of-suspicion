@@ -7,6 +7,8 @@
   import Resume from '$lib/components/Resume.svelte';
   import type { Verdict } from '$lib/types';
 
+  let { data } = $props();
+
   let coverLetter = $state('');
   let architectClosing = $state('');
   let claim = $state('');
@@ -14,22 +16,31 @@
   let ready = $state(false);
 
   onMount(() => {
+    // Try sessionStorage first (fast path)
     const stored = sessionStorage.getItem('verdictResult');
-    if (!stored) {
-      goto(resolve('/'));
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        coverLetter = parsed.cover_letter;
+        architectClosing = parsed.architect_closing;
+        claim = parsed.claim;
+        verdict = parsed.verdict;
+        ready = true;
+        return;
+      } catch { /* fall through to server data */ }
+    }
+
+    // Fall back to server-loaded data from DB
+    if (data.session) {
+      coverLetter = data.session.cover_letter;
+      architectClosing = data.session.architect_closing;
+      claim = data.session.claim;
+      verdict = data.session.verdict as Verdict;
+      ready = true;
       return;
     }
 
-    try {
-      const data = JSON.parse(stored);
-      coverLetter = data.cover_letter;
-      architectClosing = data.architect_closing;
-      claim = data.claim;
-      verdict = data.verdict;
-      ready = true;
-    } catch {
-      goto(resolve('/'));
-    }
+    goto(resolve('/'));
   });
 
   function playAgain() {
@@ -60,10 +71,12 @@
       <!-- Two-column layout -->
       <div class="verdict-columns">
         <div class="verdict-card verdict-card-primary">
+          <p class="verdict-card-label">Sealed Dossier</p>
           <CoverLetter letter={coverLetter} {claim} {verdict} />
         </div>
 
         <div class="verdict-card verdict-card-secondary">
+          <p class="verdict-card-label verdict-card-label-secondary">Corporate Record</p>
           <h2 class="font-display text-brass mb-6 text-lg tracking-widest uppercase">The Subject</h2>
           <Resume />
         </div>
@@ -91,12 +104,25 @@
       rgba(13, 16, 23, 1) 40%,
       rgba(8, 9, 12, 1) 100%
     );
+    position: relative;
+  }
+
+  .verdict-main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(196, 162, 78, 0.1), transparent 35%),
+      radial-gradient(circle at 88% 92%, rgba(212, 102, 58, 0.08), transparent 36%);
   }
 
   .verdict-wrapper {
     max-width: 80rem;
     margin: 0 auto;
     padding: 3rem 1.5rem 4rem;
+    position: relative;
+    z-index: 1;
   }
 
   /* Header */
@@ -147,6 +173,7 @@
     .verdict-columns {
       grid-template-columns: 1fr 1fr;
       gap: 3rem;
+      align-items: start;
     }
   }
 
@@ -154,6 +181,20 @@
     border-radius: 0.5rem;
     padding: 1.5rem;
     backdrop-filter: blur(8px);
+    align-self: start;
+  }
+
+  .verdict-card-label {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 1rem;
+  }
+
+  .verdict-card-label-secondary {
+    color: rgba(145, 141, 134, 0.95);
   }
 
   @media (min-width: 1024px) {
@@ -163,13 +204,17 @@
   }
 
   .verdict-card-primary {
-    background: rgba(19, 22, 31, 0.6);
-    border: 1px solid rgba(196, 162, 78, 0.2);
+    background: rgba(17, 25, 40, 0.78);
+    border: 1px solid rgba(196, 162, 78, 0.22);
+    backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
   .verdict-card-secondary {
-    background: rgba(19, 22, 31, 0.4);
-    border: 1px solid rgba(196, 162, 78, 0.1);
+    background: rgba(28, 31, 42, 0.45);
+    border: 1px solid rgba(145, 141, 134, 0.22);
+    backdrop-filter: blur(12px) saturate(130%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   }
 
   /* Actions */
