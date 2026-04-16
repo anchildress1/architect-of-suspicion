@@ -107,13 +107,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
     const [letterResponse, closingResponse] = await Promise.all([
       client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5',
         max_tokens: 2000,
         system: ARCHITECT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: letterPrompt }],
       }),
       client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5',
         max_tokens: 200,
         system: ARCHITECT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: closingPrompt }],

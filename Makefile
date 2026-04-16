@@ -1,5 +1,5 @@
-.PHONY: dev build preview test test-watch lint typecheck format check \
-       docker-build docker-run clean install prepare
+.PHONY: dev dev-open build preview test test-watch lint typecheck format check \
+       docker-build docker-run clean install prepare help
 
 # ─── Development ──────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ test: ## Run tests with coverage
 	pnpm run test
 
 test-watch: ## Run tests in watch mode
-	pnpm vitest
+	pnpm vitest --watch
 
 check: lint typecheck test build ## Run all quality checks (lint → typecheck → test → build)
 
@@ -60,7 +60,7 @@ clean: ## Remove build artifacts and dependencies
 # ─── Help ─────────────────────────────────────────────────────────────
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:[^#]*## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":[^#]*## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 .DEFAULT_GOAL := help

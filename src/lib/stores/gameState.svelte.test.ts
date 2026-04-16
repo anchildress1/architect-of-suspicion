@@ -97,6 +97,39 @@ describe('gameState', () => {
     });
   });
 
+  describe('removeFeedEntry', () => {
+    it('removes a feed entry by id', () => {
+      const keep: FeedEntry = {
+        id: 'keep',
+        type: 'narration',
+        text: 'Stays.',
+        timestamp: 1,
+      };
+      const drop: FeedEntry = {
+        id: 'drop',
+        type: 'narration',
+        text: 'Goes.',
+        timestamp: 2,
+      };
+      gameState.addFeedEntry(keep);
+      gameState.addFeedEntry(drop);
+      gameState.removeFeedEntry('drop');
+      expect(gameState.current.feed).toHaveLength(1);
+      expect(gameState.current.feed[0].id).toBe('keep');
+    });
+
+    it('is a no-op when id is not present', () => {
+      gameState.addFeedEntry({
+        id: 'only',
+        type: 'narration',
+        text: 'Alone.',
+        timestamp: 1,
+      });
+      gameState.removeFeedEntry('missing');
+      expect(gameState.current.feed).toHaveLength(1);
+    });
+  });
+
   describe('setSessionId', () => {
     it('sets the session ID', () => {
       gameState.setSessionId('abc-123');
