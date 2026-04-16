@@ -29,11 +29,11 @@
     height: 100%;
     flex-shrink: 0;
     background:
-      linear-gradient(180deg, rgba(17, 19, 27, 0.92) 0%, rgba(8, 9, 12, 0.9) 100%);
-    border-right: 1px solid rgba(196, 162, 78, 0.16);
+      linear-gradient(180deg, rgba(22, 25, 36, 0.95) 0%, rgba(13, 16, 23, 0.93) 100%);
+    border-right: 1px solid rgba(196, 162, 78, 0.32);
     box-shadow:
       10px 0 34px rgba(0, 0, 0, 0.4),
-      inset -1px 0 0 rgba(255, 255, 255, 0.03);
+      inset -1px 0 0 rgba(255, 255, 255, 0.05);
     position: relative;
   }
 
@@ -51,7 +51,7 @@
     position: relative;
     z-index: 1;
     padding: 1rem 1.15rem 0.75rem;
-    border-bottom: 1px solid rgba(196, 162, 78, 0.14);
+    border-bottom: 1px solid rgba(196, 162, 78, 0.28);
   }
 
   .panel-title-wrap {

@@ -102,7 +102,7 @@
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: var(--color-brass);
     text-decoration: none;
     display: inline-block;
     margin-bottom: 2rem;
@@ -110,7 +110,7 @@
   }
 
   .attic-back:hover {
-    color: var(--color-brass);
+    color: var(--color-brass-glow);
   }
 
   .attic-title {

@@ -31,8 +31,8 @@
     position: relative;
     z-index: 1;
     padding: 0.9rem 1rem;
-    border-top: 1px solid rgba(196, 162, 78, 0.18);
-    background: rgba(10, 12, 18, 0.66);
+    border-top: 1px solid rgba(196, 162, 78, 0.32);
+    background: rgba(14, 17, 24, 0.78);
   }
 
   .tally-header {

@@ -256,18 +256,19 @@
     font-size: 0.6rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: var(--color-brass);
     text-decoration: none;
     padding: 0.4rem 0.75rem;
-    border: 1px solid rgba(196, 162, 78, 0.2);
+    border: 1px solid rgba(196, 162, 78, 0.38);
+    background: rgba(196, 162, 78, 0.06);
     border-radius: 0.25rem;
     transition: all 0.25s;
   }
 
   .btn-back:hover {
-    color: var(--color-brass);
-    border-color: rgba(196, 162, 78, 0.4);
-    background: rgba(196, 162, 78, 0.06);
+    color: var(--color-brass-glow);
+    border-color: rgba(196, 162, 78, 0.55);
+    background: rgba(196, 162, 78, 0.12);
   }
 
   /* Card area */

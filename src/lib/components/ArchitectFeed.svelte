@@ -58,8 +58,8 @@
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    border: 1px solid rgba(196, 162, 78, 0.16);
-    background: rgba(8, 9, 12, 0.75);
+    border: 1px solid rgba(196, 162, 78, 0.3);
+    background: rgba(14, 17, 24, 0.85);
   }
 
   .feed-empty {
