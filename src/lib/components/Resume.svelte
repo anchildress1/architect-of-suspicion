@@ -140,7 +140,7 @@
     font-family: var(--font-body);
     font-size: 0.7rem;
     font-style: italic;
-    color: rgba(145, 141, 134, 0.5);
+    color: var(--color-parchment-dim);
     text-align: center;
     margin-top: 1.5rem;
   }

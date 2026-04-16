@@ -137,7 +137,6 @@
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    opacity: 0.7;
   }
 
   .card-title {

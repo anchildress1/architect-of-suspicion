@@ -407,7 +407,7 @@
 
   .room-door-attic {
     border-color: rgba(196, 162, 78, 0.15);
-    opacity: 0.55;
+    opacity: 0.78;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -415,7 +415,7 @@
   }
 
   .room-door-attic:hover {
-    opacity: 0.85;
+    opacity: 1;
   }
 
   .room-name {
@@ -460,7 +460,7 @@
     font-size: 0.46rem;
     letter-spacing: 0.11em;
     text-transform: uppercase;
-    color: rgba(196, 162, 78, 0.6);
+    color: var(--color-brass-dim);
   }
 
   .room-status {

@@ -76,7 +76,6 @@
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--color-parchment-dim);
-    opacity: 0.8;
   }
 
   .claim-display {
