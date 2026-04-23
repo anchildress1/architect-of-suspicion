@@ -87,21 +87,28 @@ export async function runPass3(
   claims: GeneratedClaim[],
 ): Promise<Pass3Result> {
   const client = clientFor(config.models.pass3);
+  const batches = Math.ceil(cards.length / config.thresholds.scoreBatch);
   console.log(
-    `[pass3] model=${client.model} claims=${claims.length} cards=${cards.length} floor=${config.thresholds.cardFloor}`,
+    `[pass3] model=${client.model} claims=${claims.length} cards=${cards.length} batches=${batches} floor=${config.thresholds.cardFloor}`,
   );
 
   const scored = new Map<string, CardClaimScore[]>();
   const qualities = new Map<string, number>();
+  const batchSize = config.thresholds.scoreBatch;
 
   for (const claim of claims) {
-    const raw = await client.complete(buildPrompt(claim, cards), {
-      system: SYSTEM_PROMPT,
-      maxTokens: 16000,
-      schema: SCHEMA,
-    });
-
-    const { scores: allScores } = JSON.parse(raw) as { scores: CardClaimScore[] };
+    // Score in batches to keep output tokens bounded per call.
+    const allScores: CardClaimScore[] = [];
+    for (let offset = 0; offset < cards.length; offset += batchSize) {
+      const batch = cards.slice(offset, offset + batchSize);
+      const raw = await client.complete(buildPrompt(claim, batch), {
+        system: SYSTEM_PROMPT,
+        maxTokens: 4000,
+        schema: SCHEMA,
+      });
+      const { scores } = JSON.parse(raw) as { scores: CardClaimScore[] };
+      allScores.push(...scores);
+    }
 
     // Keep cards that clear the combined ambiguity+surprise floor.
     const floorCleared = allScores.filter(

@@ -45,6 +45,9 @@ export const config = {
     // Lower = more inclusive; a card scoring 2+1 just barely qualifies.
     cardFloor: num('CLAIM_ENGINE_CARD_FLOOR', 3),
     cardSignal: 2,
+    // Cards per scoring batch. Smaller = fewer output tokens per call.
+    // 50 cards × ~48 tokens/entry ≈ 2,400 tokens output — well within any limit.
+    scoreBatch: num('CLAIM_ENGINE_SCORE_BATCH', 50),
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),
 } as const;
