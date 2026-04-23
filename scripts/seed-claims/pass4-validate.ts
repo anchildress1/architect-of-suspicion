@@ -19,16 +19,16 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `You rewrite each card's blurb so players cannot tell from title+blurb alone whether the card supports or contradicts the active claim.
+const SYSTEM_PROMPT = `You write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer.
 
-The fact field is the only constraint — it cannot change and nothing may be fabricated from it. The blurb is malleable.
+You have three raw materials per card: title, blurb, and fact. Use all three freely. You may weave in specifics from the fact field to make the description richer and more grounded, but do not state or imply whether those specifics support or contradict the claim. The goal is that a player reading only title + rewritten_blurb feels genuinely torn.
+
+Do not fabricate anything not present in title, blurb, or fact.
 
 For each card:
-1. proof — one sentence: how the card's fact supports the claim
-2. objection — one sentence: how the card's fact contradicts or complicates the claim
-3. rewritten_blurb — rewrite the blurb so a player reading title+blurb is genuinely uncertain which way it goes. Use omission, framing, or true-but-misleading emphasis grounded only in the fact. Tension must be specific to this claim, not generic. Match original blurb length.
-
-Rewrite every card. A fact that currently leans one way can still be framed to create doubt — that is the job.`;
+1. proof — one sentence: how the fact supports the claim (internal reasoning, not stored)
+2. objection — one sentence: how the fact contradicts or complicates the claim (internal reasoning, not stored)
+3. rewritten_blurb — the player-facing text. Synthesise title, blurb, and fact into a description that creates real tension against this specific claim. A player should be able to argue it both ways. Match original blurb length and register. The tension must come from the claim, not be generic.`;
 
 const SCHEMA = {
   type: 'object',

@@ -1,7 +1,7 @@
 # Claim Engine — Product Specification
 
-**Status:** Draft v1
-**Date:** 2026-04-15
+**Status:** Draft v2
+**Date:** 2026-04-23
 **Author:** Ashley Childress + Claude (spec collaboration)
 **Parent:** [PRD.md](PRD.md) (Architect of Suspicion game spec)
 
@@ -21,17 +21,19 @@ The cards in `public.cards` are written in documentary voice — factual titles,
 
 Hand-curating claims (game PRD v1) doesn't scale and can't guarantee coverage across all 8 gameplay rooms. The cards themselves can't be rewritten — `public.cards` is read-only and serves other systems.
 
-The solution: don't change the cards. Change which cards appear for which claims, and score how well each pairing creates gameplay tension.
+The solution: don't change the cards in `public.cards`. Instead, generate claim-specific rewrites of the player-facing blurbs and store them alongside scored card-claim pairings. The game reads these rewrites at runtime — not the original blurbs.
 
 ## Pipeline Design
 
 ### Principles
 
-1. **Cards are never modified.** The pipeline reads `public.cards`, never writes to it.
-2. **Claims are generated from card data, not invented.** Every claim must be grounded in tensions that actually exist in the corpus.
-3. **Different AI models for different passes.** Each pass has different cognitive demands — creative generation, structured evaluation, adversarial validation. Using different models per pass avoids self-confirmation bias and optimizes for cost.
-4. **Output is deterministic once written.** The game reads static crossref data at runtime. No AI calls for card dealing or claim selection.
-5. **Run frequency: monthly or on card corpus changes.** Not per-session, not per-deploy.
+1. **`public.cards` is read-only.** The pipeline reads from it, never writes to it. Claim-specific rewrites live in `suspicion.claim_cards.rewritten_blurb`.
+2. **`fact` never reaches the client at runtime.** The seed pipeline uses `fact` as raw material to craft rewrites; the runtime API returns only `rewritten_blurb`. The invariant is preserved at the API boundary, not the pipeline boundary.
+3. **Claims are generated from card data, not invented.** Every claim must be grounded in tensions that actually exist in the corpus.
+4. **Different AI models for different passes.** Each pass has different cognitive demands — creative generation, structured scoring, claim-specific rewriting. Using different models per pass avoids self-confirmation bias.
+5. **Scores are pre-graded at seed time.** Ambiguity and surprise scores are computed in Pass 3 and stored in `claim_cards`. The runtime uses them for card dealing weights — no AI calls at runtime.
+6. **Output is deterministic once written.** The game reads static crossref data. No AI calls for card dealing or claim selection.
+7. **Run frequency: monthly or on card corpus changes.** Not per-session, not per-deploy.
 
 ### Pass 1: Tension Analysis
 
@@ -51,55 +53,56 @@ The solution: don't change the cards. Change which cards appear for which claims
 
 **Input:** Tension map from Pass 1 + full card corpus.
 
-**Task:** Generate 3-5 claims that maximize the number of cards sitting on a fault line. A good claim:
+**Task:** Generate 15 candidate claims that maximize the number of cards sitting on a fault line. A good claim:
 
 - Creates genuine ambiguity for cards across **multiple rooms** (not just one category)
 - Is specific enough to evaluate against individual cards
 - Is framed as an accusation that a reasonable person could argue either way
 - Doesn't require domain expertise to understand
 
-**Quality metric:** A claim's strength is measured by how many cards across how many rooms produce ambiguity scores ≥ 3 (scored in Pass 3). A claim that only lights up one or two rooms is cut.
+Casting wide here is intentional — Pass 3 will rank and select the best 5.
 
-**Output:** 3-5 claim strings, each with a brief rationale explaining which tensions it targets.
+**Output:** 15 claim strings, each with a brief rationale explaining which tensions it targets.
 
 **Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`)
 
-### Pass 3: Card-Claim Scoring
+### Pass 3: Card-Claim Scoring + Claim Ranking
 
-**Input:** Claims from Pass 2 + full card corpus.
+**Input:** 15 candidate claims from Pass 2 + full card corpus (signal > 2, category ≠ 'About').
 
-**Task:** For each claim × card pair (where signal > 2 and category ≠ 'About'), score on two axes:
+**Task:** For each claim × card pair, score on two axes:
 
-- **Ambiguity (1-5):** How genuinely torn would a player be when classifying this card against this claim? A 5 means proof and objection are equally defensible from the player's visible information (title + blurb). A 1 means the classification is obvious.
-- **Surprise (1-5):** How likely is the AI evaluation (which sees the hidden `fact` field) to disagree with the player's gut instinct? A 5 means the player will almost certainly be wrong. A 1 means the evaluation will confirm what the player expected.
+- **Ambiguity (1-5):** How genuinely torn would a player be when classifying this card against this claim from title + blurb alone? A 5 means both classifications are equally defensible. A 1 means the answer is obvious.
+- **Surprise (1-5):** How likely is the full `fact` to contradict the player's gut read? A 5 means the player will almost certainly be wrong. A 1 means the fact confirms the surface impression.
 
-Cards scoring below threshold on both axes for a given claim are excluded from that claim's pool.
+Cards are scored in batches (50 cards/call). Cards below the combined floor (ambiguity + surprise < 3) are dropped. The remaining cards are sorted by combined score and the top 50 are kept as the claim's pool. This makes pools claim-specific — the same card may rank in the top 50 for one claim and not another.
 
-**Inclusion threshold:** ambiguity ≥ 2 OR surprise ≥ 3. Cards that are neither ambiguous nor surprising add nothing to gameplay.
+**Claim ranking:** Claims are ranked by `rooms² × cardCount × avgScore`. The quadratic room factor rewards claims whose top-50 pool spans all 7 gameplay rooms. The top 5 ranked claims advance to Pass 4.
 
-**Output:** Scored card-claim pairs, filtered by threshold.
+**Output:** Scored card pools (keyed by claim) + top 5 claims selected for rewriting.
 
-**Model:** GPT 5.4
+**Model:** GPT 5.4 Mini — cheap and fast for bulk structured scoring.
 
-### Pass 4: Claim Validation
+### Pass 4: Claim-Specific Card Rewriting
 
-**Input:** Claims from Pass 2 + scored pairs from Pass 3.
+**Input:** Top 5 claims from Pass 3 + their claim-specific card pools + full card data (title, blurb, fact).
 
-**Task:** Adversarial validation. For each claim, the model plays both sides:
+**Task:** For each claim × card pair, write a player-facing blurb that creates genuine tension against the specific claim. The model has access to title, blurb, and fact — it synthesizes all three to craft a richer description that a player cannot clearly classify as proof or objection.
 
-1. Classify every eligible card as **proof** and write a one-sentence justification
-2. Classify every eligible card as **objection** and write a one-sentence justification
-3. Flag cards where one side's justification is significantly weaker than the other's — these are false ambiguity (high ambiguity score in Pass 3 but actually one-sided when argued)
+Rewriting rules:
+- Draw from title, blurb, and fact freely as raw material
+- Do not fabricate anything not present in those fields
+- Do not make the classification obvious — both readings must remain defensible
+- Tension must be specific to this claim, not generic
+- Match original blurb length and register
 
-Additionally, validate claim coverage:
+The model also produces a one-sentence proof and one-sentence objection per card (grounded in fact) to inform the rewrite framing. These are not stored.
 
-- Every gameplay room (8 rooms, excluding Entry Hall and Attic) must have ≥ 4 eligible cards for the claim
-- Total eligible cards per claim should be ≥ 30 (enough for multiple room visits without exhaustion)
-- If a claim fails coverage, it's cut or flagged for manual review
+**Survival floor:** A claim survives if its pool has ≥ 20 rewritten cards covering ≥ 5 gameplay rooms. This is a playability minimum — Pass 3 ranking handles quality selection. Claims that pass are written to Supabase; claims that fail are dropped for this run.
 
-**Output:** Validated claims with final card pools. Claims that fail validation are excluded from the seed output.
+**Output:** For each surviving claim: `rewritten_blurb` for every card in its pool. Stored in `suspicion.claim_cards.rewritten_blurb` — this is the text the player sees at runtime, not `public.cards.blurb`.
 
-**Model:** Gemini Flash Lite. Cheap and fast for adversarial validation. Different provider than Passes 1-3 — avoids self-confirmation bias.
+**Model:** Gemini Flash Lite. Different provider than Passes 1-2 (Anthropic) — avoids self-confirmation bias on rewrite framing.
 
 ## Data Model
 
@@ -116,39 +119,30 @@ CREATE TABLE suspicion.claims (
 );
 
 CREATE TABLE suspicion.claim_cards (
-  claim_id uuid NOT NULL REFERENCES suspicion.claims(id),
-  card_id uuid NOT NULL,
+  claim_id uuid NOT NULL REFERENCES suspicion.claims(id) ON DELETE CASCADE,
+  card_id uuid NOT NULL REFERENCES public.cards("objectID") ON DELETE RESTRICT,
   ambiguity smallint NOT NULL CHECK (ambiguity BETWEEN 1 AND 5),
   surprise smallint NOT NULL CHECK (surprise BETWEEN 1 AND 5),
+  rewritten_blurb text NOT NULL,  -- claim-specific player-facing text; replaces public.cards.blurb at runtime
   PRIMARY KEY (claim_id, card_id)
 );
 ```
 
 ### Impact on Game Runtime
 
-The game PRD's `/api/cards` endpoint changes from:
+The game PRD's `/api/cards` endpoint changes from querying `public.cards` directly to joining through `suspicion.claim_cards`. The key change: `rewritten_blurb` replaces `blurb` in the response — `fact` is never included.
 
 ```sql
-SELECT "objectID", title, blurb, category, signal
-FROM public.cards
-WHERE category = :category AND signal > 2
-  AND "objectID" NOT IN (:exclude)
-ORDER BY random() LIMIT 6
-```
-
-To:
-
-```sql
-SELECT c."objectID", c.title, c.blurb, c.category, c.signal
+SELECT c."objectID", c.title, cc.rewritten_blurb AS blurb, c.category,
+       cc.ambiguity, cc.surprise
 FROM public.cards c
 JOIN suspicion.claim_cards cc ON c."objectID" = cc.card_id
-WHERE c.category = :category
-  AND cc.claim_id = :claim_id
+WHERE cc.claim_id = :claim_id
   AND c."objectID" NOT IN (:exclude)
-ORDER BY random() LIMIT 6
+ORDER BY <dealing_weight(cc.ambiguity, cc.surprise, :pick_count)> LIMIT 6
 ```
 
-The `signal > 2` filter moves to seed time (Pass 3 input filter) — if a card made it into `claim_cards`, it's already been vetted.
+The `signal > 2` filter and `category ≠ 'About'` filter move to seed time (Pass 3 input filter) — if a card made it into `claim_cards`, it's already been vetted. The runtime query needs no signal filter.
 
 ### Card Dealing Strategy
 
@@ -175,34 +169,30 @@ Both paths write directly to Supabase via service role key.
 
 ```
 # Required
-SUPABASE_URL=<supascribe-notes project url>
+SUPABASE_URL=<project url>
 SUPABASE_SERVICE_ROLE_KEY=<key>
 
-# Model keys (at least one required per pass)
+# Model API keys (at least one per provider)
 ANTHROPIC_API_KEY=<key>
 OPENAI_API_KEY=<key>
 GOOGLE_AI_API_KEY=<key>
 
-# Pipeline config
-SEED_TARGET_CLAIMS=5
-SEED_AMBIGUITY_THRESHOLD=2
-SEED_SURPRISE_THRESHOLD=3
-SEED_MIN_CARDS_PER_ROOM=4
-SEED_MIN_TOTAL_CARDS=30
+# Model assignment per pass (defaults shown)
+CLAIM_ENGINE_PASS1_MODEL=claude-sonnet-4-6      # Tension analysis
+CLAIM_ENGINE_PASS2_MODEL=claude-sonnet-4-6      # Claim generation
+CLAIM_ENGINE_PASS3_MODEL=gpt-5.4-mini          # Card-claim scoring + ranking
+CLAIM_ENGINE_PASS4_MODEL=gemini-3.1-flash-lite-preview  # Claim-specific rewriting
+
+# Pipeline tuning (defaults shown)
+CLAIM_ENGINE_GENERATE_CLAIMS=15      # Pass 2 candidate count
+CLAIM_ENGINE_SELECT_CLAIMS=5         # Pass 3 top-N to rewrite
+CLAIM_ENGINE_TOP_CARDS=50            # Max cards per claim pool (Pass 3)
+CLAIM_ENGINE_CARD_FLOOR=3            # Min ambiguity+surprise to stay in pool
+CLAIM_ENGINE_SCORE_BATCH=50          # Cards per Pass 3 scoring call
+CLAIM_ENGINE_MIN_TOTAL_CARDS=20      # Survival floor: rewritten cards per claim
+CLAIM_ENGINE_MIN_ROOMS=5             # Survival floor: distinct rooms per claim
+CLAIM_ENGINE_DRY_RUN=false           # Log output without writing to Supabase
 ```
-
-### Model Assignment
-
-The script accepts model configuration per pass:
-
-```
-SEED_PASS1_MODEL=claude-sonnet-4-6        # Tension analysis
-SEED_PASS2_MODEL=claude-sonnet-4-6        # Claim generation
-SEED_PASS3_MODEL=gpt-5.4                  # Card-claim scoring
-SEED_PASS4_MODEL=gemini-flash-lite        # Validation
-```
-
-These are the current defaults. Any model from any supported provider can be reassigned to any pass after playtesting.
 
 ### GitHub Actions Workflow
 
@@ -261,17 +251,17 @@ Previous claims are not preserved. The game always uses whatever the latest seed
 
 ## Cost Estimate
 
-For a corpus of ~200 eligible cards and 5 target claims:
+For a corpus of ~258 eligible cards, 15 candidate claims, 5 selected for rewriting:
 
-| Pass | Calls | Tokens (est.) | Cost (est.) |
+| Pass | Model | Calls | Cost (est.) |
 |---|---|---|---|
-| Pass 1: Tension analysis | 1 | ~50K in, ~5K out | $0.50-1.00 |
-| Pass 2: Claim generation | 1 | ~55K in, ~2K out | $0.50-1.00 |
-| Pass 3: Scoring | 5 (1 per claim) | ~50K in, ~10K out each | $2.00-5.00 |
-| Pass 4: Validation | 5 (1 per claim) | ~30K in, ~15K out each | $3.00-7.00 |
-| **Total** | **~12** | | **$6-14 per run** |
+| Pass 1: Tension analysis | Claude Sonnet | 1 | ~$0.50 |
+| Pass 2: Claim generation | Claude Sonnet | 1 | ~$0.50 |
+| Pass 3: Scoring (batched) | GPT 5.4 Mini | 15 claims × ~6 batches | ~$1.00-2.00 |
+| Pass 4: Rewriting | Gemini Flash Lite | 5 claims × 50 cards | ~$0.50-1.00 |
+| **Total** | | **~100** | **~$2.50-4.00 per run** |
 
-Actual cost depends on model selection. Using cheaper models for Pass 3 (Gemini Flash, Haiku) significantly reduces the scoring cost.
+Pass 3 dominates call count (batched scoring) but uses the cheapest model. Pass 4 output is large (~16K tokens per claim) but Gemini Flash Lite is inexpensive.
 
 ## Relationship to Game PRD
 
