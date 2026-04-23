@@ -19,13 +19,13 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card, then rewrite the blurb to maximise player uncertainty.
+const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card, then rewrite the blurb to maximise player uncertainty against this specific claim.
 
 For each card:
 1. proof — one sentence: how the card supports the claim
 2. objection — one sentence: how the card contradicts the claim
-3. false_ambiguity — true if one side clearly collapses when argued seriously (the card is not genuinely torn)
-4. rewritten_blurb — a new blurb that makes it hard to tell which way the card falls. Ground it only in the fact field — no invented information. Use omission, framing, or emphasis of a true-but-misleading detail. Match the original blurb's approximate length.`;
+3. false_ambiguity — true if one side clearly collapses when argued seriously (the card is not genuinely torn against THIS claim)
+4. rewritten_blurb — only write this if false_ambiguity is false. Rewrite the blurb so a player reading it cannot tell whether it supports or contradicts the active claim. Ground it only in the fact field — no invented information. The tension must be specific to the claim, not generic. Use omission, framing, or a true-but-misleading emphasis to increase both ambiguity (torn read) and surprise (fact undermines the surface impression). Match the original blurb length. If false_ambiguity is true, set rewritten_blurb to an empty string.`;
 
 const SCHEMA = {
   type: 'object',

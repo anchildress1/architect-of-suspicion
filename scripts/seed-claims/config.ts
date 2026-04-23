@@ -38,6 +38,9 @@ export const config = {
     generate: num('CLAIM_ENGINE_GENERATE_CLAIMS', 15),
     // Pass 3 selects this many top-ranked claims to send to Pass 4.
     select: num('CLAIM_ENGINE_SELECT_CLAIMS', 5),
+    // Pass 3 keeps this many top-scoring cards per claim (sorted by
+    // ambiguity+surprise descending). Keeps pools claim-specific and bounded.
+    topCards: num('CLAIM_ENGINE_TOP_CARDS', 50),
     minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 30),
   },
   thresholds: {

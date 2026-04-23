@@ -1,14 +1,21 @@
 /** Pass 3: Card Scoring + Claim Ranking.
  *
  *  Input:  claims from Pass 2 + full card corpus.
- *  Output: top-N claims ranked by card-pool quality, with their floor-cleared
- *          card scores — ready for Pass 4 gameplay validation.
+ *  Output: top-N claims ranked by card-pool quality, with their claim-specific
+ *          card pools — ready for Pass 4 gameplay validation.
  *
- *  Model:  gpt-5.4-mini — cheap/fast, one call per claim.
+ *  Model:  gpt-5.4-mini — cheap/fast, one call per claim per batch.
  *
- *  Quality metric per claim: rooms² × cardCount × avgScore
- *  The quadratic room factor heavily rewards cross-category coverage, since
- *  Pass 4 requires all 7 gameplay rooms to have at least one eligible card.
+ *  Card selection per claim:
+ *    1. Score all cards (in batches to stay within token limits)
+ *    2. Drop cards below cardFloor (ambiguity+surprise minimum)
+ *    3. Sort remainder by score descending, keep top topCards
+ *  This produces a claim-specific pool — the same card may rank in the
+ *  top-50 for one claim and not another, so pools diverge naturally.
+ *
+ *  Claim ranking metric: rooms² × cardCount × avgScore
+ *  Quadratic room factor rewards claims whose top-N pool already spans
+ *  all 7 gameplay rooms — exactly what Pass 4 requires.
  */
 
 import { clientFor } from './clients';
@@ -89,7 +96,7 @@ export async function runPass3(
   const client = clientFor(config.models.pass3);
   const batches = Math.ceil(cards.length / config.thresholds.scoreBatch);
   console.log(
-    `[pass3] model=${client.model} claims=${claims.length} cards=${cards.length} batches=${batches} floor=${config.thresholds.cardFloor}`,
+    `[pass3] model=${client.model} claims=${claims.length} cards=${cards.length} batches=${batches} floor=${config.thresholds.cardFloor} topCards=${config.targets.topCards}`,
   );
 
   const scored = new Map<string, CardClaimScore[]>();
@@ -110,25 +117,27 @@ export async function runPass3(
       allScores.push(...scores);
     }
 
-    // Keep cards that clear the combined ambiguity+surprise floor.
-    const floorCleared = allScores.filter(
-      (s) => s.ambiguity + s.surprise >= config.thresholds.cardFloor,
-    );
+    // Build a claim-specific pool: drop below-floor cards, sort by combined
+    // score descending, keep the top N. Pools are distinct across claims
+    // because the same card scores differently against different accusations.
+    const pool = allScores
+      .filter((s) => s.ambiguity + s.surprise >= config.thresholds.cardFloor)
+      .sort((a, b) => (b.ambiguity + b.surprise) - (a.ambiguity + a.surprise))
+      .slice(0, config.targets.topCards);
 
-    const quality = claimQuality(floorCleared, cards);
-    scored.set(claim.claim_text, floorCleared);
+    const quality = claimQuality(pool, cards);
+    scored.set(claim.claim_text, pool);
     qualities.set(claim.claim_text, quality);
 
-    // Count room coverage for the log
     const cardById = new Map(cards.map((c) => [c.objectID, c]));
     const rooms = new Set(
-      floorCleared
+      pool
         .map((s) => CATEGORY_TO_ROOM[cardById.get(s.card_id)?.category ?? ''])
         .filter(Boolean),
     );
 
     console.log(
-      `[pass3] "${claim.claim_text}": ${allScores.length} scored → ${floorCleared.length} cleared floor (${rooms.size}/${GAMEPLAY_ROOMS.length} rooms, quality=${quality.toFixed(0)})`,
+      `[pass3] "${claim.claim_text}": ${allScores.length} scored → ${pool.length} in pool (${rooms.size}/${GAMEPLAY_ROOMS.length} rooms, quality=${quality.toFixed(0)})`,
     );
   }
 
