@@ -7,6 +7,9 @@ export interface PersistInput {
   claim: GeneratedClaim;
   validation: ClaimValidation;
   scores: CardClaimScore[];
+  /** Rewritten blurbs from Pass 5, keyed by card_id. Written to claim_cards
+   *  as the game-facing text — not the original public.cards blurb. */
+  rewrites: Map<string, string>;
 }
 
 export async function persistSeed(inputs: PersistInput[]): Promise<void> {
@@ -53,6 +56,7 @@ export async function persistSeed(inputs: PersistInput[]): Promise<void> {
         card_id: s.card_id,
         ambiguity: s.ambiguity,
         surprise: s.surprise,
+        rewritten_blurb: input.rewrites.get(s.card_id) ?? '',
       }));
 
     if (rows.length > 0) {

@@ -1,9 +1,9 @@
-/** Pass 4: Claim Validation.
+/** Pass 4: Claim Validation + Card Rewrite.
  *
- *  Input:  claims (Pass 2) + scored pairs (Pass 3) + the cards that survived
- *          threshold filtering.
- *  Output: validated claims with final card pools. Claims that fail coverage
- *          are cut.
+ *  Input:  claims (Pass 2) + scored pairs (Pass 3) + the eligible card pools.
+ *  Output: validated claims with final card pools, AND claim-specific blurb
+ *          rewrites for every surviving card. Both happen in a single call per
+ *          claim — no extra round-trip.
  *
  *  Model:  gemini-3.1-flash-lite-preview — different vendor than Pass 2 (Anthropic).
  */
@@ -15,12 +15,17 @@ import type {
   CardRow,
   ClaimValidation,
   GeneratedClaim,
+  Pass4Output,
 } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card.
+const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card, then rewrite the blurb to maximise player uncertainty.
 
-For each card, you write a one-sentence "proof" justification and a one-sentence "objection" justification. Then you flag cards where one side is visibly weaker — that's false ambiguity: the Pass 3 scorer said it was torn, but when you actually argue both sides one collapses.`;
+For each card:
+1. proof — one sentence: how the card supports the claim
+2. objection — one sentence: how the card contradicts the claim
+3. false_ambiguity — true if one side clearly collapses when argued seriously (the card is not genuinely torn)
+4. rewritten_blurb — a new blurb that makes it hard to tell which way the card falls. Ground it only in the fact field — no invented information. Use omission, framing, or emphasis of a true-but-misleading detail. Match the original blurb's approximate length.`;
 
 const SCHEMA = {
   type: 'object',
@@ -34,8 +39,9 @@ const SCHEMA = {
           proof: { type: 'string' },
           objection: { type: 'string' },
           false_ambiguity: { type: 'boolean' },
+          rewritten_blurb: { type: 'string' },
         },
-        required: ['card_id', 'proof', 'objection', 'false_ambiguity'],
+        required: ['card_id', 'proof', 'objection', 'false_ambiguity', 'rewritten_blurb'],
         additionalProperties: false,
       },
     },
@@ -76,18 +82,20 @@ interface CardArgument {
   proof: string;
   objection: string;
   false_ambiguity: boolean;
+  rewritten_blurb: string;
 }
 
 export async function runPass4(
   claims: GeneratedClaim[],
   scoredByClaim: Map<string, CardClaimScore[]>,
   cards: CardRow[],
-): Promise<ClaimValidation[]> {
+): Promise<Pass4Output> {
   const client = clientFor(config.models.pass4);
   console.log(`[pass4] model=${client.model} validating ${claims.length} claims`);
 
   const cardById = new Map(cards.map((c) => [c.objectID, c]));
-  const results: ClaimValidation[] = [];
+  const validations: ClaimValidation[] = [];
+  const rewrites: Map<string, Map<string, string>> = new Map();
 
   for (const claim of claims) {
     const scores = scoredByClaim.get(claim.claim_text) ?? [];
@@ -97,7 +105,7 @@ export async function runPass4(
 
     const raw = await client.complete(buildPrompt(claim, claimCards, scores), {
       system: SYSTEM_PROMPT,
-      maxTokens: 10000,
+      maxTokens: 16000,
       schema: SCHEMA,
     });
 
@@ -114,12 +122,20 @@ export async function runPass4(
       (c) => !falseAmbiguityIds.has(c.objectID),
     );
 
+    // Collect rewritten blurbs for surviving cards only.
+    const claimRewrites = new Map(
+      args
+        .filter((a) => !a.false_ambiguity && a.rewritten_blurb)
+        .map((a) => [a.card_id, a.rewritten_blurb]),
+    );
+    rewrites.set(claim.claim_text, claimRewrites);
+
     const coveredRooms = roomsCovered(survivingCards);
     const passedCoverage = coveredRooms >= GAMEPLAY_ROOMS.length;
     const passedTotal = survivingCards.length >= config.targets.minTotalCards;
     const survived = passedCoverage && passedTotal;
 
-    results.push({
+    validations.push({
       claim_text: claim.claim_text,
       room_coverage: coveredRooms,
       total_eligible_cards: survivingCards.length,
@@ -134,11 +150,11 @@ export async function runPass4(
     });
 
     console.log(
-      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${survivingCards.length} cards, ${coveredRooms} rooms)`,
+      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${survivingCards.length} cards, ${coveredRooms} rooms, ${claimRewrites.size} rewrites)`,
     );
   }
 
-  return results;
+  return { validations, rewrites };
 }
 
 function roomsCovered(cards: CardRow[]): number {

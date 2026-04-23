@@ -88,3 +88,11 @@ export interface Pass3Result {
   /** Top-N claims by card-pool quality (rooms² × count × avg score), in rank order. */
   selected: GeneratedClaim[];
 }
+
+/** Pass 4 combined output: validation results + claim-specific blurb rewrites. */
+export interface Pass4Output {
+  validations: ClaimValidation[];
+  /** Rewritten blurbs keyed by claim_text → card_id. Generated in the same
+   *  pass as false-ambiguity detection to avoid a separate API round-trip. */
+  rewrites: Map<string, Map<string, string>>;
+}

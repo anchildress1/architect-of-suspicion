@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   const tensions = await runPass1(cards);
   const candidates = await runPass2(cards, tensions);
   const { scored, selected } = await runPass3(cards, candidates);
-  const validations = await runPass4(selected, scored, cards);
+  const { validations, rewrites } = await runPass4(selected, scored, cards);
 
   const inputs: PersistInput[] = selected.map((claim) => {
     const validation = validations.find((v) => v.claim_text === claim.claim_text);
@@ -36,6 +36,7 @@ async function main(): Promise<void> {
       claim,
       validation,
       scores: scored.get(claim.claim_text) ?? [],
+      rewrites: rewrites.get(claim.claim_text) ?? new Map(),
     };
   });
 
