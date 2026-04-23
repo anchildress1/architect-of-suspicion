@@ -63,7 +63,7 @@ export async function runPass3(
   for (const claim of claims) {
     const raw = await client.complete(buildPrompt(claim, cards), {
       system: SYSTEM_PROMPT,
-      maxTokens: 8000,
+      maxTokens: 16000,
       schema: SCHEMA,
     });
 

@@ -72,7 +72,13 @@ class OpenAIClient implements AIClient {
         json_schema: { name: 'response', strict: true, schema: opts.schema },
       },
     });
-    return response.choices[0]?.message?.content ?? '';
+    const choice = response.choices[0];
+    if (choice?.finish_reason === 'length') {
+      throw new Error(
+        `OpenAI response truncated (hit max_completion_tokens=${opts.maxTokens ?? 4000}). Increase maxTokens.`,
+      );
+    }
+    return choice?.message?.content ?? '';
   }
 }
 
