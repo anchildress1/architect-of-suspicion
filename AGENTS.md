@@ -24,8 +24,7 @@ Do not duplicate information from those docs here.
 
 ## Coding Rules
 
-- NEVER code for backwards compatibility
-- NEVER over-document or under-document
+- **No backwards compatibility** — no shims, no feature flags for old behavior, no unused exports kept for external consumers, no `_deprecated` aliases. Delete the old thing.
 - NEVER check in a secret or API key into the repo or public client
 - NEVER implement temporary solutions or quick fixes
 - NEVER code higher than 15 cognitive complexity
@@ -89,12 +88,6 @@ Do not duplicate information from those docs here.
   `rule_id`, optional `path_pattern`, `reason`, `approved_by`, `approved_date`
 - Every suppression requires explicit user approval before merging
 
-### Approved CodeQL Suppressions
-
-| Rule ID | Path Pattern | Reason | Approved By | Date |
-|---------|-------------|--------|-------------|------|
-| — | — | — | — | — |
-
 ## Deploy
 
 Single container on Cloud Run. No Firebase.
@@ -110,15 +103,3 @@ gcloud run deploy architect-of-suspicion \
 ```
 
 Production deploys go through the `deploy.yml` workflow triggered by release-please.
-
-## What NOT to Do
-
-- Do not modify `public.cards` schema
-- Do not store secrets in source control or Docker images
-- Do not add authentication
-- Do not create a "neutral" classification — only Proof or Objection
-- Do not allow classification undo
-- Do not show `fact` to the player during gameplay
-- Do not let The Architect help players decide
-- Do not surface `About` category cards in gameplay
-- Do not rename rooms or reorder the grid

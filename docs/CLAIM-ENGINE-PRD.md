@@ -45,7 +45,7 @@ The solution: don't change the cards. Change which cards appear for which claims
 - "Leadership recognition in Awards contradicts independence signals in Work Style"
 - "Philosophy cards about restraint could read as strategic thinking OR risk aversion"
 
-**Model recommendation:** Strong reasoning model. This is the hardest cognitive task — it needs to find non-obvious tensions across 200+ cards.
+**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`)
 
 ### Pass 2: Claim Generation
 
@@ -62,7 +62,7 @@ The solution: don't change the cards. Change which cards appear for which claims
 
 **Output:** 3-5 claim strings, each with a brief rationale explaining which tensions it targets.
 
-**Model recommendation:** Creative model with good instruction-following. The task is constrained creativity — generating provocative statements within guardrails.
+**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`)
 
 ### Pass 3: Card-Claim Scoring
 
@@ -79,7 +79,7 @@ Cards scoring below threshold on both axes for a given claim are excluded from t
 
 **Output:** Scored card-claim pairs, filtered by threshold.
 
-**Model recommendation:** Can run cheaper/faster since the task is structured evaluation, not creative generation. Batch-friendly — process all pairs for one claim in a single call with structured output.
+**Model:** GPT 5.4
 
 ### Pass 4: Claim Validation
 
@@ -99,7 +99,7 @@ Additionally, validate claim coverage:
 
 **Output:** Validated claims with final card pools. Claims that fail validation are excluded from the seed output.
 
-**Model recommendation:** Must be a **different model** than Pass 2. The point is adversarial pressure — a claim that survives cross-model validation is actually good. If Claude generated the claims, GPT or Gemini validates (or vice versa).
+**Model:** Gemini Flash Lite. Cheap and fast for adversarial validation. Different provider than Passes 1-3 — avoids self-confirmation bias.
 
 ## Data Model
 
@@ -196,13 +196,13 @@ SEED_MIN_TOTAL_CARDS=30
 The script accepts model configuration per pass:
 
 ```
-SEED_PASS1_MODEL=claude-sonnet-4-20250514
-SEED_PASS2_MODEL=claude-sonnet-4-20250514
-SEED_PASS3_MODEL=gemini-2.0-flash
-SEED_PASS4_MODEL=gpt-4o
+SEED_PASS1_MODEL=claude-sonnet-4-6        # Tension analysis
+SEED_PASS2_MODEL=claude-sonnet-4-6        # Claim generation
+SEED_PASS3_MODEL=gpt-5.4                  # Card-claim scoring
+SEED_PASS4_MODEL=gemini-flash-lite        # Validation
 ```
 
-Defaults are suggestions. Any model from any supported provider can be assigned to any pass.
+These are the current defaults. Any model from any supported provider can be reassigned to any pass after playtesting.
 
 ### GitHub Actions Workflow
 
@@ -286,6 +286,6 @@ All other game PRD sections (Architect persona, room map, scoring, verdict, cove
 
 ## Open Questions
 
-1. **Claim expiry:** Should claims have a version or generation number so the game can detect stale data?
-2. **Partial re-seed:** Should the pipeline support adding claims to an existing set without regenerating all, or is full replacement always correct?
-3. **Card dealing weights:** Exact weighting formula for the ambiguity/surprise curve needs playtesting to tune. Should the PRD prescribe starting values or leave to implementation?
+1. **Claim expiry:** Should claims have a version or generation number so the game can detect stale data? No
+2. **Partial re-seed:** Should the pipeline support adding claims to an existing set without regenerating all, or is full replacement always correct? Always full.
+3. **Card dealing weights:** Exact weighting formula for the ambiguity/surprise curve needs playtesting to tune. Should the PRD prescribe starting values or leave to implementation? We'll test.
