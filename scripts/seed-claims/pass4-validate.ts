@@ -72,8 +72,8 @@ function buildPrompt(
   const cardBlock = eligible
     .map((c) => {
       const s = scoreById.get(c.objectID)!;
-      const year = c.created_at ? new Date(c.created_at).getFullYear() : 'unknown';
-      return `- id=${c.objectID} [${c.category}] "${c.title}" (year=${year}, ambig=${s.ambiguity}, surprise=${s.surprise})\n    blurb: ${c.blurb}\n    fact: ${c.fact ?? '(none)'}`;
+      const date = c.created_at ? new Date(c.created_at).toISOString().slice(0, 10) : 'unknown';
+      return `- id=${c.objectID} [${c.category}] "${c.title}" (created=${date}, ambig=${s.ambiguity}, surprise=${s.surprise})\n    blurb: ${c.blurb}\n    fact: ${c.fact ?? '(none)'}`;
     })
     .join('\n');
 
