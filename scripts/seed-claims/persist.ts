@@ -7,8 +7,8 @@ export interface PersistInput {
   claim: GeneratedClaim;
   validation: ClaimValidation;
   scores: CardClaimScore[];
-  /** Rewritten blurbs from Pass 5, keyed by card_id. Written to claim_cards
-   *  as the game-facing text — not the original public.cards blurb. */
+  /** Rewritten blurbs keyed by card_id. Every surviving card must have one —
+   *  no fallbacks. Missing = pipeline bug, caught before this point. */
   rewrites: Map<string, string>;
 }
 
@@ -51,13 +51,21 @@ export async function persistSeed(inputs: PersistInput[]): Promise<void> {
     const eligible = new Set(input.validation.eligible_card_ids);
     const rows = input.scores
       .filter((s) => eligible.has(s.card_id))
-      .map((s) => ({
-        claim_id: inserted.id,
-        card_id: s.card_id,
-        ambiguity: s.ambiguity,
-        surprise: s.surprise,
-        rewritten_blurb: input.rewrites.get(s.card_id) ?? '',
-      }));
+      .map((s) => {
+        const rewritten_blurb = input.rewrites.get(s.card_id);
+        if (!rewritten_blurb) {
+          throw new Error(
+            `Missing rewrite for card ${s.card_id} on claim "${input.claim.claim_text}" — every surviving pair must have a rewritten blurb`,
+          );
+        }
+        return {
+          claim_id: inserted.id,
+          card_id: s.card_id,
+          ambiguity: s.ambiguity,
+          surprise: s.surprise,
+          rewritten_blurb,
+        };
+      });
 
     if (rows.length > 0) {
       const { error: insertPairsErr } = await supabase

@@ -29,27 +29,15 @@ async function main(): Promise<void> {
   const { scored, selected } = await runPass3(cards, candidates);
   const { validations, rewrites } = await runPass4(selected, scored, cards);
 
-  // Build a fallback map so every eligible card has a blurb — original if the
-  // model omitted a rewrite, claim-specific rewrite otherwise.
-  const originalBlurb = new Map(cards.map((c) => [c.objectID, c.blurb]));
-
   const inputs: PersistInput[] = selected.map((claim) => {
     const validation = validations.find((v) => v.claim_text === claim.claim_text);
     if (!validation) throw new Error(`No validation for claim: ${claim.claim_text}`);
-
-    const claimRewrites = rewrites.get(claim.claim_text) ?? new Map<string, string>();
-    // For any eligible card the model didn't rewrite, fall back to original blurb.
-    for (const cardId of validation.eligible_card_ids) {
-      if (!claimRewrites.get(cardId)) {
-        claimRewrites.set(cardId, originalBlurb.get(cardId) ?? '');
-      }
-    }
 
     return {
       claim,
       validation,
       scores: scored.get(claim.claim_text) ?? [],
-      rewrites: claimRewrites,
+      rewrites: rewrites.get(claim.claim_text) ?? new Map<string, string>(),
     };
   });
 
