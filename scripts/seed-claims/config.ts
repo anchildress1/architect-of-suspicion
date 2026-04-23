@@ -7,7 +7,7 @@ function num(name: string, fallback: number): number {
   if (raw === undefined || raw === '') return fallback;
   const parsed = Number(raw);
   if (Number.isNaN(parsed)) {
-    throw new Error(`Env ${name} is not a number: ${raw}`);
+    throw new TypeError(`Env ${name} is not a number: ${raw}`);
   }
   return parsed;
 }
@@ -24,14 +24,16 @@ function bool(name: string, fallback: boolean): boolean {
 
 export const config = {
   models: {
-    pass1: str('CLAIM_ENGINE_PASS1_MODEL', 'gpt-5.2'),
-    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'gemini-3.1-pro-preview'),
-    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'claude-haiku-4-5'),
-    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gpt-5-mini'),
+    // Pass 1 & 2: strong reasoning for tension analysis and claim generation (per PRD)
+    pass1: str('CLAIM_ENGINE_PASS1_MODEL', 'claude-sonnet-4-6'),
+    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-sonnet-4-6'),
+    // Pass 3: cheap/fast for bulk structured scoring (OpenAI per PRD)
+    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.4-mini'),
+    // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google per PRD)
+    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gemini-3.1-flash-lite-preview'),
   },
   targets: {
     claims: num('CLAIM_ENGINE_TARGET_CLAIMS', 5),
-    minCardsPerRoom: num('CLAIM_ENGINE_MIN_CARDS_PER_ROOM', 4),
     minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 30),
   },
   thresholds: {

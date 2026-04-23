@@ -10,7 +10,7 @@ export interface CardRow {
 }
 
 /** Room slugs gameplay uses; matches src/lib/rooms.ts. Entry Hall & Attic
- *  are excluded from coverage checks per the PRD. */
+ *  are excluded from coverage checks per the PRD. 7 playable rooms total. */
 export const GAMEPLAY_ROOMS = [
   'gallery',
   'control-room',
@@ -19,7 +19,6 @@ export const GAMEPLAY_ROOMS = [
   'workshop',
   'cellar',
   'back-hall',
-  'mansion',
 ] as const;
 
 export type RoomSlug = (typeof GAMEPLAY_ROOMS)[number];

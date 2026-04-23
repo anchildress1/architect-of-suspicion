@@ -10,14 +10,14 @@ Reads every eligible card from `public.cards`, runs a 4-pass AI pipeline to gene
 
 | Pass | Role | Default model | Provider |
 |---|---|---|---|
-| 1. Tensions | Find fault lines in the corpus | `gpt-5.2` | OpenAI |
-| 2. Claims | Generate provocative claims from tensions | `gemini-3.1-pro-preview` | Google |
-| 3. Score | Rate ambiguity + surprise per card/claim pair | `claude-haiku-4-5` | Anthropic |
-| 4. Validate | Adversarial cross-check from a different vendor than Pass 2 | `gpt-5-mini` | OpenAI |
+| 1. Tensions | Find fault lines in the corpus | `claude-sonnet-4-6` | Anthropic |
+| 2. Claims | Generate provocative claims from tensions | `claude-sonnet-4-6` | Anthropic |
+| 3. Score | Rate ambiguity + surprise per card/claim pair | `gpt-5.4-mini` | OpenAI |
+| 4. Validate | Adversarial cross-check from a different vendor than Pass 2 | `gemini-3.1-flash-lite-preview` | Google |
 
-Pass 4 must be a different vendor from Pass 2 — the point is cross-model pressure. Anything other combination undermines the validation.
+Pass 4 must be a different vendor from Pass 2 — the point is cross-model pressure. Any other combination undermines the validation.
 
-Override any model with `CLAIM_ENGINE_PASS{1,2,3,4}_MODEL` env vars.
+Any pass can use any provider. The client is resolved from the model name prefix (`claude-` → Anthropic, `gpt-` → OpenAI, `gemini-` → Google). Override defaults with `CLAIM_ENGINE_PASS{1,2,3,4}_MODEL` env vars.
 
 ## Run locally
 
@@ -42,7 +42,6 @@ See `config.ts` for thresholds:
 - `CLAIM_ENGINE_TARGET_CLAIMS` — how many claims to generate (default 5)
 - `CLAIM_ENGINE_AMBIGUITY_THRESHOLD` — Pass 3 cutoff (default 2)
 - `CLAIM_ENGINE_SURPRISE_THRESHOLD` — Pass 3 cutoff (default 3)
-- `CLAIM_ENGINE_MIN_CARDS_PER_ROOM` — Pass 4 coverage minimum (default 4)
 - `CLAIM_ENGINE_MIN_TOTAL_CARDS` — Pass 4 total minimum (default 30)
 
-A card is eligible for a claim if `ambiguity ≥ threshold OR surprise ≥ threshold`. A claim survives validation if every gameplay room has at least `MIN_CARDS_PER_ROOM` surviving cards AND the total is at least `MIN_TOTAL_CARDS`.
+A card is eligible for a claim if `ambiguity ≥ threshold OR surprise ≥ threshold`. A claim survives validation if every gameplay room has at least 1 surviving card AND the total is at least `MIN_TOTAL_CARDS`.

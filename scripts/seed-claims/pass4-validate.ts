@@ -5,11 +5,10 @@
  *  Output: validated claims with final card pools. Claims that fail coverage
  *          are cut.
  *
- *  Model:  adversarial — MUST be different vendor than Pass 2. Default is
- *          gpt-5-mini (cross-checks Gemini-generated claims).
+ *  Model:  gemini-3.1-flash-lite-preview — different vendor than Pass 2 (Anthropic).
  */
 
-import { clientFor, extractJson } from './clients';
+import { clientFor } from './clients';
 import { config } from './config';
 import type {
   CardClaimScore,
@@ -21,10 +20,33 @@ import { GAMEPLAY_ROOMS, type RoomSlug } from './types';
 
 const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card.
 
-For each card, you write a one-sentence "proof" justification and a one-sentence "objection" justification. Then you flag cards where one side is visibly weaker — that's false ambiguity: the Pass 3 scorer said it was torn, but when you actually argue both sides one collapses.
+For each card, you write a one-sentence "proof" justification and a one-sentence "objection" justification. Then you flag cards where one side is visibly weaker — that's false ambiguity: the Pass 3 scorer said it was torn, but when you actually argue both sides one collapses.`;
 
-Return valid JSON only. No prose preamble.`;
+const SCHEMA = {
+  type: 'object',
+  properties: {
+    arguments: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          card_id: { type: 'string' },
+          proof: { type: 'string' },
+          objection: { type: 'string' },
+          false_ambiguity: { type: 'boolean' },
+        },
+        required: ['card_id', 'proof', 'objection', 'false_ambiguity'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['arguments'],
+  additionalProperties: false,
+} as const;
 
+// Mirrors the isPlayable rooms in src/lib/rooms.ts. Categories not listed
+// here (Architecture, Principle, Process) have no playable room and don't
+// contribute to coverage counts.
 const CATEGORY_TO_ROOM: Record<string, RoomSlug> = {
   Awards: 'gallery',
   Constraints: 'control-room',
@@ -33,7 +55,6 @@ const CATEGORY_TO_ROOM: Record<string, RoomSlug> = {
   Experimentation: 'workshop',
   'Work Style': 'cellar',
   Experience: 'back-hall',
-  Role: 'mansion',
 };
 
 function roomFor(card: CardRow): RoomSlug | null {
@@ -60,12 +81,7 @@ function buildPrompt(
 ELIGIBLE CARDS (${eligible.length}):
 ${cardBlock}
 
-For each card, write both justifications, then flag false ambiguity. Output JSON:
-{
-  "arguments": [
-    { "card_id": "<id>", "proof": "...", "objection": "...", "false_ambiguity": false }
-  ]
-}`;
+For each card, write both justifications, then flag false ambiguity.`;
 }
 
 interface CardArgument {
@@ -95,61 +111,54 @@ export async function runPass4(
     const raw = await client.complete(buildPrompt(claim, claimCards, scores), {
       system: SYSTEM_PROMPT,
       maxTokens: 10000,
-      jsonMode: true,
+      schema: SCHEMA,
     });
 
-    const { arguments: args } = extractJson<{ arguments: CardArgument[] }>(raw);
+    const { arguments: args } = JSON.parse(raw) as { arguments: CardArgument[] };
     const falseAmbiguityIds = new Set(
       args.filter((a) => a.false_ambiguity).map((a) => a.card_id),
     );
+
+    if (falseAmbiguityIds.size > 0) {
+      console.log(`[pass4] "${claim.claim_text}": ${falseAmbiguityIds.size} false-ambig stripped`);
+    }
 
     const survivingCards = claimCards.filter(
       (c) => !falseAmbiguityIds.has(c.objectID),
     );
 
-    const roomCoverage = coverageByRoom(survivingCards);
-    const passedCoverage = roomCoverage.roomsMeetingMin >= GAMEPLAY_ROOMS.length;
+    const coveredRooms = roomsCovered(survivingCards);
+    const passedCoverage = coveredRooms >= GAMEPLAY_ROOMS.length;
     const passedTotal = survivingCards.length >= config.targets.minTotalCards;
     const survived = passedCoverage && passedTotal;
 
     results.push({
       claim_text: claim.claim_text,
-      room_coverage: roomCoverage.roomsMeetingMin,
+      room_coverage: coveredRooms,
       total_eligible_cards: survivingCards.length,
       survived,
       cut_reason: survived
         ? undefined
         : !passedCoverage
-          ? `only ${roomCoverage.roomsMeetingMin}/${GAMEPLAY_ROOMS.length} rooms have ≥${config.targets.minCardsPerRoom} cards`
-          : `only ${survivingCards.length} cards eligible (need ≥${config.targets.minTotalCards})`,
+          ? `only ${coveredRooms}/${GAMEPLAY_ROOMS.length} rooms have eligible cards`
+          : `only ${survivingCards.length} total cards (need ≥${config.targets.minTotalCards})`,
       eligible_card_ids: survivingCards.map((c) => c.objectID),
       false_ambiguity_card_ids: [...falseAmbiguityIds],
     });
 
     console.log(
-      `[pass4] "${truncate(claim.claim_text, 50)}": ${survived ? 'SURVIVED' : 'CUT'} (${survivingCards.length} cards, ${roomCoverage.roomsMeetingMin} rooms, ${falseAmbiguityIds.size} false-ambig)`,
+      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${survivingCards.length} cards, ${coveredRooms} rooms)`,
     );
   }
 
   return results;
 }
 
-function coverageByRoom(cards: CardRow[]): {
-  roomsMeetingMin: number;
-  perRoom: Map<RoomSlug, number>;
-} {
-  const perRoom = new Map<RoomSlug, number>();
+function roomsCovered(cards: CardRow[]): number {
+  const rooms = new Set<RoomSlug>();
   for (const card of cards) {
     const room = roomFor(card);
-    if (room) perRoom.set(room, (perRoom.get(room) ?? 0) + 1);
+    if (room) rooms.add(room);
   }
-  let roomsMeetingMin = 0;
-  for (const count of perRoom.values()) {
-    if (count >= config.targets.minCardsPerRoom) roomsMeetingMin++;
-  }
-  return { roomsMeetingMin, perRoom };
-}
-
-function truncate(s: string, n: number): string {
-  return s.length <= n ? s : s.slice(0, n - 1) + '…';
+  return rooms.size;
 }
