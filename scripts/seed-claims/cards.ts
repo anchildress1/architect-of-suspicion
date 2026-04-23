@@ -11,13 +11,14 @@ export function seedSupabase() {
   );
 }
 
-/** Pull every card eligible for gameplay — signal > 2, excluding
- *  the 'About' meta-category. The claim engine scores against this pool. */
+/** Pull every card eligible for gameplay — signal > 2, not soft-deleted,
+ *  excluding the 'About' meta-category. The claim engine scores against this pool. */
 export async function loadEligibleCards(signalThreshold: number): Promise<CardRow[]> {
   const supabase = seedSupabase();
   const { data, error } = await supabase
     .from('cards')
     .select('objectID, title, blurb, category, signal, fact')
+    .is('deleted_at', null)
     .gt('signal', signalThreshold)
     .neq('category', 'About');
 
