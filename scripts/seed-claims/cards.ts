@@ -17,7 +17,7 @@ export async function loadEligibleCards(signalThreshold: number): Promise<CardRo
   const supabase = seedSupabase();
   const { data, error } = await supabase
     .from('cards')
-    .select('objectID, title, blurb, category, signal, fact')
+    .select('objectID, title, blurb, category, signal, fact, created_at')
     .is('deleted_at', null)
     .gt('signal', signalThreshold)
     .neq('category', 'About');

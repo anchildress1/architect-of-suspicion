@@ -21,14 +21,19 @@ import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
 const SYSTEM_PROMPT = `You write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer.
 
-You have three raw materials per card: title, blurb, and fact. Use all three freely. You may weave in specifics from the fact field to make the description richer and more grounded, but do not state or imply whether those specifics support or contradict the claim. The goal is that a player reading only title + rewritten_blurb feels genuinely torn.
+Each card has four raw materials: title, blurb, fact, and created_at (when this career event occurred). Use all four freely.
 
-Do not fabricate anything not present in title, blurb, or fact.
+The created_at timestamp is a key reasoning tool:
+- Cards from DIFFERENT time periods that appear contradictory may show evolution, not hypocrisy — weaken the claim accordingly in your objection.
+- Cards from the SAME period that contradict each other, or patterns that hold consistently across ALL years, carry real weight — strengthen the claim in your proof.
+- Surface this temporal dimension in the rewritten_blurb when it creates tension (e.g., "early in her career" or "more recently" — without signaling which reading it supports).
+
+Do not fabricate anything not present in title, blurb, fact, or created_at.
 
 For each card:
-1. proof — one sentence: how the fact supports the claim (internal reasoning, not stored)
-2. objection — one sentence: how the fact contradicts or complicates the claim (internal reasoning, not stored)
-3. rewritten_blurb — the player-facing text. Synthesise title, blurb, and fact into a description that creates real tension against this specific claim. A player should be able to argue it both ways. Match original blurb length and register. The tension must come from the claim, not be generic.`;
+1. proof — one sentence: how the fact (and timing) supports the claim
+2. objection — one sentence: how the fact (and timing) contradicts or complicates the claim
+3. rewritten_blurb — the player-facing text. Synthesise title, blurb, fact, and temporal context into a description that creates real tension against this specific claim. A player should be able to argue it both ways. Match original blurb length and register. The tension must come from the claim, not be generic.`;
 
 const SCHEMA = {
   type: 'object',
@@ -67,7 +72,8 @@ function buildPrompt(
   const cardBlock = eligible
     .map((c) => {
       const s = scoreById.get(c.objectID)!;
-      return `- id=${c.objectID} [${c.category}] "${c.title}" (ambig=${s.ambiguity}, surprise=${s.surprise})\n    blurb: ${c.blurb}\n    fact: ${c.fact ?? '(none)'}`;
+      const year = c.created_at ? new Date(c.created_at).getFullYear() : 'unknown';
+      return `- id=${c.objectID} [${c.category}] "${c.title}" (year=${year}, ambig=${s.ambiguity}, surprise=${s.surprise})\n    blurb: ${c.blurb}\n    fact: ${c.fact ?? '(none)'}`;
     })
     .join('\n');
 

@@ -7,6 +7,9 @@ export interface CardRow {
   category: string;
   signal: number;
   fact: string | null;
+  /** ISO 8601 timestamp from public.cards.created_at — used for temporal reasoning
+   *  in Pass 4 (did this pattern evolve over time, or is it genuinely contradictory?). */
+  created_at: string | null;
 }
 
 /** Room slugs gameplay uses; matches src/lib/rooms.ts. Entry Hall & Attic
