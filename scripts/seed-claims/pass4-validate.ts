@@ -19,13 +19,18 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card, then rewrite the blurb to maximise player uncertainty against this specific claim.
+const SYSTEM_PROMPT = `You maximise gameplay tension by rewriting each card's blurb so players cannot tell whether it supports or undermines the active claim.
+
+The fact field is the constraint — it cannot change and nothing may be fabricated from it.
+The blurb is malleable — a rewrite can completely reframe how the player reads the card.
 
 For each card:
-1. proof — one sentence: how the card supports the claim
-2. objection — one sentence: how the card contradicts the claim
-3. false_ambiguity — true if one side clearly collapses when argued seriously (the card is not genuinely torn against THIS claim)
-4. rewritten_blurb — only write this if false_ambiguity is false. Rewrite the blurb so a player reading it cannot tell whether it supports or contradicts the active claim. Ground it only in the fact field — no invented information. The tension must be specific to the claim, not generic. Use omission, framing, or a true-but-misleading emphasis to increase both ambiguity (torn read) and surprise (fact undermines the surface impression). Match the original blurb length. If false_ambiguity is true, set rewritten_blurb to an empty string.`;
+1. proof — one sentence: how the card's fact (not just its blurb) supports the claim
+2. objection — one sentence: how the card's fact contradicts or complicates the claim
+3. false_ambiguity — true ONLY when the fact itself is so one-directional that no honest rewrite can create player uncertainty. A blurb that currently leans one way is NOT sufficient cause — blurbs can be rewritten. Only flag false_ambiguity when the fact closes off all reasonable doubt even after the best possible rewrite.
+4. rewritten_blurb — rewrite the blurb so a player reading title+blurb alone cannot tell whether this card supports or contradicts the claim. Use only what the fact confirms. Tools: omission, framing, true-but-misleading emphasis. Tension must be specific to this claim, not generic. Match original blurb length. If false_ambiguity is true, set rewritten_blurb to "".
+
+The goal is player uncertainty, not perfect 50/50 balance. A card whose fact leans slightly one way can still be rewritten to create doubt — that is a good card. Reserve false_ambiguity for cards where the fact makes both readings impossible to sustain.`;
 
 const SCHEMA = {
   type: 'object',
@@ -74,7 +79,7 @@ function buildPrompt(
 ELIGIBLE CARDS (${eligible.length}):
 ${cardBlock}
 
-For each card, write both justifications, then flag false ambiguity.`;
+For each card: write proof and objection from the fact, then rewrite the blurb to create player uncertainty. Flag false_ambiguity only if the fact itself — not the blurb — rules out both readings.`;
 }
 
 interface CardArgument {
