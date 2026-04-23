@@ -16,7 +16,7 @@ import type {
   ClaimValidation,
   GeneratedClaim,
 } from './types';
-import { GAMEPLAY_ROOMS, type RoomSlug } from './types';
+import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS, type RoomSlug } from './types';
 
 const SYSTEM_PROMPT = `You pressure-test claims by arguing BOTH sides of every card.
 
@@ -43,19 +43,6 @@ const SCHEMA = {
   required: ['arguments'],
   additionalProperties: false,
 } as const;
-
-// Mirrors the isPlayable rooms in src/lib/rooms.ts. Categories not listed
-// here (Architecture, Principle, Process) have no playable room and don't
-// contribute to coverage counts.
-const CATEGORY_TO_ROOM: Record<string, RoomSlug> = {
-  Awards: 'gallery',
-  Constraints: 'control-room',
-  Decisions: 'parlor',
-  Philosophy: 'library',
-  Experimentation: 'workshop',
-  'Work Style': 'cellar',
-  Experience: 'back-hall',
-};
 
 function roomFor(card: CardRow): RoomSlug | null {
   return CATEGORY_TO_ROOM[card.category] ?? null;

@@ -44,12 +44,12 @@ CORPUS SUMMARY (${cards.length} cards):
 ${formatCardCorpus(cards)}
 
 TASK:
-Generate ${target} claims. Each claim must:
-1. Be framed as an accusation someone could argue either way — not a compliment, not a neutral observation
-2. Create ambiguity across MULTIPLE rooms (categories), not just one
-3. Be specific enough to evaluate against individual cards
-4. Not require insider knowledge — any reader can tell if a card supports or objects to the claim
-5. Ground in at least 2-3 tensions from the list above
+Generate ${target} candidate claims. Downstream scoring will pick the best ones, so cast a wide net:
+- Vary the breadth: some claims should span many categories (Awards, Experience, Decisions, Work Style, Philosophy, Constraints, Experimentation); some can be more focused but must cover at least 3-4 categories
+- Vary the angle: productivity vs quality, autonomy vs collaboration, craft vs speed, visibility vs substance
+- Each claim must be framed as an accusation someone could argue either way — not a compliment, not a neutral observation
+- Specific enough to evaluate against individual cards, no insider knowledge required
+- Ground in at least 2 tensions from the list above
 
 Examples of the shape:
 - "Ashley prioritizes novelty over reliability"
@@ -64,11 +64,11 @@ export async function runPass2(
   tensions: TensionMap,
 ): Promise<GeneratedClaim[]> {
   const client = clientFor(config.models.pass2);
-  console.log(`[pass2] model=${client.model} target=${config.targets.claims}`);
+  console.log(`[pass2] model=${client.model} generate=${config.targets.generate}`);
 
   const raw = await client.complete(
-    buildPrompt(cards, tensions, config.targets.claims),
-    { system: SYSTEM_PROMPT, maxTokens: 3000, schema: SCHEMA },
+    buildPrompt(cards, tensions, config.targets.generate),
+    { system: SYSTEM_PROMPT, maxTokens: 5000, schema: SCHEMA },
   );
 
   const parsed = JSON.parse(raw) as { claims: GeneratedClaim[] };

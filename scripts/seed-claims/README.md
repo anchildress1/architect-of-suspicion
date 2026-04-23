@@ -39,9 +39,11 @@ Every real run truncates `suspicion.claim_cards` then `suspicion.claims` (FK ord
 
 See `config.ts` for thresholds:
 
-- `CLAIM_ENGINE_TARGET_CLAIMS` — how many claims to generate (default 5)
-- `CLAIM_ENGINE_AMBIGUITY_THRESHOLD` — Pass 3 cutoff (default 2)
-- `CLAIM_ENGINE_SURPRISE_THRESHOLD` — Pass 3 cutoff (default 3)
+- `CLAIM_ENGINE_GENERATE_CLAIMS` — how many candidate claims Pass 2 generates (default 15)
+- `CLAIM_ENGINE_SELECT_CLAIMS` — how many Pass 3 selects for Pass 4 (default 5)
+- `CLAIM_ENGINE_CARD_FLOOR` — combined `ambiguity+surprise` minimum for a card to count toward claim quality (default 3)
 - `CLAIM_ENGINE_MIN_TOTAL_CARDS` — Pass 4 total minimum (default 30)
 
-A card is eligible for a claim if `ambiguity ≥ threshold OR surprise ≥ threshold`. A claim survives validation if every gameplay room has at least 1 surviving card AND the total is at least `MIN_TOTAL_CARDS`.
+Pass 3 ranks claims by `rooms² × cardCount × avgScore`, where rooms is the count of gameplay rooms with at least one floor-cleared card. The quadratic room factor heavily rewards cross-category claims. The top `SELECT_CLAIMS` are sent to Pass 4.
+
+A claim survives Pass 4 if every gameplay room has at least 1 card after false-ambiguity stripping AND the total is at least `MIN_TOTAL_CARDS`.

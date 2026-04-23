@@ -23,6 +23,18 @@ export const GAMEPLAY_ROOMS = [
 
 export type RoomSlug = (typeof GAMEPLAY_ROOMS)[number];
 
+/** Maps card category → playable room slug. Categories omitted here
+ *  (Architecture, Principle, Process) have no playable room. */
+export const CATEGORY_TO_ROOM: Record<string, RoomSlug> = {
+  Awards: 'gallery',
+  Constraints: 'control-room',
+  Decisions: 'parlor',
+  Philosophy: 'library',
+  Experimentation: 'workshop',
+  'Work Style': 'cellar',
+  Experience: 'back-hall',
+};
+
 export interface Tension {
   theme: string;
   description: string;
@@ -67,4 +79,12 @@ export interface SeedPayload {
   room_coverage: number;
   total_eligible_cards: number;
   cards: CardClaimScore[];
+}
+
+/** Output of Pass 3: floor-cleared scores per claim + ranked selection for Pass 4. */
+export interface Pass3Result {
+  /** Cards that cleared the quality floor, keyed by claim_text. */
+  scored: Map<string, CardClaimScore[]>;
+  /** Top-N claims by card-pool quality (rooms² × count × avg score), in rank order. */
+  selected: GeneratedClaim[];
 }

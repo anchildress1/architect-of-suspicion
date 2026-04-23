@@ -33,12 +33,17 @@ export const config = {
     pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gemini-3.1-flash-lite-preview'),
   },
   targets: {
-    claims: num('CLAIM_ENGINE_TARGET_CLAIMS', 5),
+    // Pass 2 generates this many candidate claims. More = better odds of finding
+    // ones with cross-room coverage, at the cost of extra Pass 3 scoring calls.
+    generate: num('CLAIM_ENGINE_GENERATE_CLAIMS', 15),
+    // Pass 3 selects this many top-ranked claims to send to Pass 4.
+    select: num('CLAIM_ENGINE_SELECT_CLAIMS', 5),
     minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 30),
   },
   thresholds: {
-    ambiguity: num('CLAIM_ENGINE_AMBIGUITY_THRESHOLD', 2),
-    surprise: num('CLAIM_ENGINE_SURPRISE_THRESHOLD', 3),
+    // Combined ambiguity+surprise minimum for a card to count toward claim quality.
+    // Lower = more inclusive; a card scoring 2+1 just barely qualifies.
+    cardFloor: num('CLAIM_ENGINE_CARD_FLOOR', 3),
     cardSignal: 2,
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),

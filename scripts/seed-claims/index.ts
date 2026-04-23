@@ -25,17 +25,17 @@ async function main(): Promise<void> {
   if (cards.length === 0) throw new Error('No eligible cards found');
 
   const tensions = await runPass1(cards);
-  const claims = await runPass2(cards, tensions);
-  const scoredByClaim = await runPass3(cards, claims);
-  const validations = await runPass4(claims, scoredByClaim, cards);
+  const candidates = await runPass2(cards, tensions);
+  const { scored, selected } = await runPass3(cards, candidates);
+  const validations = await runPass4(selected, scored, cards);
 
-  const inputs: PersistInput[] = claims.map((claim) => {
+  const inputs: PersistInput[] = selected.map((claim) => {
     const validation = validations.find((v) => v.claim_text === claim.claim_text);
     if (!validation) throw new Error(`No validation for claim: ${claim.claim_text}`);
     return {
       claim,
       validation,
-      scores: scoredByClaim.get(claim.claim_text) ?? [],
+      scores: scored.get(claim.claim_text) ?? [],
     };
   });
 

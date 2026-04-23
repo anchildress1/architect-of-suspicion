@@ -1,16 +1,26 @@
-/** Pass 3: Card-Claim Scoring.
+/** Pass 3: Card Scoring + Claim Ranking.
  *
  *  Input:  claims from Pass 2 + full card corpus.
- *  Output: per-card scores (ambiguity + surprise) for each claim, filtered
- *          by the PRD thresholds.
+ *  Output: top-N claims ranked by card-pool quality, with their floor-cleared
+ *          card scores — ready for Pass 4 gameplay validation.
  *
  *  Model:  gpt-5.4-mini — cheap/fast, one call per claim.
+ *
+ *  Quality metric per claim: rooms² × cardCount × avgScore
+ *  The quadratic room factor heavily rewards cross-category coverage, since
+ *  Pass 4 requires all 7 gameplay rooms to have at least one eligible card.
  */
 
 import { clientFor } from './clients';
 import { formatCardCorpus } from './cards';
 import { config } from './config';
-import type { CardClaimScore, CardRow, GeneratedClaim } from './types';
+import type {
+  CardClaimScore,
+  CardRow,
+  GeneratedClaim,
+  Pass3Result,
+} from './types';
+import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS } from './types';
 
 const SYSTEM_PROMPT = `You score how each card in a corpus plays against a single claim.
 
@@ -51,14 +61,38 @@ ${formatCardCorpus(cards)}
 Score every card against the claim.`;
 }
 
+/** Compute a quality score for a claim given its floor-cleared cards.
+ *  rooms² × cardCount × avgScore — quadratic room factor prioritises
+ *  claims that naturally span the most gameplay rooms. */
+function claimQuality(floorCards: CardClaimScore[], allCards: CardRow[]): number {
+  if (floorCards.length === 0) return 0;
+
+  const cardById = new Map(allCards.map((c) => [c.objectID, c]));
+  const rooms = new Set<string>();
+  for (const s of floorCards) {
+    const card = cardById.get(s.card_id);
+    const room = card ? CATEGORY_TO_ROOM[card.category] : undefined;
+    if (room) rooms.add(room);
+  }
+
+  const avgScore =
+    floorCards.reduce((sum, s) => sum + s.ambiguity + s.surprise, 0) /
+    floorCards.length;
+
+  return rooms.size * rooms.size * floorCards.length * avgScore;
+}
+
 export async function runPass3(
   cards: CardRow[],
   claims: GeneratedClaim[],
-): Promise<Map<string, CardClaimScore[]>> {
+): Promise<Pass3Result> {
   const client = clientFor(config.models.pass3);
-  console.log(`[pass3] model=${client.model} claims=${claims.length} cards=${cards.length}`);
+  console.log(
+    `[pass3] model=${client.model} claims=${claims.length} cards=${cards.length} floor=${config.thresholds.cardFloor}`,
+  );
 
-  const results = new Map<string, CardClaimScore[]>();
+  const scored = new Map<string, CardClaimScore[]>();
+  const qualities = new Map<string, number>();
 
   for (const claim of claims) {
     const raw = await client.complete(buildPrompt(claim, cards), {
@@ -67,21 +101,44 @@ export async function runPass3(
       schema: SCHEMA,
     });
 
-    const parsed = JSON.parse(raw) as { scores: CardClaimScore[] };
-    const filtered = parsed.scores.filter(
-      (s) =>
-        s.ambiguity >= config.thresholds.ambiguity ||
-        s.surprise >= config.thresholds.surprise,
+    const { scores: allScores } = JSON.parse(raw) as { scores: CardClaimScore[] };
+
+    // Keep cards that clear the combined ambiguity+surprise floor.
+    const floorCleared = allScores.filter(
+      (s) => s.ambiguity + s.surprise >= config.thresholds.cardFloor,
     );
 
-    const highAmbig = filtered.filter((s) => s.ambiguity >= 4).length;
-    const highSurprise = filtered.filter((s) => s.surprise >= 4).length;
+    const quality = claimQuality(floorCleared, cards);
+    scored.set(claim.claim_text, floorCleared);
+    qualities.set(claim.claim_text, quality);
+
+    // Count room coverage for the log
+    const cardById = new Map(cards.map((c) => [c.objectID, c]));
+    const rooms = new Set(
+      floorCleared
+        .map((s) => CATEGORY_TO_ROOM[cardById.get(s.card_id)?.category ?? ''])
+        .filter(Boolean),
+    );
+
     console.log(
-      `[pass3] "${claim.claim_text}": ${parsed.scores.length} scored → ${filtered.length} passed (${highAmbig} high-ambig, ${highSurprise} high-surprise)`,
+      `[pass3] "${claim.claim_text}": ${allScores.length} scored → ${floorCleared.length} cleared floor (${rooms.size}/${GAMEPLAY_ROOMS.length} rooms, quality=${quality.toFixed(0)})`,
     );
-
-    results.set(claim.claim_text, filtered);
   }
 
-  return results;
+  // Rank all claims by quality and select the top N for Pass 4.
+  const ranked = [...claims].sort(
+    (a, b) => (qualities.get(b.claim_text) ?? 0) - (qualities.get(a.claim_text) ?? 0),
+  );
+  const selected = ranked.slice(0, config.targets.select);
+
+  console.log(
+    `[pass3] selected top ${selected.length} of ${claims.length} for validation:`,
+  );
+  for (const c of selected) {
+    console.log(
+      `  • (quality=${(qualities.get(c.claim_text) ?? 0).toFixed(0)}) "${c.claim_text}"`,
+    );
+  }
+
+  return { scored, selected };
 }
