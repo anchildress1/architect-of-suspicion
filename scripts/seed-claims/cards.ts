@@ -1,13 +1,8 @@
 /** Load and filter the card corpus for the claim engine. */
 
 import { createClient } from '@supabase/supabase-js';
+import { requireEnv } from './clients';
 import type { CardRow } from './types';
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing ${name} environment variable`);
-  return value;
-}
 
 export function seedSupabase() {
   return createClient(

@@ -3,19 +3,38 @@
  *  Input:  tension map from Pass 1 + full card corpus.
  *  Output: 3-5 claims, each phrased as a provocative accusation.
  *
- *  Model:  creative with strong instruction-following (default: gemini-3.1-pro).
+ *  Model:  claude-sonnet-4-6
  */
 
-import { clientFor, extractJson } from './clients';
+import { clientFor } from './clients';
 import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, GeneratedClaim, TensionMap } from './types';
 
 const SYSTEM_PROMPT = `You are writing claims for Architect of Suspicion — a game where players sort career-evidence cards as "proof" or "objection" against a single claim about the subject, Ashley.
 
-A good claim is a blunt, provocative accusation a reasonable person could argue either way. It's framed from outside looking in, so the player has to make judgment calls against the evidence they see.
+A good claim is a blunt, provocative accusation a reasonable person could argue either way. It's framed from outside looking in, so the player has to make judgment calls against the evidence they see.`;
 
-Return valid JSON only. No prose preamble.`;
+const SCHEMA = {
+  type: 'object',
+  properties: {
+    claims: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          claim_text: { type: 'string' },
+          rationale: { type: 'string' },
+          tensions_targeted: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['claim_text', 'rationale', 'tensions_targeted'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['claims'],
+  additionalProperties: false,
+} as const;
 
 function buildPrompt(cards: CardRow[], tensions: TensionMap, target: number): string {
   return `TENSIONS (from Pass 1):
@@ -37,18 +56,7 @@ Examples of the shape:
 - "Ashley coasts on reputation rather than earning it"
 - "Ashley takes credit for what the team delivered"
 
-Reject claims that are too soft ("Ashley is ambitious"), too narrow ("Ashley over-tests her code"), or not falsifiable.
-
-Output JSON:
-{
-  "claims": [
-    {
-      "claim_text": "the claim as it will be shown to players",
-      "rationale": "1-2 sentences — which tensions this targets and why it should produce cross-room ambiguity",
-      "tensions_targeted": ["theme names from the tension map"]
-    }
-  ]
-}`;
+Reject claims that are too soft ("Ashley is ambitious"), too narrow ("Ashley over-tests her code"), or not falsifiable.`;
 }
 
 export async function runPass2(
@@ -60,14 +68,20 @@ export async function runPass2(
 
   const raw = await client.complete(
     buildPrompt(cards, tensions, config.targets.claims),
-    { system: SYSTEM_PROMPT, maxTokens: 3000, jsonMode: true },
+    { system: SYSTEM_PROMPT, maxTokens: 3000, schema: SCHEMA },
   );
 
-  const parsed = extractJson<{ claims: GeneratedClaim[] }>(raw);
+  const parsed = JSON.parse(raw) as { claims: GeneratedClaim[] };
   if (!Array.isArray(parsed.claims) || parsed.claims.length === 0) {
-    throw new Error('Pass 2 produced no claims');
+    throw new TypeError('Pass 2 produced no claims');
   }
 
-  console.log(`[pass2] generated ${parsed.claims.length} claims`);
+  console.log(`[pass2] ${parsed.claims.length} claims:`);
+  for (let i = 0; i < parsed.claims.length; i++) {
+    const c = parsed.claims[i];
+    console.log(`  ${i + 1}. "${c.claim_text}"`);
+    console.log(`     → ${c.rationale}`);
+  }
+
   return parsed.claims;
 }
