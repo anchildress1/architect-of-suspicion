@@ -122,12 +122,21 @@ export async function runPass4(
       (c) => !falseAmbiguityIds.has(c.objectID),
     );
 
-    // Collect rewritten blurbs for surviving cards only.
+    // Collect rewritten blurbs for surviving cards. Warn if the model dropped
+    // any card from its output — the caller will fall back to the original blurb.
     const claimRewrites = new Map(
       args
-        .filter((a) => !a.false_ambiguity && a.rewritten_blurb)
+        .filter((a) => !a.false_ambiguity)
         .map((a) => [a.card_id, a.rewritten_blurb]),
     );
+    const missingRewrites = survivingCards.filter(
+      (c) => !claimRewrites.has(c.objectID),
+    );
+    if (missingRewrites.length > 0) {
+      console.warn(
+        `[pass4] "${claim.claim_text}": model omitted rewrites for ${missingRewrites.length} card(s) — falling back to original blurb`,
+      );
+    }
     rewrites.set(claim.claim_text, claimRewrites);
 
     const coveredRooms = roomsCovered(survivingCards);
