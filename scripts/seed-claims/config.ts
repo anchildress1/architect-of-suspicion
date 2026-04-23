@@ -26,7 +26,7 @@ export const config = {
   models: {
     // Pass 1 & 2: strong reasoning for tension analysis and claim generation (per PRD)
     pass1: str('CLAIM_ENGINE_PASS1_MODEL', 'claude-sonnet-4-6'),
-    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-sonnet-4-6'),
+    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'gpt-5.4'),
     // Pass 3: cheap/fast for bulk structured scoring (OpenAI per PRD)
     pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.4-mini'),
     // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google per PRD)
@@ -41,7 +41,12 @@ export const config = {
     // Pass 3 keeps this many top-scoring cards per claim (sorted by
     // ambiguity+surprise descending). Keeps pools claim-specific and bounded.
     topCards: num('CLAIM_ENGINE_TOP_CARDS', 50),
-    minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 30),
+    // Minimum rewritten cards for a claim to survive. With topCards=50, pools
+    // are typically 40-50; this is a safety floor, not a quality bar.
+    minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 20),
+    // Minimum distinct gameplay rooms the card pool must cover.
+    // 7 rooms exist; requiring all 7 rejects claims that are strong in 6.
+    minRooms: num('CLAIM_ENGINE_MIN_ROOMS', 5),
   },
   thresholds: {
     // Combined ambiguity+surprise minimum for a card to count toward claim quality.

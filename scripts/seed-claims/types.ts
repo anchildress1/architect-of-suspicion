@@ -69,7 +69,6 @@ export interface ClaimValidation {
   survived: boolean;
   cut_reason?: string;
   eligible_card_ids: string[];
-  false_ambiguity_card_ids: string[];
 }
 
 /** Final seed payload written to Supabase. */
