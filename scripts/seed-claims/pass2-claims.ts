@@ -85,7 +85,10 @@ export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<
 
   const raw = await client.complete(buildPrompt(cards, tensions, config.targets.generate), {
     system: SYSTEM_PROMPT,
-    maxTokens: 5000,
+    // GPT-5.4 caps output at 128k. At `generate: 18` with medium reasoning
+    // effort, the old 5000 ceiling was getting eaten by chain-of-thought
+    // tokens before all 18 claims could emit. 16k gives comfortable headroom.
+    maxTokens: 16000,
     schema: SCHEMA,
     reasoning: 'medium',
   });

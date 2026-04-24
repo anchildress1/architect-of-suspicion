@@ -63,14 +63,17 @@ export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
 
   const raw = await client.complete(buildPrompt(cards), {
     system: SYSTEM_PROMPT,
-    // Adaptive thinking + high effort on ~250 cards routinely burns
-    // 15-25k tokens in thinking blocks alone before the structured tensions
-    // output. Sonnet 4.6 caps output at 64k — leave a wide margin.
+    // Sonnet 4.6 caps synchronous output at 64k — 32k leaves a wide margin
+    // for the adaptive-thinking block + the tensions JSON on ~250 cards.
     maxTokens: 32000,
     schema: SCHEMA,
-    reasoning: 'high',
-    // At 32k tokens and high reasoning effort, wall-clock can run past the
-    // default 2-min client timeout — override for this pass only.
+    // 'medium' over 'high': with ~250 cards in context, high-effort adaptive
+    // thinking burns 15-25k output tokens in reasoning alone before emitting
+    // the structured tensions. Medium still produces coherent four-tension
+    // analyses in our tests without starving the output budget.
+    reasoning: 'medium',
+    // Even at medium, 32k tokens + thinking blocks can run past the default
+    // 2-min client timeout — override for this pass only.
     timeoutMs: 300_000,
   });
 
