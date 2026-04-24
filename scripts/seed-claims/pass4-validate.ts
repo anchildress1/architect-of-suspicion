@@ -47,10 +47,13 @@ Output per card (all four fields required — no proof/objection scratch work, g
 3. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = supports. Negative = undermines. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. Hidden from the player.
 4. notes — server-only auditor note (1-3 sentences). State the tension levers this rewrite pulls, how work/play + deadline context were handled, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't see the 2-week constraint", or "work-vs-play ambiguity intentional; blurb reads as production but the fact is a hackathon build"). This is the QA trail.`;
 
-/** Build a batch-specific schema that constrains `card_id` to the exact UUID
- *  set via JSON Schema `enum`, and pins array size to the batch length.
- *  Strict structured-output mode enforces both — the model cannot skip,
- *  duplicate, hallucinate, or mistype an ID. */
+/** Build a batch-specific schema. Keeps `card_id` constrained to the batch's
+ *  UUIDs via `enum`; drops `minItems`/`maxItems`, `additionalProperties: false`,
+ *  and `minLength` to stay inside Gemini's `responseJsonSchema` validator
+ *  (gemini-3.1-pro-preview returns 400 INVALID_ARGUMENT on the fuller JSON
+ *  Schema set). Post-parse code below asserts batch-size and required-field
+ *  presence in JS, so correctness is preserved; we just lean less on the
+ *  provider's schema enforcement. */
 function schemaForBatch(batchIds: string[]): Record<string, unknown> {
   return {
     type: 'object',
@@ -61,19 +64,15 @@ function schemaForBatch(batchIds: string[]): Record<string, unknown> {
           type: 'object',
           properties: {
             card_id: { type: 'string', enum: batchIds },
-            rewritten_blurb: { type: 'string', minLength: 1 },
+            rewritten_blurb: { type: 'string' },
             ai_score: { type: 'number', minimum: -1, maximum: 1 },
-            notes: { type: 'string', minLength: 1 },
+            notes: { type: 'string' },
           },
           required: ['card_id', 'rewritten_blurb', 'ai_score', 'notes'],
-          additionalProperties: false,
         },
-        minItems: batchIds.length,
-        maxItems: batchIds.length,
       },
     },
     required: ['arguments'],
-    additionalProperties: false,
   };
 }
 
@@ -150,6 +149,12 @@ async function processBatch(
     );
   }
 
+  if (!Array.isArray(parsed.arguments) || parsed.arguments.length !== batchIds.length) {
+    throw new Error(
+      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) returned ${parsed.arguments?.length ?? 0} args, expected ${batchIds.length}`,
+    );
+  }
+
   const batchArgs = new Map<string, CardArgument>();
   for (const arg of parsed.arguments) {
     if (typeof arg.ai_score !== 'number' || Number.isNaN(arg.ai_score)) {
@@ -157,13 +162,23 @@ async function processBatch(
         `[pass4] invalid ai_score for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
       );
     }
+    if (typeof arg.rewritten_blurb !== 'string' || arg.rewritten_blurb.trim().length === 0) {
+      throw new Error(
+        `[pass4] missing rewritten_blurb for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
+      );
+    }
     if (typeof arg.notes !== 'string' || arg.notes.trim().length === 0) {
       throw new Error(
         `[pass4] missing notes for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
       );
     }
+    if (batchArgs.has(arg.card_id)) {
+      throw new Error(
+        `[pass4] duplicate card_id=${arg.card_id} in batch for "${claim.claim_text}" (claim_id=${claim.id})`,
+      );
+    }
     batchArgs.set(arg.card_id, {
-      rewrittenBlurb: arg.rewritten_blurb,
+      rewrittenBlurb: arg.rewritten_blurb.trim(),
       aiScore: clampScore(arg.ai_score),
       notes: arg.notes.trim(),
     });
@@ -172,7 +187,7 @@ async function processBatch(
   const missing = batchIds.filter((id) => !batchArgs.has(id));
   if (missing.length > 0) {
     throw new Error(
-      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) omitted ${missing.length} card(s) despite enum/minItems constraints. Missing: ${missing.join(', ')}`,
+      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) omitted ${missing.length} card(s). Missing: ${missing.join(', ')}`,
     );
   }
 

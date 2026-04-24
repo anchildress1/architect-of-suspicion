@@ -105,8 +105,7 @@ class OpenAIClient implements AIClient {
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
     // GPT-5.5 accepts: none | low | medium | high | xhigh. 'minimal' was
     // valid on GPT-5.0 but removed in the 5.5 retrain — API 400s if passed.
-    const reasoning =
-      (opts.reasoning as 'none' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
+    const reasoning = (opts.reasoning as 'none' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
     const response = await this.client.chat.completions.create(
       {
         model: this.model,
@@ -146,12 +145,15 @@ class GeminiClient implements AIClient {
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
-    const thinkingLevel = (opts.reasoning as 'minimal' | 'low' | 'medium' | 'high') ?? 'low';
     if (opts.timeoutMs && opts.timeoutMs !== DEFAULT_TIMEOUT_MS) {
       console.warn(
         `[gemini] per-call timeoutMs=${opts.timeoutMs} ignored — Gemini SDK only honors the constructor-time timeout (${DEFAULT_TIMEOUT_MS}ms).`,
       );
     }
+    // No `thinkingConfig` — gemini-3.1-pro-preview has a documented bug
+    // where passing thinking levels returns 400 INVALID_ARGUMENT. Model's
+    // default thinking is fine for creative rewriting tasks; we drop `opts.reasoning`
+    // on the Gemini path. Revisit when the preview moves to GA.
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: prompt,
@@ -160,7 +162,6 @@ class GeminiClient implements AIClient {
         maxOutputTokens: opts.maxTokens ?? 4000,
         responseMimeType: 'application/json',
         responseJsonSchema: opts.schema,
-        thinkingConfig: { thinkingLevel },
       },
     });
     const candidate = response.candidates?.[0];
