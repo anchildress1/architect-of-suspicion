@@ -2,12 +2,9 @@
   "ci": {
     "collect": {
       "staticDistDir": null,
-      "startServerCommand": "node build/index.js",
+      "startServerCommand": "node scripts/server.js",
       "startServerReadyPattern": "Listening on",
-      "url": [
-        "http://localhost:3000/",
-        "http://localhost:3000/attic"
-      ],
+      "url": ["http://localhost:3000/", "http://localhost:3000/attic"],
       "numberOfRuns": 3,
       "settings": {
         "preset": "perf",
@@ -25,7 +22,10 @@
     "assert": {
       "preset": "lighthouse:recommended",
       "assertions": {
-        "categories:performance": ["error", { "minScore": 0.75, "aggregationMethod": "median-run" }],
+        "categories:performance": [
+          "error",
+          { "minScore": 0.75, "aggregationMethod": "median-run" }
+        ],
         "csp-xss": "off",
         "uses-http2": "off",
         "is-on-https": "off",

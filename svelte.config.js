@@ -5,7 +5,9 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter(),
+    // precompress: serve gzip/brotli copies of static assets so LHCI
+    // (and prod) get `uses-text-compression` for free.
+    adapter: adapter({ precompress: true }),
   },
 };
 
