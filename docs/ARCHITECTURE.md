@@ -11,13 +11,13 @@ This is a greenfield project. The stack is chosen for this project's needs, not 
 
 ### Frontend + Backend
 
-| Layer | Choice | Rationale |
-|---|---|---|
-| Framework | **SvelteKit** | Full-stack framework — handles SSR for SEO, server routes for API, and reactive UI for game state |
-| Styling | **Tailwind CSS v4** | Utility-first, custom design tokens for industrial steampunk aesthetic |
-| AI Model | **Claude SDK** (Anthropic) | Selected after model contest — best narrative voice and evaluation consistency |
-| Database | **Supabase** (`supascribe-notes` project) | Existing card index (288 non-deleted cards), PostgreSQL with RLS |
-| Deploy | **Cloud Run** on GCP project `anchildress1` | Container deploy, GCP DNS already mapped |
+| Layer     | Choice                                      | Rationale                                                                                         |
+| --------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Framework | **SvelteKit**                               | Full-stack framework — handles SSR for SEO, server routes for API, and reactive UI for game state |
+| Styling   | **Tailwind CSS v4**                         | Utility-first, custom design tokens for industrial steampunk aesthetic                            |
+| AI Model  | **Claude SDK** (Anthropic)                  | Selected after model contest — best narrative voice and evaluation consistency                    |
+| Database  | **Supabase** (`supascribe-notes` project)   | Existing card index (288 non-deleted cards), PostgreSQL with RLS                                  |
+| Deploy    | **Cloud Run** on GCP project `anchildress1` | Container deploy, GCP DNS already mapped                                                          |
 
 SvelteKit handles both frontend and server routes. No separate API service. Server routes call Supabase and Claude SDK directly. This replaces the previous FastAPI + Cloud Run (2 services) design.
 
@@ -62,15 +62,13 @@ Portfolio piece needs SEO. Recruiters and AI agents need to find it under Ashley
 
 All server routes live in `src/routes/api/` and run server-side only.
 
-#### `GET /api/claim`
+#### Summons (landing page)
 
-Picks one claim at random from `suspicion.claims`. Used by the Summons screen
-on first load.
-
-**Response:**
-```json
-{ "id": "uuid", "text": "Ashley depends on AI too much" }
-```
+The claim is picked during SSR by `src/routes/+page.server.ts` via
+`pickRandomClaim()`, so the dossier renders on the first byte with no client
+fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page
+returns `{ claim: null }` and renders a muted "docket unavailable" state —
+no browser console errors.
 
 #### `GET /api/cards`
 
@@ -79,6 +77,7 @@ Fetches the witness deck for the active claim, restricted to one chamber categor
 **Query params:** `claim_id` (required, uuid), `category` (required), `exclude` (comma-separated objectIDs of already-ruled cards)
 
 **Response:**
+
 ```json
 {
   "cards": [
@@ -98,6 +97,7 @@ Cards arrive in **Witness mode order**: ascending `ambiguity * surprise`
 `surprise` separately.
 
 **Query (joined via Supabase client):**
+
 ```sql
 SELECT cc.card_id, cc.ambiguity, cc.surprise, cc.rewritten_blurb,
        c."objectID", c.title, c.category
@@ -117,6 +117,7 @@ Records a witness ruling. Reads the **pre-seeded** directional score from
 the runtime AI never produces a score.
 
 **Request:**
+
 ```json
 {
   "session_id": "uuid",
@@ -130,29 +131,38 @@ the runtime AI never produces a score.
 record (no contribution to attention, no appearance in cover letter).
 
 **Server-side:**
-1. Reads `ai_score` from `suspicion.claim_cards` for `(claim_id, card_id)`.
-2. Reads full card (with `fact`) from `public.cards` for the reaction prompt.
-3. Calls Claude for reaction text.
-4. Writes pick to `suspicion.picks` (with the pre-seeded `ai_score` copied,
-   or `0` for Dismiss) **before** returning the response.
+
+1. Reads the current `attention` from `suspicion.sessions`.
+2. Reads `ai_score` from `suspicion.claim_cards` for `(claim_id, card_id)`.
+3. Reads full card (with `fact`) from `public.cards` for the reaction prompt.
+4. Calls Claude for reaction text.
+5. Writes pick to `suspicion.picks` (with the pre-seeded `ai_score` copied,
+   or `0` for Dismiss) **before** returning the response. The unique
+   `(session_id, card_id)` constraint rejects re-rulings with `409`.
+6. Computes the new smoothed `attention` via `applyAttentionDelta`, persists
+   it on the session, and returns the post-smoothing integer.
 
 **Response:**
+
 ```json
 {
   "ai_reaction": "...the Architect's reaction text...",
-  "attention_delta": 0.72
+  "attention": 62,
+  "reaction_fallback": false
 }
 ```
 
-`attention_delta = pickSign × ai_score` where `pickSign = +1 / -1 / 0` for
-proof / objection / dismiss. The client uses it to nudge the smoothed
-attention meter — the raw value is never displayed.
+`attention` is the integer `[0, 100]` the needle should read. The raw
+`ai_score` magnitude never crosses the wire — Invariant #2. The
+`reaction_fallback` flag lets the UI show a subdued state when Claude was
+unreachable instead of pretending the Architect spoke.
 
 #### `POST /api/narrate`
 
 Returns Architect dialogue based on current game state. Used for room entry, idle, and non-card-pick moments.
 
 **Request:**
+
 ```json
 {
   "claim": "...",
@@ -164,6 +174,7 @@ Returns Architect dialogue based on current game state. Used for room entry, idl
 ```
 
 **Response:**
+
 ```json
 {
   "dialogue": "The Gallery remembers what you choose to overlook."
@@ -175,6 +186,7 @@ Returns Architect dialogue based on current game state. Used for room entry, idl
 Generates the cover letter from collected evidence.
 
 **Request:**
+
 ```json
 {
   "session_id": "uuid",
@@ -186,6 +198,7 @@ Generates the cover letter from collected evidence.
 **Server-side:** Fetches all picks for session from `suspicion.picks`, retrieves full card data for each, passes to Claude SDK.
 
 **Response:**
+
 ```json
 {
   "cover_letter": "...",
