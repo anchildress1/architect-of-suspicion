@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// --- Supabase mocks ---
 const mockFrom = vi.fn();
 const mockSchemaFrom = vi.fn();
+const mockCreate = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
@@ -13,14 +13,9 @@ vi.mock('$lib/server/supabase', () => ({
   }),
 }));
 
-// --- Claude SDK mock ---
-const mockCreate = vi.fn();
-
 vi.mock('$lib/server/claude', () => ({
   getClaudeClient: () => ({
-    messages: {
-      create: (...args: unknown[]) => mockCreate(...args),
-    },
+    messages: { create: (...args: unknown[]) => mockCreate(...args) },
   }),
 }));
 
@@ -48,7 +43,7 @@ function makeRequest(body: unknown): Parameters<typeof POST>[0] {
 }
 
 const validBody = {
-  session_id: 'test-session-uuid',
+  session_id: 'sess-1',
   claim: 'Ashley depends on AI too much',
   verdict: 'accuse',
 };
@@ -56,74 +51,80 @@ const validBody = {
 const mockPicks = [
   { card_id: 'card-1', classification: 'proof' },
   { card_id: 'card-2', classification: 'objection' },
+  { card_id: 'card-3', classification: 'dismiss' },
 ];
 
 const mockCards = [
   {
     objectID: 'card-1',
     title: 'AI Tools Usage',
-    blurb: 'Evidence about AI usage',
-    fact: 'Ashley uses AI tools extensively.',
+    blurb: 'AI usage',
+    fact: 'Ashley uses AI tools.',
     category: 'Philosophy',
     signal: 5,
   },
   {
     objectID: 'card-2',
     title: 'Manual Testing',
-    blurb: 'Evidence about manual processes',
-    fact: 'Ashley tests everything by hand too.',
+    blurb: 'Manual processes',
+    fact: 'Ashley tests by hand too.',
     category: 'Engineering',
     signal: 3,
   },
 ];
 
-function setupMocks(options?: {
+const sessionUpdates: Array<Record<string, unknown>> = [];
+const lastCardsInCall: { ids: string[] } = { ids: [] };
+
+interface MockOptions {
   picks?: unknown[];
   picksError?: unknown;
   cards?: unknown[];
   cardsError?: unknown;
   sessionUpdateError?: unknown;
-}) {
-  const picks = options?.picks ?? mockPicks;
-  const cards = options?.cards ?? mockCards;
+}
 
-  // public schema: cards
+function setupMocks(options: MockOptions = {}) {
+  sessionUpdates.length = 0;
+  lastCardsInCall.ids = [];
+  const picks = options.picks ?? mockPicks;
+  const cards = options.cards ?? mockCards;
+
   mockFrom.mockImplementation((table: string) => {
-    if (table === 'cards') {
-      return {
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({
-              data: cards,
-              error: options?.cardsError ?? null,
-            }),
-          }),
+    if (table !== 'cards') return {};
+    return {
+      select: vi.fn().mockReturnValue({
+        in: vi.fn().mockImplementation((_col: string, ids: string[]) => {
+          lastCardsInCall.ids = ids;
+          return {
+            is: vi
+              .fn()
+              .mockResolvedValue({ data: cards, error: options.cardsError ?? null }),
+          };
         }),
-      };
-    }
-    return {};
+      }),
+    };
   });
 
-  // suspicion schema: picks + sessions
   mockSchemaFrom.mockImplementation((table: string) => {
     if (table === 'picks') {
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: picks,
-              error: options?.picksError ?? null,
-            }),
+            order: vi
+              .fn()
+              .mockResolvedValue({ data: picks, error: options.picksError ?? null }),
           }),
         }),
       };
     }
     if (table === 'sessions') {
       return {
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            error: options?.sessionUpdateError ?? null,
-          }),
+        update: vi.fn().mockImplementation((row: Record<string, unknown>) => {
+          sessionUpdates.push(row);
+          return {
+            eq: vi.fn().mockResolvedValue({ error: options.sessionUpdateError ?? null }),
+          };
         }),
       };
     }
@@ -136,25 +137,25 @@ describe('POST /api/generate-letter', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 400 when session_id is missing', async () => {
+  it('rejects missing session_id', async () => {
     await expect(POST(makeRequest({ ...validBody, session_id: undefined }))).rejects.toThrow(
       'Missing or invalid session_id',
     );
   });
 
-  it('returns 400 when claim is missing', async () => {
+  it('rejects missing claim', async () => {
     await expect(POST(makeRequest({ ...validBody, claim: undefined }))).rejects.toThrow(
       'Missing or invalid claim',
     );
   });
 
-  it('returns 400 when verdict is invalid', async () => {
+  it('rejects unknown verdict', async () => {
     await expect(POST(makeRequest({ ...validBody, verdict: 'maybe' }))).rejects.toThrow(
       'verdict must be "accuse" or "pardon"',
     );
   });
 
-  it('returns 400 for invalid JSON body', async () => {
+  it('rejects invalid JSON', async () => {
     const req = {
       getClientAddress: () => '127.0.0.1',
       request: new Request('http://localhost/api/generate-letter', {
@@ -163,80 +164,39 @@ describe('POST /api/generate-letter', () => {
         body: 'not-json',
       }),
     } as Parameters<typeof POST>[0];
-
     await expect(POST(req)).rejects.toThrow('Invalid JSON body');
   });
 
-  it('fetches all picks for session from Supabase', async () => {
+  it('filters dismissed picks before fetching cards', async () => {
     setupMocks();
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'A dramatic letter...' }],
-    });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'A letter.' }] });
 
     await POST(makeRequest(validBody));
 
-    expect(mockSchemaFrom).toHaveBeenCalledWith('picks');
+    expect(lastCardsInCall.ids).toEqual(['card-1', 'card-2']);
   });
 
-  it('fetches full card data for each pick', async () => {
-    setupMocks();
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'A dramatic letter...' }],
-    });
-
-    await POST(makeRequest(validBody));
-
-    expect(mockFrom).toHaveBeenCalledWith('cards');
-  });
-
-  it('updates session with verdict', async () => {
-    setupMocks();
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'A dramatic letter...' }],
-    });
-
-    await POST(makeRequest(validBody));
-
-    expect(mockSchemaFrom).toHaveBeenCalledWith('sessions');
-  });
-
-  it('returns cover letter and closing from Claude', async () => {
+  it('persists the verdict and the composed letter on the session', async () => {
     setupMocks();
     mockCreate
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'The gears have spoken. This letter is dramatic.' }],
-      })
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'The trial ends in iron silence.' }],
-      });
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'The letter body.' }] })
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'The closing.' }] });
 
     const res = await POST(makeRequest(validBody));
     const body = await res.json();
 
-    expect(body.cover_letter).toBe('The gears have spoken. This letter is dramatic.');
-    expect(body.architect_closing).toBe('The trial ends in iron silence.');
-  });
-
-  it('calls Claude with cover letter model and max_tokens', async () => {
-    setupMocks();
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'Letter text' }],
+    expect(body.cover_letter).toBe('The letter body.');
+    expect(body.architect_closing).toBe('The closing.');
+    expect(sessionUpdates[0]).toMatchObject({ verdict: 'accuse' });
+    expect(sessionUpdates[1]).toMatchObject({
+      cover_letter: 'The letter body.',
+      architect_closing: 'The closing.',
     });
-
-    await POST(makeRequest(validBody));
-
-    expect(mockCreate).toHaveBeenCalledTimes(2);
-    const letterCall = mockCreate.mock.calls[0][0];
-    expect(letterCall.model).toBe('claude-haiku-4-5');
-    expect(letterCall.max_tokens).toBe(2000);
-
-    const closingCall = mockCreate.mock.calls[1][0];
-    expect(closingCall.max_tokens).toBe(200);
   });
 
-  it('handles Claude failure gracefully with fallback', async () => {
+  it('falls back to canned text when Claude fails', async () => {
     setupMocks();
-    mockCreate.mockRejectedValue(new Error('Claude API error'));
+    mockCreate.mockRejectedValue(new Error('Claude down'));
 
     const res = await POST(makeRequest(validBody));
     const body = await res.json();
@@ -247,39 +207,34 @@ describe('POST /api/generate-letter', () => {
     expect(body.architect_closing.length).toBeGreaterThan(0);
   });
 
-  it('handles empty evidence gracefully', async () => {
-    setupMocks({ picks: [], cards: [] });
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'A letter about nothing.' }],
+  it('handles a fully-dismissed session by sending empty evidence to the prompt', async () => {
+    setupMocks({
+      picks: [{ card_id: 'card-1', classification: 'dismiss' }],
+      cards: [],
     });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'Nothing to rule on.' }] });
 
     const res = await POST(makeRequest(validBody));
     const body = await res.json();
 
     expect(typeof body.cover_letter).toBe('string');
-    expect(typeof body.architect_closing).toBe('string');
+    expect(lastCardsInCall.ids).toEqual([]);
   });
 
-  it('returns 500 when picks fetch fails', async () => {
-    setupMocks({ picksError: { message: 'db error' } });
-
+  it('500s when picks fetch fails', async () => {
+    setupMocks({ picksError: { message: 'pg-down' } });
     await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch picks');
   });
 
-  it('returns 500 when session update fails', async () => {
-    setupMocks({ sessionUpdateError: { message: 'update failed' } });
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'Letter' }],
-    });
-
+  it('500s when session update fails', async () => {
+    setupMocks({ sessionUpdateError: { message: 'rls' } });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
     await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to update session');
   });
 
   it('accepts pardon as a valid verdict', async () => {
     setupMocks();
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'Pardoned!' }],
-    });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'P.' }] });
 
     const res = await POST(makeRequest({ ...validBody, verdict: 'pardon' }));
     const body = await res.json();

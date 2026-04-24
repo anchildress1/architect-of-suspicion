@@ -5,6 +5,7 @@ import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prompts/coverLetter';
 import { rateLimitGuard } from '$lib/server/rateLimit';
+import type { Classification, FullCard } from '$lib/types';
 
 const FALLBACK_LETTER =
   'The record could not be composed. The verdict stands, but the letter will have to be written by hand.';
@@ -54,8 +55,11 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     error(500, 'Failed to fetch picks');
   }
 
-  const cardIds = (picks ?? []).map((p) => p.card_id as string);
-  let cards: Record<string, Record<string, unknown>> = {};
+  // Dismissed exhibits are struck from the record — they do not appear in the letter.
+  const ruledPicks = (picks ?? []).filter((p) => p.classification !== 'dismiss');
+  const cardIds = ruledPicks.map((p) => p.card_id as string);
+
+  let cards: Record<string, FullCard> = {};
 
   if (cardIds.length > 0) {
     const { data: cardRows, error: cardsError } = await supabase
@@ -68,23 +72,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
       error(500, 'Failed to fetch cards');
     }
 
-    cards = Object.fromEntries(
-      (cardRows ?? []).map((c) => [c.objectID as string, c]),
-    );
+    cards = Object.fromEntries((cardRows ?? []).map((c) => [c.objectID as string, c as FullCard]));
   }
 
-  const evidence = (picks ?? [])
+  const evidence = ruledPicks
     .filter((p) => cards[p.card_id as string])
     .map((p) => ({
-      card: cards[p.card_id as string] as {
-        objectID: string;
-        title: string;
-        blurb: string;
-        fact: string;
-        category: string;
-        signal: number;
-      },
-      classification: p.classification as 'proof' | 'objection',
+      card: cards[p.card_id as string],
+      classification: p.classification as Exclude<Classification, 'dismiss'>,
     }));
 
   const { error: sessionError } = await suspicion

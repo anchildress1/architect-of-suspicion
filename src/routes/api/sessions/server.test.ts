@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockInsert = vi.fn();
 const mockSelect = vi.fn();
 const mockSingle = vi.fn();
-
 const mockFrom = vi.fn();
 const mockSchema = vi.fn();
+const mockGetClaimById = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
@@ -13,8 +13,13 @@ vi.mock('$lib/server/supabase', () => ({
   }),
 }));
 
+vi.mock('$lib/server/claims', () => ({
+  getClaimById: (...args: unknown[]) => mockGetClaimById(...args),
+}));
+
 vi.mock('@sveltejs/kit', () => ({
-  json: (body: unknown) => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }),
+  json: (body: unknown) =>
+    new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }),
   error: (status: number, message: string) => {
     const err = new Error(message) as Error & { status: number };
     err.status = status;
@@ -34,78 +39,69 @@ function makeRequest(body: unknown): Parameters<typeof POST>[0] {
   } as Parameters<typeof POST>[0];
 }
 
+function setupSessionInsert(result: { data: unknown; error: unknown }) {
+  mockSchema.mockReturnValue({
+    from: mockFrom.mockReturnValue({
+      insert: mockInsert.mockReturnValue({
+        select: mockSelect.mockReturnValue({
+          single: mockSingle.mockResolvedValue(result),
+        }),
+      }),
+    }),
+  });
+}
+
 describe('POST /api/sessions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('creates a session and returns session_id', async () => {
-    mockSchema.mockReturnValue({
-      from: mockFrom.mockReturnValue({
-        insert: mockInsert.mockReturnValue({
-          select: mockSelect.mockReturnValue({
-            single: mockSingle.mockResolvedValue({
-              data: { session_id: 'test-uuid' },
-              error: null,
-            }),
-          }),
-        }),
-      }),
+  it('creates a session and echoes the claim payload', async () => {
+    mockGetClaimById.mockResolvedValue({
+      claim: { id: 'claim-1', text: 'A claim' },
+      error: null,
     });
+    setupSessionInsert({ data: { session_id: 'sess-1' }, error: null });
 
-    const res = await POST(makeRequest({ claim: 'Test claim' }));
+    const res = await POST(makeRequest({ claim_id: 'claim-1' }));
     const body = await res.json();
 
-    expect(body.session_id).toBe('test-uuid');
-    expect(mockSchema).toHaveBeenCalledWith('suspicion');
-    expect(mockFrom).toHaveBeenCalledWith('sessions');
-    expect(mockInsert).toHaveBeenCalledWith({ claim_text: 'Test claim' });
+    expect(body).toEqual({ session_id: 'sess-1', claim_id: 'claim-1', claim_text: 'A claim' });
+    expect(mockInsert).toHaveBeenCalledWith({ claim_id: 'claim-1', claim_text: 'A claim' });
   });
 
-  it('returns 400 for missing claim', async () => {
-    await expect(POST(makeRequest({}))).rejects.toThrow('Missing or invalid claim');
+  it('returns 400 for missing claim_id', async () => {
+    await expect(POST(makeRequest({}))).rejects.toThrow('Missing or invalid claim_id');
   });
 
-  it('returns 400 for empty claim', async () => {
-    await expect(POST(makeRequest({ claim: '   ' }))).rejects.toThrow('Missing or invalid claim');
+  it('returns 400 for non-string claim_id', async () => {
+    await expect(POST(makeRequest({ claim_id: 42 }))).rejects.toThrow('Missing or invalid claim_id');
   });
 
-  it('returns 400 for non-string claim', async () => {
-    await expect(POST(makeRequest({ claim: 42 }))).rejects.toThrow('Missing or invalid claim');
+  it('returns 404 when claim does not resolve', async () => {
+    mockGetClaimById.mockResolvedValue({ claim: null, error: 'Claim not found' });
+
+    await expect(POST(makeRequest({ claim_id: 'missing' }))).rejects.toThrow('Claim not found');
   });
 
-  it('handles database errors', async () => {
-    mockSchema.mockReturnValue({
-      from: mockFrom.mockReturnValue({
-        insert: mockInsert.mockReturnValue({
-          select: mockSelect.mockReturnValue({
-            single: mockSingle.mockResolvedValue({
-              data: null,
-              error: { message: 'DB error' },
-            }),
-          }),
-        }),
-      }),
+  it('returns 500 when DB insert fails', async () => {
+    mockGetClaimById.mockResolvedValue({
+      claim: { id: 'claim-1', text: 'A claim' },
+      error: null,
     });
+    setupSessionInsert({ data: null, error: { message: 'pg-down' } });
 
-    await expect(POST(makeRequest({ claim: 'Test claim' }))).rejects.toThrow('Failed to create session');
+    await expect(POST(makeRequest({ claim_id: 'claim-1' }))).rejects.toThrow('Failed to create session');
   });
 
-  it('handles null data with no db error', async () => {
-    mockSchema.mockReturnValue({
-      from: mockFrom.mockReturnValue({
-        insert: mockInsert.mockReturnValue({
-          select: mockSelect.mockReturnValue({
-            single: mockSingle.mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          }),
-        }),
-      }),
+  it('returns 500 when no session_id is returned', async () => {
+    mockGetClaimById.mockResolvedValue({
+      claim: { id: 'claim-1', text: 'A claim' },
+      error: null,
     });
+    setupSessionInsert({ data: null, error: null });
 
-    await expect(POST(makeRequest({ claim: 'Test claim' }))).rejects.toThrow('Failed to create session');
+    await expect(POST(makeRequest({ claim_id: 'claim-1' }))).rejects.toThrow('Failed to create session');
   });
 
   it('returns 400 for invalid JSON body', async () => {
