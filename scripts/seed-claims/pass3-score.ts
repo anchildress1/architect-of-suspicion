@@ -4,7 +4,10 @@
  *  Output: top-N claims ranked by card-pool quality, with their claim-specific
  *          card pools — ready for Pass 4 gameplay validation.
  *
- *  Model:  gpt-5.4-mini — cheap/fast, one call per claim per batch.
+ *  Model:  gpt-5.5 — structured bulk scoring with strict JSON Schema +
+ *          enum-constrained card_ids. Tuned per OpenAI's GPT-5.2/5.5
+ *          prompting guide: CTCO layout (Context/Task/Constraints/Output),
+ *          reasoning_effort='none', verbosity='low'.
  *
  *  Card selection per claim:
  *    1. Score all cards (in batches to stay within token limits)
@@ -24,33 +27,53 @@ import { config } from './config';
 import type { CardClaimScore, CardRow, GeneratedClaim, Pass3Result } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS } from './types';
 
-const SYSTEM_PROMPT = `Score every card. Return one score object per card — never skip, never duplicate, never invent card IDs.
+// Per GPT-5.2/5.5 prompting guide: CTCO layout, negative constraints, tight
+// output spec. Keep the system prompt compact — GPT-5.5 follows explicit
+// rules more reliably than long rationales.
+const SYSTEM_PROMPT = `<context>
+You are scoring career-evidence cards against a single accusation-style claim
+about the subject, Ashley. Scores feed a ranking pipeline that selects which
+claims go to final validation; scoring integrity is load-bearing.
+</context>
 
-Scoring axes (integer 1-5 each):
-1. AMBIGUITY — how torn a player would be classifying this card as proof or objection from title+blurb alone.
+<task>
+For each card in the input batch, emit an integer score (1-5) on two axes:
+1. AMBIGUITY — how torn a player would be classifying the card as proof or objection from title+blurb alone.
    5 = both readings equally defensible. 3 = leans one way but arguable. 1 = obvious classification.
-2. SURPRISE — how likely the hidden "fact" field contradicts the player's gut read of title+blurb.
+2. SURPRISE — how likely the hidden "fact" contradicts the player's gut read of title+blurb.
    5 = gut read is almost certainly wrong. 3 = fact adds nuance. 1 = fact confirms surface read.
+</task>
 
-Context levers — use these to calibrate the above two scores. They are NOT separate outputs. Look at tags, projects, and fact to infer them:
-- WORK vs PLAY.
-    • "THD" tag (or other employer/client tags) → WORK inside a corporate layer with stricter guidance, reviewers, compliance, and negotiated latitude.
-    • Projects like "CheckMark", "System Notes", "Legacy Smelter", "Carbon Trace", "Underfoot Travel" → PLAY projects designed to operate OUTSIDE corporate constraints. Ashley sets the rules.
-    • Work implies narrower trade-off latitude; play implies wider latitude and self-imposed constraints.
-    • If title+blurb reads as one but tags/projects/fact reveal the other, raise SURPRISE. If the nature is genuinely unclear from the surface, raise AMBIGUITY.
-- DEADLINE + STACK FAMILIARITY.
-    • "DEV Challenge" tag (any form, e.g. "DEV Challenge > Algolia Agent Studio", "DEV Challenge > WeCoded 2026") → STRICT deadline. Time-boxed community challenge. Stack is often announced AT the start, so assume Ashley did NOT know the stack going in unless the fact says otherwise.
-    • Hackathons, Advent calendars, contests, jam submissions → strict deadline.
-    • "THD" or other employer-work tags → corporate cadence deadlines (sprint, release, incident SLA) — deadline present but negotiable within the layer. Usually a familiar stack.
-    • Personal projects without a challenge marker → no external deadline; pacing is self-imposed; stack is typically chosen in advance.
-    • If the fact reveals the stack was unfamiliar AND a deadline existed, that combination massively raises tension against claims about speed, quality, scope discipline, reliability, or novelty — surface that.
-  When the player would assume a different deadline posture than the tags/fact reveal, raise SURPRISE. Hidden deadlines (especially with unfamiliar stacks) almost always raise AMBIGUITY too, because they reframe every trade-off in the card.
+<constraints>
+Use tags, projects, and fact to calibrate AMBIGUITY and SURPRISE. Do NOT emit work/play or deadline as separate outputs.
 
-Rule of thumb: when the player can't infer work/play, deadline, or stack-familiarity context from title+blurb alone, but it materially changes how the card reads against the claim, both AMBIGUITY and SURPRISE should move up. Evidence where the hidden context confirms the surface read stays low on both.
+Work vs play:
+- "THD" or other employer/client tags → WORK inside a corporate layer: narrower latitude, reviewers, compliance.
+- Projects tagged "CheckMark", "System Notes", "Legacy Smelter", "Carbon Trace", "Underfoot Travel" → PLAY: personal projects outside corporate constraints, Ashley sets the rules.
+- Surface read says one, tags/fact reveal the other → raise SURPRISE. Genuinely unclear from the surface → raise AMBIGUITY.
 
-Edge cases:
-- Card seems irrelevant to the claim → ambiguity=1, surprise=1
-- Card has no fact → score surprise based on whether title+blurb alone is deceptive on work/play or timing`;
+Deadline + stack familiarity:
+- "DEV Challenge" tag (any variant like "DEV Challenge > WeCoded 2026") → STRICT external deadline. Stack is usually announced AT the start; assume Ashley did NOT know the stack going in unless the fact says otherwise.
+- Hackathons, Advent calendars, contests, jam submissions → strict deadline.
+- "THD" / employer-work tags → corporate cadence deadlines (sprint, release, SLA), negotiable within the layer, usually familiar stack.
+- Personal projects with no challenge marker → no external deadline; self-paced; stack chosen ahead.
+- Unfamiliar-stack + hard-deadline combination raises tension against almost every claim about speed, quality, scope, reliability, or novelty — surface it.
+
+Rule: when the player cannot infer work/play, deadline, or stack-familiarity from title+blurb alone but it materially changes the reading, raise BOTH AMBIGUITY and SURPRISE. When hidden context confirms the surface read, keep both low.
+
+Irrelevant card → ambiguity=1, surprise=1.
+Card has no fact → score surprise only on whether title+blurb alone is deceptive about work/play or timing.
+
+Do NOT:
+- Invent, substitute, approximate, or reformat card_id values. Use the EXACT UUIDs from the CORPUS block.
+- Skip, duplicate, or reorder cards. Return exactly one score object per card in the batch.
+- Emit commentary, reasoning, confidence scores, or any fields beyond {card_id, ambiguity, surprise}.
+- Round 0 or 6 into range — values outside 1..5 are invalid, not clamp targets.
+</constraints>
+
+<output>
+Strict JSON matching the provided schema. One object per card. No prose.
+</output>`;
 
 /** Build a batch-specific schema that constrains `card_id` to the exact UUID
  *  set in the batch via JSON Schema `enum`. OpenAI strict mode enforces this,
@@ -82,13 +105,16 @@ function schemaForBatch(batchIds: string[]): Record<string, unknown> {
 }
 
 function buildPrompt(claim: GeneratedClaim, cards: CardRow[]): string {
-  return `CLAIM: "${claim.claim_text}"
-RATIONALE: ${claim.rationale}
+  return `<claim>${claim.claim_text}</claim>
+<rationale>${claim.rationale}</rationale>
 
-CORPUS (${cards.length} cards):
+<corpus count="${cards.length}">
 ${formatCardCorpus(cards)}
+</corpus>
 
-Score every card against the claim.`;
+<instruction>
+Score every card against the claim. Return exactly ${cards.length} score objects, one per card, in any order. Every card_id must come EXACTLY from the corpus block above — do not invent, substitute, or mistype.
+</instruction>`;
 }
 
 function assertBatchScores(
@@ -182,7 +208,15 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
         system: SYSTEM_PROMPT,
         maxTokens: 4000,
         schema: schemaForBatch(batch.map((c) => c.objectID)),
-        reasoning: 'low',
+        // GPT-5.5 guidance: pure structured scoring has no benefit from
+        // reasoning tokens — 'none' is both fastest and most reliable per
+        // the OpenAI cookbook. 'low' caused drift on mini; 'none' locks
+        // output to pure schema emission.
+        reasoning: 'none',
+        // GPT-5+ verbosity knob: 'low' suppresses narrative padding around
+        // structured JSON. The schema already forbids extra fields; this
+        // belt-and-suspenders keeps output latency + token spend tight.
+        verbosity: 'low',
       });
       let batchResult: { scores: CardClaimScore[] };
       try {

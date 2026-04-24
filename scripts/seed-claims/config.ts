@@ -34,11 +34,13 @@ export const config = {
     // better-shaped provocative claims in our tests. Prompt is tuned for
     // Claude's XML-ish section tags; see pass2-claims.ts.
     pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-opus-4-7'),
-    // Pass 3: bulk structured scoring (OpenAI per PRD). Full gpt-5.4 over
-    // gpt-5.4-mini — mini was emitting hallucinated and duplicated card IDs
-    // even with enum-constrained JSON Schema. Pass 3 fires 108+ calls per
-    // seed run so the cost delta is real, but scoring integrity comes first.
-    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.4'),
+    // Pass 3: bulk structured scoring (OpenAI per PRD). gpt-5.5 — first
+    // fully-retrained base model since GPT-4.5, with stronger instruction
+    // adherence than 5.4 and the verbosity knob that lets structured-only
+    // output stay terse. Prompt tuned per OpenAI's GPT-5.2/5.5 cookbook:
+    // CTCO layout, reasoning_effort='none', verbosity='low'.
+    // See pass3-score.ts.
+    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.5'),
     // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google
     // per PRD). Pro over Flash-Lite-Preview — Pass 4 does the heaviest
     // per-claim work (validate + rewrite 30-50 blurbs + assign ai_score per

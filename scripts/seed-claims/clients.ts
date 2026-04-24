@@ -15,6 +15,10 @@ export interface CompletionOptions {
    *  OpenAI: reasoning_effort ('none'|'low'|'medium'|'high'|'xhigh').
    *  Gemini: thinkingConfig.thinkingLevel ('minimal'|'low'|'medium'|'high'). */
   reasoning?: string;
+  /** OpenAI-only: `verbosity` param (GPT-5+). Controls output length/depth
+   *  independent of correctness. 'low' = terse structured, 'medium' = default,
+   *  'high' = verbose. Silently ignored by Anthropic and Gemini clients. */
+  verbosity?: 'low' | 'medium' | 'high';
   /** Per-call request timeout (ms). Overrides the client-construction default
    *  of 120_000. Anthropic + OpenAI only — Gemini's SDK takes its timeout at
    *  construction, so use a larger constructor timeout if Gemini needs more. */
@@ -103,6 +107,9 @@ class OpenAIClient implements AIClient {
         model: this.model,
         max_completion_tokens: opts.maxTokens ?? 4000,
         reasoning_effort: reasoning,
+        // GPT-5+ verbosity knob — orthogonal to reasoning_effort. 'low' is
+        // the right pick for structured-only outputs (no narrative padding).
+        ...(opts.verbosity ? { verbosity: opts.verbosity } : {}),
         messages: [
           ...(opts.system ? [{ role: 'system' as const, content: opts.system }] : []),
           { role: 'user' as const, content: prompt },
