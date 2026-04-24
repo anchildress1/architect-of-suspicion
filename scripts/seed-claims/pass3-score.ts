@@ -32,9 +32,25 @@ Scoring axes (integer 1-5 each):
 2. SURPRISE — how likely the hidden "fact" field contradicts the player's gut read of title+blurb.
    5 = gut read is almost certainly wrong. 3 = fact adds nuance. 1 = fact confirms surface read.
 
+Context levers — use these to calibrate the above two scores. They are NOT separate outputs. Look at tags, projects, and fact to infer them:
+- WORK vs PLAY.
+    • "THD" tag (or other employer/client tags) → WORK inside a corporate layer with stricter guidance, reviewers, compliance, and negotiated latitude.
+    • Projects like "CheckMark", "System Notes", "Legacy Smelter", "Carbon Trace", "Underfoot Travel" → PLAY projects designed to operate OUTSIDE corporate constraints. Ashley sets the rules.
+    • Work implies narrower trade-off latitude; play implies wider latitude and self-imposed constraints.
+    • If title+blurb reads as one but tags/projects/fact reveal the other, raise SURPRISE. If the nature is genuinely unclear from the surface, raise AMBIGUITY.
+- DEADLINE + STACK FAMILIARITY.
+    • "DEV Challenge" tag (any form, e.g. "DEV Challenge > Algolia Agent Studio", "DEV Challenge > WeCoded 2026") → STRICT deadline. Time-boxed community challenge. Stack is often announced AT the start, so assume Ashley did NOT know the stack going in unless the fact says otherwise.
+    • Hackathons, Advent calendars, contests, jam submissions → strict deadline.
+    • "THD" or other employer-work tags → corporate cadence deadlines (sprint, release, incident SLA) — deadline present but negotiable within the layer. Usually a familiar stack.
+    • Personal projects without a challenge marker → no external deadline; pacing is self-imposed; stack is typically chosen in advance.
+    • If the fact reveals the stack was unfamiliar AND a deadline existed, that combination massively raises tension against claims about speed, quality, scope discipline, reliability, or novelty — surface that.
+  When the player would assume a different deadline posture than the tags/fact reveal, raise SURPRISE. Hidden deadlines (especially with unfamiliar stacks) almost always raise AMBIGUITY too, because they reframe every trade-off in the card.
+
+Rule of thumb: when the player can't infer work/play, deadline, or stack-familiarity context from title+blurb alone, but it materially changes how the card reads against the claim, both AMBIGUITY and SURPRISE should move up. Evidence where the hidden context confirms the surface read stays low on both.
+
 Edge cases:
 - Card seems irrelevant to the claim → ambiguity=1, surprise=1
-- Card has no fact → score surprise based on whether title+blurb alone is deceptive`;
+- Card has no fact → score surprise based on whether title+blurb alone is deceptive on work/play or timing`;
 
 /** Build a batch-specific schema that constrains `card_id` to the exact UUID
  *  set in the batch via JSON Schema `enum`. OpenAI strict mode enforces this,

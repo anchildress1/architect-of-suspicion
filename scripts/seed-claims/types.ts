@@ -1,5 +1,13 @@
 /** Types shared across the claim engine pipeline. */
 
+/** jsonb tags are stored as { lvl0: string[]; lvl1: string[]? } — lvl1
+ *  entries look like "DEV Challenge > DEV April Fools 2026" and carry more
+ *  signal than lvl0 alone. Optional because not every card has lvl1. */
+export interface CardTags {
+  lvl0?: string[];
+  lvl1?: string[];
+}
+
 export interface CardRow {
   objectID: string;
   title: string;
@@ -10,6 +18,14 @@ export interface CardRow {
   /** ISO 8601 timestamp from public.cards.created_at — used for temporal reasoning
    *  in Pass 4 (did this pattern evolve over time, or is it genuinely contradictory?). */
   created_at: string | null;
+  /** Hierarchical tags — carry work/play + deadline signals the seed passes
+   *  need to calibrate ambiguity/surprise and shape the Architect's framing.
+   *  Examples: "DEV Challenge > WeCoded 2026", "THD > …". */
+  tags: CardTags | null;
+  /** Project labels — rough work/play bucketing. Personal-brand projects
+   *  (e.g. "CheckMark", "System Notes") are play; employer/client project
+   *  names are work. */
+  projects: string[] | null;
 }
 
 /** Room slugs gameplay uses; matches src/lib/rooms.ts. Entry Hall & Attic

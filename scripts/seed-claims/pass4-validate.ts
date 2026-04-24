@@ -22,7 +22,13 @@ import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
 const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
 
-Raw materials per card: title, blurb, fact, created_at. Use all four. Do not fabricate anything absent from these fields. Always write in third person — use "Ashley" by name, never pronouns as a substitute.
+Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields. Always write in third person — use "Ashley" by name, never pronouns as a substitute.
+
+Tags and projects carry the work/play + deadline context:
+- "DEV Challenge > …" tag → strict external deadline, stack often unfamiliar at start. Surface the pressure in objections or proofs where it sharpens the claim.
+- "THD" tag (or other employer/client names) → corporate-layer work; stricter guidance, negotiated trade-offs.
+- Personal-brand projects ("CheckMark", "System Notes", "Legacy Smelter", "Carbon Trace", "Underfoot Travel") → play mode; Ashley sets the rules and self-imposes constraints.
+- Lean on these signals when the surface blurb alone would mislead a player about the nature of the work.
 
 Temporal reasoning rules:
 - DIFFERENT time periods + apparent contradiction → may show evolution, not hypocrisy. Weaken the claim in your objection.
@@ -72,7 +78,11 @@ function buildPrompt(claim: GeneratedClaim, cards: CardRow[], scores: CardClaimS
     .map((c) => {
       const s = scoreById.get(c.objectID)!;
       const date = c.created_at ? new Date(c.created_at).toISOString().slice(0, 10) : 'unknown';
-      return `- id=${c.objectID} [${c.category}] "${c.title}" (created=${date}, ambig=${s.ambiguity}, surprise=${s.surprise})\n    blurb: ${c.blurb}\n    fact: ${c.fact ?? '(none)'}`;
+      const tagList = c.tags?.lvl1?.length ? c.tags.lvl1 : (c.tags?.lvl0 ?? []);
+      const tagLine = tagList.length > 0 ? `\n    tags: ${tagList.join(', ')}` : '';
+      const projectLine =
+        c.projects && c.projects.length > 0 ? `\n    projects: ${c.projects.join(', ')}` : '';
+      return `- id=${c.objectID} [${c.category}] "${c.title}" (created=${date}, ambig=${s.ambiguity}, surprise=${s.surprise})\n    blurb: ${c.blurb}\n    fact: ${c.fact ?? '(none)'}${tagLine}${projectLine}`;
     })
     .join('\n');
 
