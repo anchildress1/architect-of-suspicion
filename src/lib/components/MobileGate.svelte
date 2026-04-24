@@ -4,26 +4,21 @@
 
 {#if !dismissed}
   <div
-    class="mobile-gate fixed inset-0 z-[100] flex items-center justify-center bg-void/95 p-8 backdrop-blur-sm"
+    class="mobile-gate"
     role="dialog"
     aria-modal="true"
     aria-label="Desktop recommended notice"
   >
-    <div class="max-w-sm text-center">
-      <p class="font-readout text-brass-dim mb-4 text-xs uppercase tracking-[0.3em]">
-        Notice from The Architect
-      </p>
-      <h2 class="font-display text-parchment mb-4 text-xl leading-relaxed">
-        This Investigation Is Best Conducted at a Proper Desk
+    <div class="mobile-gate-card">
+      <p class="mobile-gate-eyebrow">Notice from The Architect</p>
+      <h2 class="mobile-gate-title">
+        This investigation is best conducted at a proper desk.
       </h2>
-      <p class="font-body text-parchment-dim mb-8 text-sm leading-relaxed">
-        The mansion's rooms, evidence cards, and Architect panel are designed for screens 768px or
-        wider. You may proceed, but the experience may feel constrained.
+      <p class="mobile-gate-body">
+        The mansion, witness stand, and verdict letter are designed for screens 768&thinsp;px or
+        wider. Proceed if you must.
       </p>
-      <button
-        onclick={() => (dismissed = true)}
-        class="font-display border-brass/30 bg-brass/10 text-brass hover:bg-brass/20 hover:border-brass/50 rounded border px-6 py-2.5 text-sm uppercase tracking-widest transition-all duration-300"
-      >
+      <button class="mobile-gate-button" onclick={() => (dismissed = true)}>
         Proceed Anyway
       </button>
     </div>
@@ -37,7 +32,64 @@
 
   @media (max-width: 767px) {
     .mobile-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 11, 13, 0.96);
+      backdrop-filter: blur(6px);
+      padding: 2rem;
     }
+  }
+
+  .mobile-gate-card {
+    max-width: 22rem;
+    text-align: center;
+  }
+
+  .mobile-gate-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 0.62rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 1rem;
+  }
+
+  .mobile-gate-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-style: italic;
+    color: var(--color-bone);
+    line-height: 1.3;
+    margin-bottom: 1rem;
+  }
+
+  .mobile-gate-body {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--color-paper-dim);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+  }
+
+  .mobile-gate-button {
+    font-family: var(--font-readout);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-bone);
+    background: transparent;
+    border: 1px solid rgba(233, 228, 216, 0.35);
+    padding: 0.7rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .mobile-gate-button:hover {
+    background: rgba(233, 228, 216, 0.08);
+    border-color: rgba(233, 228, 216, 0.6);
   }
 </style>

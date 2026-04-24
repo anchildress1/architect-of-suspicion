@@ -1,7 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { getRoomBySlug } from '$lib/rooms';
-import { fetchCardsByCategory } from '$lib/server/cards';
+import { fetchClaimDeck } from '$lib/server/cards';
 import { error } from '@sveltejs/kit';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const load: PageServerLoad = async ({ params, url }) => {
   const room = getRoomBySlug(params.slug);
@@ -9,16 +11,18 @@ export const load: PageServerLoad = async ({ params, url }) => {
     error(404, 'Room not found');
   }
 
+  const claimId = url.searchParams.get('claim_id');
+  if (!claimId || !UUID_RE.test(claimId)) {
+    error(400, 'Missing or invalid claim_id');
+  }
+
   const exclude = url.searchParams.get('exclude')?.split(',').filter(Boolean) ?? [];
 
-  const { cards: allCards, error: fetchError } = await fetchCardsByCategory(room.category, exclude);
+  const { cards, error: fetchError } = await fetchClaimDeck(claimId, room.category, exclude);
 
   if (fetchError) {
     error(500, fetchError);
   }
 
-  const cards = allCards.slice(0, 6);
-  const pool = allCards.slice(6);
-
-  return { room, cards, pool };
+  return { room, cards };
 };

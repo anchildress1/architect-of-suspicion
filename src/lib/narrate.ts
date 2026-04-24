@@ -13,7 +13,7 @@ export async function requestNarration(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        claim: gameState.current.claim,
+        claim: gameState.current.claimText,
         action,
         room,
         evidence_count: {
@@ -34,6 +34,6 @@ export async function requestNarration(
       });
     }
   } catch {
-    // Narration is non-critical
+    /* Narration is non-critical */
   }
 }

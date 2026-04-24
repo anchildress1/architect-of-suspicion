@@ -17,10 +17,9 @@
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
-    "@fontsource/cinzel": "^5.2.8",
-    "@fontsource/ibm-plex-mono": "^5.2.7",
-    "@fontsource/rajdhani": "^5.2.7",
-    "@fontsource/share-tech-mono": "^5.2.7",
+    "@fontsource/geist-sans": "^5.2.5",
+    "@fontsource/instrument-serif": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@supabase/supabase-js": "^2.49.4",
     "@sveltejs/kit": "^2.57.1",
     "svelte": "^5.55.4"

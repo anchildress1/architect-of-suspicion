@@ -4,15 +4,26 @@
   import { goto } from '$app/navigation';
   import { gameState } from '$lib/stores/gameState.svelte';
 
+  let loadingClaim = $state(true);
   let entering = $state(false);
   let errorMsg = $state('');
 
-  onMount(() => {
+  onMount(async () => {
     gameState.reset();
+    try {
+      const res = await fetch('/api/claim');
+      if (!res.ok) throw new Error('Failed to fetch claim');
+      const claim = (await res.json()) as { id: string; text: string };
+      gameState.setClaim(claim);
+    } catch (err) {
+      errorMsg = err instanceof Error ? err.message : 'Failed to load case';
+    } finally {
+      loadingClaim = false;
+    }
   });
 
   async function enterMansion() {
-    if (entering) return;
+    if (entering || !gameState.current.claimId) return;
     entering = true;
     errorMsg = '';
 
@@ -20,7 +31,7 @@
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claim: gameState.current.claim }),
+        body: JSON.stringify({ claim_id: gameState.current.claimId }),
       });
 
       if (!res.ok) {
@@ -28,8 +39,16 @@
         throw new Error(detail?.message ?? 'Failed to create session');
       }
 
-      const { session_id } = await res.json();
-      gameState.setSessionId(session_id);
+      const data = (await res.json()) as {
+        session_id: string;
+        claim_id: string;
+        claim_text: string;
+      };
+      gameState.initSession({
+        sessionId: data.session_id,
+        claimId: data.claim_id,
+        claimText: data.claim_text,
+      });
       goto(resolve('/mansion'));
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : 'Something went wrong';
@@ -39,168 +58,381 @@
 </script>
 
 <svelte:head>
-  <title>Architect of Suspicion</title>
+  <title>The Summons | Architect of Suspicion</title>
 </svelte:head>
 
-<main class="claim-view">
-  <div class="claim-container">
-    <p class="claim-prelude">The case has been filed</p>
+<main class="summons noise" aria-label="The summons">
+  <div class="ember-floor" aria-hidden="true"></div>
+  {#each [12, 28, 44, 60, 76, 88] as left, i (left)}
+    <div
+      class="steam-shaft"
+      style="left: {left}%; animation-delay: {i * 0.8}s; animation-duration: {5 + (i % 3)}s"
+      aria-hidden="true"
+    ></div>
+  {/each}
 
-    <blockquote class="claim-quote">
-      <span class="claim-mark claim-mark-open">&ldquo;</span>
-      <p class="claim-text">{gameState.current.claim}</p>
-      <span class="claim-mark claim-mark-close">&rdquo;</span>
-    </blockquote>
+  <div class="summons-title reveal">
+    <p class="summons-eyebrow">The Court of Suspicion presents</p>
+    <h1 class="summons-headline">
+      Architect <span class="summons-amp">of</span> Suspicion
+    </h1>
+    <p class="summons-sub">
+      An investigation <span class="dot">&middot;</span> in IX chambers <span class="dot">&middot;</span> concerning one Ashley Childress
+    </p>
+  </div>
 
-    <p class="claim-attribution">&mdash; filed by an anonymous informant</p>
+  <section class="dossier reveal" aria-label="The case dossier">
+    <i class="dossier-corner tl"></i>
+    <i class="dossier-corner tr"></i>
+    <i class="dossier-corner bl"></i>
+    <i class="dossier-corner br"></i>
 
-    <p class="claim-intro">
-      An interactive investigation into a software engineer&rsquo;s career.
-      Explore rooms, collect evidence, render your verdict.
+    <div class="dossier-head">
+      <span class="dossier-id">Case &numero;&nbsp;0426 &middot; Docket&nbsp;AA-XII</span>
+      <span class="dossier-date">{new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+    </div>
+
+    <p class="dossier-eyebrow">The Claim, entered into evidence</p>
+
+    {#if loadingClaim}
+      <h2 class="dossier-claim dossier-claim-loading">&hellip;the docket is being read aloud&hellip;</h2>
+    {:else if gameState.current.claimText}
+      <h2 class="dossier-claim transition-claim">&ldquo;{gameState.current.claimText}&rdquo;</h2>
+    {:else}
+      <h2 class="dossier-claim dossier-claim-error">&ldquo;The docket is empty. Seed the claims pipeline.&rdquo;</h2>
+    {/if}
+
+    <div class="dossier-meta-row">
+      <div>
+        <p class="dossier-field">Subject</p>
+        <p class="dossier-value">Ashley Childress</p>
+      </div>
+      <span class="dossier-sep" aria-hidden="true"></span>
+      <div class="dossier-meta-right">
+        <p class="dossier-field">Filed by</p>
+        <p class="dossier-value dossier-value-italic">Anonymous</p>
+      </div>
+    </div>
+
+    <p class="dossier-intro">
+      The doors are bolted. The gallery has assembled. Nine chambers stand between you and a verdict &mdash; each holds witnesses, nothing more. You will pick. You will rule. And I, the Architect, will be watching.
     </p>
 
-    <button
-      onclick={enterMansion}
-      disabled={entering}
-      class="claim-enter"
-      aria-label="Enter the mansion to begin investigation"
-    >
-      {entering ? 'Entering...' : 'Enter the Mansion'}
-    </button>
+    <div class="dossier-cta">
+      <button
+        class="lever-btn"
+        disabled={entering || loadingClaim || !gameState.current.claimId}
+        onclick={enterMansion}
+      >
+        {entering ? 'Bolting the doors&hellip;' : 'Enter the Mansion'}
+      </button>
+      <p class="dossier-meta-text">
+        9 chambers &middot; verdict required <br />
+        no accounts &middot; no timer
+      </p>
+    </div>
 
     {#if errorMsg}
-      <p class="claim-error" role="alert">{errorMsg}</p>
+      <p class="dossier-error" role="alert">{errorMsg}</p>
     {/if}
-  </div>
+  </section>
 </main>
 
 <style>
-  .claim-view {
+  .summons {
+    position: relative;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 2rem;
-    background: radial-gradient(ellipse at center bottom, #1a1520 0%, var(--color-void) 70%);
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 55%, #1a1420 0%, transparent 70%),
+      radial-gradient(ellipse at 50% 100%, rgba(210, 58, 42, 0.18), transparent 55%),
+      linear-gradient(180deg, #070810 0%, #05060a 100%);
   }
 
-  .claim-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .ember-floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 45%;
+    background: radial-gradient(ellipse 70% 100% at 50% 120%, rgba(210, 58, 42, 0.22), transparent 60%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  .steam-shaft {
+    position: absolute;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(to top, rgba(255, 240, 220, 0), rgba(255, 240, 220, 0.18) 50%, rgba(255, 240, 220, 0));
+    filter: blur(3px);
+    animation: steam 6s ease-in infinite;
+    pointer-events: none;
+  }
+
+  @keyframes steam {
+    0% {
+      transform: translateY(0) scaleY(1);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateY(-100vh) scaleY(1.2);
+      opacity: 0;
+    }
+  }
+
+  .summons-title {
+    position: relative;
+    z-index: 5;
     text-align: center;
-    max-width: 42rem;
+    margin-bottom: 2.5rem;
   }
 
-  .claim-prelude {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+  .summons-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 0.65rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 1rem;
+  }
+
+  .summons-headline {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(2.5rem, 6vw, 4.25rem);
+    color: var(--color-bone);
+    line-height: 1;
+    text-shadow: 0 4px 40px rgba(210, 58, 42, 0.18);
+  }
+
+  .summons-amp {
+    font-style: italic;
+    font-size: 0.75em;
+    color: var(--color-brass-dim);
+    padding: 0 0.2em;
+  }
+
+  .summons-sub {
+    font-family: var(--font-readout);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-paper-dim);
+    margin-top: 1.1rem;
+  }
+
+  .summons-sub .dot {
+    color: var(--color-brass-dim);
+    margin: 0 0.3em;
+  }
+
+  /* The dossier — the centerpiece */
+  .dossier {
+    position: relative;
+    z-index: 5;
+    width: min(100%, 640px);
+    padding: 44px 52px 56px;
+    background: linear-gradient(180deg, #161922 0%, #0e1118 100%);
+    border: 1px solid rgba(233, 228, 216, 0.25);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.6) inset,
+      0 40px 100px rgba(0, 0, 0, 0.75),
+      0 0 80px rgba(210, 58, 42, 0.06);
+    transform: rotate(-0.6deg);
+  }
+
+  .dossier::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border: 1px solid rgba(233, 228, 216, 0.1);
+    pointer-events: none;
+  }
+
+  .dossier-corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(210, 58, 42, 0.4);
+    pointer-events: none;
+  }
+
+  .dossier-corner.tl {
+    top: 6px;
+    left: 6px;
+    border-right: none;
+    border-bottom: none;
+  }
+  .dossier-corner.tr {
+    top: 6px;
+    right: 6px;
+    border-left: none;
+    border-bottom: none;
+  }
+  .dossier-corner.bl {
+    bottom: 6px;
+    left: 6px;
+    border-right: none;
+    border-top: none;
+  }
+  .dossier-corner.br {
+    bottom: 6px;
+    right: 6px;
+    border-left: none;
+    border-top: none;
+  }
+
+  .dossier-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.7rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px dashed rgba(233, 228, 216, 0.2);
+    font-family: var(--font-readout);
+    font-size: 0.62rem;
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-bottom: 2rem;
-    opacity: 0;
-    animation: fadeUp 1s 0.5s forwards;
   }
 
-  .claim-quote {
-    margin-bottom: 1.5rem;
-    opacity: 0;
-    animation: fadeUp 1.2s 1.2s forwards;
-  }
-
-  .claim-mark {
-    font-family: var(--font-display);
-    font-size: 3rem;
-    color: var(--color-brass);
-    line-height: 0.5;
-    display: block;
-  }
-
-  .claim-mark-open {
-    text-align: left;
-  }
-
-  .claim-mark-close {
-    text-align: right;
-    margin-top: 0.5rem;
-  }
-
-  .claim-text {
-    font-family: var(--font-display);
-    font-size: clamp(1.5rem, 4vw, 3rem);
-    font-weight: 700;
-    color: var(--color-parchment);
-    line-height: 1.3;
-    text-shadow: 0 0 40px rgba(196, 162, 78, 0.15);
-  }
-
-  .claim-attribution {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
+  .dossier-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    opacity: 0;
-    animation: fadeUp 1s 2s forwards;
+    margin-bottom: 0.6rem;
   }
 
-  .claim-intro {
-    font-family: var(--font-body);
-    font-size: 0.85rem;
-    color: var(--color-parchment-dim);
-    line-height: 1.6;
-    max-width: 28rem;
-    text-align: center;
-    margin-top: 1.5rem;
-    opacity: 0;
-    animation: fadeUp 1s 2s forwards;
-  }
-
-  .claim-enter {
-    margin-top: 2rem;
+  .dossier-claim {
     font-family: var(--font-display);
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    font-style: italic;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    color: var(--color-bone);
+    line-height: 1.25;
+    margin-bottom: 1.8rem;
+    text-wrap: balance;
+  }
+
+  .dossier-claim-loading {
+    color: var(--color-brass-dim);
+    font-size: 1.1rem;
+  }
+
+  .dossier-claim-error {
+    color: var(--color-ember);
+    font-size: 1.1rem;
+  }
+
+  .dossier-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid rgba(233, 228, 216, 0.1);
+  }
+
+  .dossier-meta-right {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .dossier-sep {
+    width: 1px;
+    height: 32px;
+    background: rgba(233, 228, 216, 0.2);
+  }
+
+  .dossier-field {
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    padding: 0.8rem 2.5rem;
-    border: 1px solid var(--color-brass-dim);
-    background: rgba(196, 162, 78, 0.1);
-    color: var(--color-brass);
+    color: var(--color-brass-dim);
+  }
+
+  .dossier-value {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    color: var(--color-bone);
+    margin-top: 0.2rem;
+  }
+
+  .dossier-value-italic {
+    font-style: italic;
+    opacity: 0.85;
+  }
+
+  .dossier-intro {
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    color: var(--color-paper-dim);
+    line-height: 1.7;
+    margin-bottom: 1.8rem;
+    text-wrap: pretty;
+  }
+
+  .dossier-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.2rem;
+  }
+
+  .lever-btn {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--color-bone);
+    background: linear-gradient(180deg, rgba(210, 58, 42, 0.18), rgba(138, 31, 20, 0.18));
+    border: 1px solid rgba(210, 58, 42, 0.55);
+    padding: 0.7rem 1.6rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    opacity: 0;
-    animation: fadeUp 1s 2.8s forwards;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 8px 24px rgba(210, 58, 42, 0.18);
   }
 
-  .claim-enter:hover:not(:disabled) {
-    border-color: var(--color-brass);
-    background: rgba(196, 162, 78, 0.15);
-    box-shadow: 0 0 20px rgba(196, 162, 78, 0.1);
+  .lever-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(210, 58, 42, 0.32), rgba(138, 31, 20, 0.28));
+    border-color: var(--color-ember);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 12px 32px rgba(210, 58, 42, 0.32);
   }
 
-  .claim-enter:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .lever-btn:disabled {
+    opacity: 0.4;
+    cursor: wait;
   }
 
-  .claim-error {
-    font-family: var(--font-body);
-    font-size: 0.85rem;
-    color: var(--color-forge-orange);
+  .dossier-meta-text {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .dossier-error {
     margin-top: 1rem;
-  }
-
-  @keyframes fadeUp {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    font-family: var(--font-readout);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-ember);
+    text-align: center;
   }
 </style>

@@ -4,74 +4,86 @@
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
-  import EvidenceCard from '$lib/components/EvidenceCard.svelte';
-  import type { Card, Classification } from '$lib/types';
+  import WitnessCard from '$lib/components/WitnessCard.svelte';
+  import WitnessQueue from '$lib/components/WitnessQueue.svelte';
+  import type { Classification, ClaimCardEntry, EvaluateResponse } from '$lib/types';
 
   let { data } = $props();
 
-  // Intentionally capture initial server data — hand/pool are managed client-side
   const room = untrack(() => data.room);
-  let hand = $state<Card[]>(untrack(() => [...data.cards]));
-  let drawPool = $state<Card[]>(untrack(() => [...data.pool]));
-  let exhausted = $derived(hand.length === 0 && drawPool.length === 0);
-  let totalEvaluated = $derived(gameState.current.evidence.length);
-  let roomTension = $derived(totalEvaluated >= 10 ? 'high' : totalEvaluated >= 5 ? 'mid' : 'low');
+  const initialDeck = untrack(() => data.cards);
+
+  let deck = $state<ClaimCardEntry[]>(initialDeck);
+  let rulings = $state<Record<string, Classification>>({});
   let evaluating = $state(false);
-  let evaluatingIdx = $state<number | null>(null);
+  let pointer = $state(0);
 
-  onMount(() => {
-    const alreadyVisited = gameState.current.roomsVisited.includes(room.slug);
-    gameState.visitRoom(room.slug);
-    if (!alreadyVisited) {
-      requestNarration('enter_room', room.slug);
+  const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
+  const current = $derived(deck[pointer]);
+  const exhausted = $derived(remaining === 0);
+
+  function nextUnruledIndex(from: number): number {
+    for (let i = from + 1; i < deck.length; i++) {
+      if (!rulings[deck[i].objectID]) return i;
     }
-  });
+    for (let i = 0; i < deck.length; i++) {
+      if (!rulings[deck[i].objectID]) return i;
+    }
+    return -1;
+  }
 
-  async function handleClassify(card: Card, classification: Classification) {
+  function jumpTo(index: number) {
+    if (index < 0 || index >= deck.length) return;
+    pointer = index;
+  }
+
+  async function decide(card: ClaimCardEntry, classification: Classification) {
+    if (!gameState.current.sessionId || !gameState.current.claimId) return;
+
     const deliberatingId = crypto.randomUUID();
     gameState.addFeedEntry({
       id: deliberatingId,
       type: 'narration',
-      text: 'The Architect deliberates...',
+      text: 'The Architect deliberates&hellip;',
       timestamp: Date.now(),
     });
 
     evaluating = true;
-    evaluatingIdx = hand.findIndex((c) => c.objectID === card.objectID);
-
     try {
       const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: gameState.current.sessionId,
-          claim: gameState.current.claim,
+          claim_id: gameState.current.claimId,
           card_id: card.objectID,
           classification,
         }),
       });
 
+      gameState.removeFeedEntry(deliberatingId);
+
       if (!res.ok) {
-        gameState.removeFeedEntry(deliberatingId);
         gameState.addFeedEntry({
           id: crypto.randomUUID(),
           type: 'narration',
-          text: 'The gears seize — this evidence could not be processed.',
+          text: 'The mechanism seized — that exhibit could not be read.',
           timestamp: Date.now(),
         });
         return;
       }
 
-      const { ai_reaction } = await res.json();
+      const { ai_reaction, attention_delta } = (await res.json()) as EvaluateResponse;
 
-      // Only advance state after successful evaluation
       gameState.addFeedEntry({
         id: crypto.randomUUID(),
         type: 'action',
-        text: `Classified "${card.title}" as ${classification}`,
+        text:
+          classification === 'dismiss'
+            ? `Struck "${card.title}" from the record.`
+            : `Classified "${card.title}" as ${classification}.`,
         timestamp: Date.now(),
       });
-      gameState.removeFeedEntry(deliberatingId);
 
       if (ai_reaction) {
         gameState.addFeedEntry({
@@ -83,31 +95,35 @@
       }
 
       gameState.addEvidence({ card, classification });
+      gameState.nudgeAttention(attention_delta);
 
-      // Replace card in hand from draw pool
-      const idx = hand.findIndex((c) => c.objectID === card.objectID);
-      if (idx !== -1) {
-        if (drawPool.length > 0) {
-          const replacement = drawPool[0];
-          hand = [...hand.slice(0, idx), replacement, ...hand.slice(idx + 1)];
-          drawPool = drawPool.slice(1);
-        } else {
-          hand = [...hand.slice(0, idx), ...hand.slice(idx + 1)];
-        }
-      }
+      rulings = { ...rulings, [card.objectID]: classification };
+      const next = nextUnruledIndex(pointer);
+      if (next >= 0) pointer = next;
     } catch {
       gameState.removeFeedEntry(deliberatingId);
       gameState.addFeedEntry({
         id: crypto.randomUUID(),
         type: 'narration',
-        text: 'The gears seize — this evidence could not be processed.',
+        text: 'The mechanism seized — that exhibit could not be read.',
         timestamp: Date.now(),
       });
     } finally {
       evaluating = false;
-      evaluatingIdx = null;
     }
   }
+
+  onMount(async () => {
+    if (!gameState.current.sessionId) {
+      window.location.href = resolve('/');
+      return;
+    }
+    const alreadyVisited = gameState.current.roomsVisited.includes(room.slug);
+    gameState.visitRoom(room.slug);
+    if (!alreadyVisited) {
+      await requestNarration('enter_room', room.slug);
+    }
+  });
 </script>
 
 <svelte:head>
@@ -115,353 +131,244 @@
   <link rel="preload" as="image" href={room.background} fetchpriority="high" />
 </svelte:head>
 
-<div class="flex h-screen overflow-hidden">
+<div class="chamber-shell">
   <ArchitectPanel />
 
-  <main
-    class="room-main"
-    data-tension={roomTension}
-    style="background: url('{room.background}') center/cover no-repeat"
-  >
-    <!-- Dark overlay -->
-    <div class="room-overlay"></div>
+  <main class="chamber-main">
+    <div
+      class="chamber-bg"
+      style="background-image: url('{room.background}')"
+      aria-hidden="true"
+    ></div>
+    <div class="chamber-overlay" aria-hidden="true"></div>
 
-    <!-- Content -->
-    <div class="room-content">
-      <!-- Top bar -->
-      <header class="room-top-bar">
-        <div>
-          <h1 class="room-title">{room.name}</h1>
-          {#if room.category}
-            <p class="room-subtitle">{room.category}</p>
-          {/if}
-        </div>
-        <p class="room-ledger">Hand {hand.length} / Pool {drawPool.length}</p>
-        <a href={resolve('/mansion')} class="btn-back" aria-label="Return to mansion">
-          Back to Mansion
-        </a>
-      </header>
-
-      <!-- Card hand -->
-      <div class="card-area">
-        {#if exhausted}
-          <div class="room-exhausted">
-            <p class="room-exhausted-title">Room Explored</p>
-            <p class="room-exhausted-text">
-              All evidence in this room has been examined.
-            </p>
-            <a href={resolve('/mansion')} class="btn-back" aria-label="Return to mansion">
-              Return to Mansion
-            </a>
-          </div>
-        {:else}
-          <div class="card-grid">
-            {#each hand as card, i (card.objectID)}
-              {#if evaluatingIdx === i}
-                <div class="card-shimmer" aria-label="Evaluating evidence">
-                  <div class="shimmer-accent"></div>
-                  <div class="shimmer-body">
-                    <div class="shimmer-line shimmer-line-short"></div>
-                    <div class="shimmer-line shimmer-line-long"></div>
-                    <div class="shimmer-line shimmer-line-med"></div>
-                  </div>
-                  <div class="shimmer-stamp">Processing</div>
-                </div>
-              {:else}
-                <EvidenceCard {card} onClassify={handleClassify} disabled={evaluating} />
-              {/if}
-            {/each}
-          </div>
-        {/if}
+    <header class="chamber-head">
+      <a class="back-link" href={resolve('/mansion')}>&larr; Back to Mansion</a>
+      <div class="chamber-title-wrap">
+        <p class="chamber-eyebrow">{room.category}</p>
+        <h1 class="chamber-title">The <span class="flourish">{room.name}</span></h1>
       </div>
+      <p class="chamber-clock">
+        {remaining} / {deck.length} remaining
+      </p>
+    </header>
+
+    <div class="chamber-stage">
+      {#if exhausted || !current}
+        <div class="chamber-empty reveal">
+          <p class="chamber-empty-eyebrow">All exhibits ruled</p>
+          <p class="chamber-empty-text">
+            The Architect rests their gaze. You may render your verdict, or seek another chamber.
+          </p>
+          <div class="chamber-empty-actions">
+            <a class="link-btn" href={resolve('/mansion')}>Return to Mansion</a>
+            {#if gameState.current.sessionId}
+              <a
+                class="link-btn link-btn-primary"
+                href={resolve(`/verdict?session=${gameState.current.sessionId}`)}
+              >
+                Render Verdict &rarr;
+              </a>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <WitnessCard
+          card={current}
+          index={pointer}
+          total={deck.length}
+          onDecide={decide}
+          disabled={evaluating}
+        />
+      {/if}
     </div>
+
+    <WitnessQueue deck={deck} {rulings} currentIndex={pointer} onJump={jumpTo} />
   </main>
 </div>
 
 <style>
-  .room-main {
-    position: relative;
-    flex: 1;
+  .chamber-shell {
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background-color: var(--color-void);
+    min-height: 100vh;
+    background: var(--color-ink);
   }
 
-  .room-overlay {
+  .chamber-main {
+    position: relative;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'head head'
+      'stage queue';
+    overflow: hidden;
+  }
+
+  .chamber-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(8, 9, 12, 0.78) 0%,
-      rgba(8, 9, 12, 0.45) 40%,
-      rgba(8, 9, 12, 0.68) 100%
-    );
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    /* Slow Ken Burns drift on entry — purely transform, no blur. */
+    animation: kenBurns 24s ease-in-out infinite alternate;
+    z-index: 0;
   }
 
-  .room-content {
-    position: relative;
+  @keyframes kenBurns {
+    from {
+      transform: scale(1.04) translate(-1%, -0.5%);
+    }
+    to {
+      transform: scale(1.08) translate(1%, 0.5%);
+    }
+  }
+
+  .chamber-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.78) 100%);
     z-index: 1;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
   }
 
-  /* Top bar */
-  .room-top-bar {
-    display: flex;
+  .chamber-head {
+    grid-area: head;
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.95rem 1.4rem;
-    background: linear-gradient(to bottom, rgba(10, 12, 18, 0.95), transparent);
-    flex-shrink: 0;
+    padding: 1.2rem 1.6rem;
+    background: linear-gradient(to bottom, rgba(11, 11, 13, 0.85), transparent);
   }
 
-  .room-title {
-    font-family: var(--font-display);
-    font-size: clamp(1.25rem, 3vw, 1.75rem);
-    font-weight: 700;
-    color: var(--color-parchment);
-    letter-spacing: 0.08em;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
-  }
-
-  .room-subtitle {
-    font-family: var(--font-readout);
-    font-size: 0.52rem;
-    letter-spacing: 0.23em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-top: 0.25rem;
-  }
-
-  .room-ledger {
-    margin-left: auto;
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    border: 1px solid rgba(196, 162, 78, 0.2);
-    background: rgba(8, 9, 12, 0.64);
-    padding: 0.2rem 0.45rem;
-    border-radius: 1px;
-    white-space: nowrap;
-  }
-
-  .btn-back {
+  .back-link {
     font-family: var(--font-readout);
     font-size: 0.6rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--color-brass);
-    text-decoration: none;
-    padding: 0.4rem 0.75rem;
-    border: 1px solid rgba(196, 162, 78, 0.38);
-    background: rgba(196, 162, 78, 0.06);
-    border-radius: 0.25rem;
-    transition: all 0.25s;
-  }
-
-  .btn-back:hover {
-    color: var(--color-brass-glow);
-    border-color: rgba(196, 162, 78, 0.55);
-    background: rgba(196, 162, 78, 0.12);
-  }
-
-  /* Card area */
-  .card-area {
-    flex: 1;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 1.3rem 1.5rem 1.8rem;
-    overflow-y: auto;
-    min-height: 0;
-  }
-
-  .card-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    max-width: 54rem;
-    width: 100%;
-  }
-
-  /* Exhausted state */
-  .room-exhausted {
-    text-align: center;
-    align-self: center;
-  }
-
-  .room-exhausted-title {
-    font-family: var(--font-display);
-    font-size: 1.2rem;
-    color: var(--color-brass);
-    margin-bottom: 0.5rem;
-  }
-
-  .room-exhausted-text {
-    font-family: var(--font-body);
-    font-size: 0.9rem;
-    color: var(--color-parchment-dim);
-    margin-bottom: 1rem;
-  }
-
-  /* Shimmer placeholder during evaluation */
-  .card-shimmer {
-    display: flex;
-    flex-direction: column;
-    width: 16rem;
-    min-height: 12.75rem;
-    background: linear-gradient(
-      165deg,
-      rgba(28, 31, 42, 0.95) 0%,
-      rgba(19, 22, 31, 0.92) 50%,
-      rgba(13, 16, 23, 0.95) 100%
-    );
-    border: 1px solid rgba(196, 162, 78, 0.25);
-    border-radius: 0.3rem;
-    overflow: hidden;
-    animation: shimmerPulse 1.5s ease-in-out infinite;
-  }
-
-  .shimmer-accent {
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--color-brass-dim), transparent);
-    animation: shimmerSlide 1.5s ease-in-out infinite;
-  }
-
-  .shimmer-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.25rem 1.125rem;
-  }
-
-  .shimmer-stamp {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    border-top: 1px solid rgba(196, 162, 78, 0.15);
-    padding: 0.45rem 0.6rem;
-    background: rgba(8, 9, 12, 0.5);
+    text-decoration: none;
+    transition: color 0.3s;
+    justify-self: start;
   }
 
-  .shimmer-line {
-    height: 0.75rem;
-    background: rgba(196, 162, 78, 0.06);
-    border-radius: 0.25rem;
+  .back-link:hover {
+    color: var(--color-bone);
   }
 
-  .shimmer-line-short {
-    width: 40%;
+  .chamber-title-wrap {
+    text-align: center;
   }
 
-  .shimmer-line-long {
-    width: 85%;
+  .chamber-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
   }
 
-  .shimmer-line-med {
-    width: 60%;
+  .chamber-title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    color: var(--color-bone);
+    line-height: 1.1;
+    margin-top: 0.2rem;
   }
 
-  @keyframes shimmerPulse {
-    0%, 100% {
-      border-color: rgba(196, 162, 78, 0.15);
-    }
-    50% {
-      border-color: rgba(196, 162, 78, 0.35);
-    }
+  .flourish {
+    color: var(--color-ember);
   }
 
-  @keyframes shimmerSlide {
-    0% {
-      opacity: 0.3;
-    }
-    50% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0.3;
-    }
+  .chamber-clock {
+    font-family: var(--font-readout);
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    justify-self: end;
+  }
+
+  .chamber-stage {
+    grid-area: stage;
+    position: relative;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 2.5rem 2rem;
+    overflow: hidden;
+  }
+
+  .chamber-empty {
+    text-align: center;
+    max-width: 32rem;
+  }
+
+  .chamber-empty-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 0.6rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+  }
+
+  .chamber-empty-text {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.4rem;
+    color: var(--color-bone);
+    line-height: 1.4;
+    margin: 1rem 0 1.8rem;
+    text-wrap: balance;
+  }
+
+  .chamber-empty-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .link-btn {
+    font-family: var(--font-readout);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.2rem;
+    border: 1px solid rgba(233, 228, 216, 0.35);
+    color: var(--color-bone);
+    text-decoration: none;
+    transition: all 0.3s;
+  }
+
+  .link-btn:hover {
+    background: rgba(233, 228, 216, 0.06);
+    border-color: var(--color-bone);
+  }
+
+  .link-btn-primary {
+    border-color: var(--color-ember);
+    color: var(--color-ember);
+  }
+
+  .link-btn-primary:hover {
+    background: rgba(210, 58, 42, 0.1);
   }
 
   @media (max-width: 900px) {
-    .room-ledger {
-      display: none;
-    }
-
-    .room-top-bar {
-      padding: 0.85rem 1rem;
-    }
-
-    .card-area {
-      padding: 1rem;
-    }
-
-    .card-grid {
-      grid-template-columns: repeat(2, 1fr);
-      max-width: 34rem;
-    }
-  }
-
-  @media (max-width: 700px) {
-    .room-top-bar {
-      flex-wrap: wrap;
-    }
-  }
-
-  @media (max-width: 540px) {
-    .card-grid {
+    .chamber-main {
       grid-template-columns: 1fr;
-      max-width: 17rem;
+      grid-template-areas:
+        'head'
+        'stage';
     }
-  }
-
-  .room-main[data-tension='mid'] .room-title {
-    color: var(--color-brass-glow);
-  }
-
-  .room-main[data-tension='high'] .room-overlay {
-    background:
-      radial-gradient(circle at 70% 10%, rgba(240, 141, 60, 0.18), transparent 30%),
-      linear-gradient(
-        to bottom,
-        rgba(8, 9, 12, 0.82) 0%,
-        rgba(8, 9, 12, 0.52) 40%,
-        rgba(8, 9, 12, 0.72) 100%
-      );
-  }
-
-  .room-main[data-tension='high'] .room-title,
-  .room-main[data-tension='high'] .room-subtitle,
-  .room-main[data-tension='high'] .room-ledger {
-    color: var(--color-ember);
-    text-shadow: 0 0 8px rgba(240, 141, 60, 0.2);
-  }
-
-  .room-main[data-tension='high'] .card-grid {
-    animation: boilerPulse 4s ease-in-out infinite;
-  }
-
-  @keyframes boilerPulse {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-2px);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .room-main[data-tension='high'] .card-grid {
-      animation: none;
+    .chamber-stage {
+      padding: 1rem;
     }
   }
 </style>
