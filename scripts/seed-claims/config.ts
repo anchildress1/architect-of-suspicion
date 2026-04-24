@@ -38,8 +38,9 @@ export const config = {
     // fully-retrained base model since GPT-4.5, with stronger instruction
     // adherence than 5.4 and the verbosity knob that lets structured-only
     // output stay terse. Prompt tuned per OpenAI's GPT-5.2/5.5 cookbook:
-    // CTCO layout, reasoning_effort='minimal' (slight deliberation for the
-    // theory-of-mind scoring step), verbosity='low'. See pass3-score.ts.
+    // CTCO layout, reasoning_effort='low' (GPT-5.5 dropped 'minimal' — so
+    // 'low' is the lowest tier with real deliberation for the theory-of-
+    // mind scoring step), verbosity='low'. See pass3-score.ts.
     pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.5'),
     // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google
     // per PRD). Pro over Flash-Lite-Preview — Pass 4 does the heaviest

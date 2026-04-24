@@ -208,15 +208,13 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
         system: SYSTEM_PROMPT,
         maxTokens: 4000,
         schema: schemaForBatch(batch.map((c) => c.objectID)),
-        // Pass 3 isn't template-filling — it's calibrated judgment: simulate
-        // the player's gut read from title+blurb, compare against what the
-        // hidden fact actually reveals, weigh against the specific claim.
-        // 'none' (pure scoring) under-thinks borderline cases; 'low' is
-        // overkill for integer outputs. 'minimal' is the GPT-5.5 tier
-        // designed for "slight deliberation" — enough for theory-of-mind
-        // and fact-vs-surface comparison without the full thinking cost.
-        // Escalate to 'low' only if eval shows systematic miscalibration.
-        reasoning: 'minimal',
+        // Pass 3 is calibrated judgment: simulate the player's gut read from
+        // title+blurb, compare against what the hidden fact actually reveals,
+        // weigh against the specific claim. 'none' under-thinks borderline
+        // cases (which are the whole point of AMBIGUITY/SURPRISE). GPT-5.5
+        // doesn't accept 'minimal' (dropped in the 5.5 retrain — API rejects
+        // with 400), so 'low' is the lowest tier with real deliberation.
+        reasoning: 'low',
         // GPT-5+ verbosity knob: 'low' suppresses narrative padding around
         // structured JSON. The schema already forbids extra fields; this
         // belt-and-suspenders keeps output latency + token spend tight.

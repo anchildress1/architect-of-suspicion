@@ -12,9 +12,9 @@ export interface CompletionOptions {
   /** JSON Schema for structured output. Required — all passes must use it. */
   schema: Record<string, unknown>;
   /** Anthropic: adaptive thinking + effort level (default 'high').
-   *  OpenAI: reasoning_effort ('none'|'minimal'|'low'|'medium'|'high'|'xhigh').
-   *    GPT-5+ added 'minimal' for tasks that need slight deliberation without
-   *    the full thinking cost of 'low'.
+   *  OpenAI: reasoning_effort — model-dependent set. GPT-5.5 accepts
+   *    'none'|'low'|'medium'|'high'|'xhigh' (no 'minimal' — was dropped in
+   *    the 5.5 retrain). GPT-5.0/5.1 still accept 'minimal'.
    *  Gemini: thinkingConfig.thinkingLevel ('minimal'|'low'|'medium'|'high'). */
   reasoning?: string;
   /** OpenAI-only: `verbosity` param (GPT-5+). Controls output length/depth
@@ -103,8 +103,10 @@ class OpenAIClient implements AIClient {
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
+    // GPT-5.5 accepts: none | low | medium | high | xhigh. 'minimal' was
+    // valid on GPT-5.0 but removed in the 5.5 retrain — API 400s if passed.
     const reasoning =
-      (opts.reasoning as 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
+      (opts.reasoning as 'none' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
     const response = await this.client.chat.completions.create(
       {
         model: this.model,
