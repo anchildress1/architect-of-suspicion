@@ -36,8 +36,19 @@ export function clientFor(model: string): AIClient {
 }
 
 export function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing ${name} environment variable`);
+  const value = process.env[name]?.trim();
+  if (!value) {
+    // Extra context for GEMINI_API_KEY specifically: the @google/genai SDK
+    // silently falls back to GOOGLE_API_KEY when the passed apiKey is empty,
+    // which makes the surface error look like the wrong var is missing.
+    const hint =
+      name === 'GEMINI_API_KEY'
+        ? ' (the @google/genai SDK also probes GOOGLE_API_KEY as a fallback, so errors mentioning that var are actually caused by GEMINI_API_KEY being unset/empty in this project)'
+        : '';
+    throw new Error(
+      `Missing ${name} environment variable${hint}. Set it in .env (or your shell) before running the seed pipeline.`,
+    );
+  }
   return value;
 }
 
