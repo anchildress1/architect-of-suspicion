@@ -66,6 +66,9 @@ export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
     maxTokens: 12000,
     schema: SCHEMA,
     reasoning: 'high',
+    // Adaptive thinking + high effort + 12k tokens routinely runs past 2 min
+    // on the full corpus — override the default client timeout for this pass.
+    timeoutMs: 300_000,
   });
 
   let parsed: TensionMap;

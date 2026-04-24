@@ -15,7 +15,13 @@ export interface CompletionOptions {
    *  OpenAI: reasoning_effort ('none'|'low'|'medium'|'high'|'xhigh').
    *  Gemini: thinkingConfig.thinkingLevel ('minimal'|'low'|'medium'|'high'). */
   reasoning?: string;
+  /** Per-call request timeout (ms). Overrides the client-construction default
+   *  of 120_000. Anthropic + OpenAI only — Gemini's SDK takes its timeout at
+   *  construction, so use a larger constructor timeout if Gemini needs more. */
+  timeoutMs?: number;
 }
+
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 export interface AIClient {
   complete(prompt: string, opts: CompletionOptions): Promise<string>;
@@ -35,26 +41,33 @@ export function requireEnv(name: string): string {
   return value;
 }
 
-
 class AnthropicClient implements AIClient {
   private readonly client: Anthropic;
   constructor(public readonly model: string) {
-    this.client = new Anthropic({ apiKey: requireEnv('ANTHROPIC_API_KEY'), timeout: 120_000 });
+    // The constructor timeout is a fallback — each `complete()` call can
+    // override it per-pass via `opts.timeoutMs` (see CompletionOptions).
+    this.client = new Anthropic({
+      apiKey: requireEnv('ANTHROPIC_API_KEY'),
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
     const effort = (opts.reasoning as 'low' | 'medium' | 'high' | 'max') ?? 'high';
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: opts.maxTokens ?? 4000,
-      system: opts.system,
-      thinking: { type: 'adaptive' },
-      messages: [{ role: 'user', content: prompt }],
-      output_config: {
-        effort,
-        format: { type: 'json_schema', schema: opts.schema },
+    const response = await this.client.messages.create(
+      {
+        model: this.model,
+        max_tokens: opts.maxTokens ?? 4000,
+        system: opts.system,
+        thinking: { type: 'adaptive' },
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          effort,
+          format: { type: 'json_schema', schema: opts.schema },
+        },
       },
-    });
+      opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
+    );
     if (response.stop_reason === 'max_tokens') {
       throw new Error(
         `Anthropic response truncated (stop_reason=max_tokens, model=${this.model}). Increase maxTokens (current: ${opts.maxTokens ?? 4000}).`,
@@ -73,24 +86,30 @@ class AnthropicClient implements AIClient {
 class OpenAIClient implements AIClient {
   private readonly client: OpenAI;
   constructor(public readonly model: string) {
-    this.client = new OpenAI({ apiKey: requireEnv('OPENAI_API_KEY'), timeout: 120_000 });
+    this.client = new OpenAI({
+      apiKey: requireEnv('OPENAI_API_KEY'),
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
     const reasoning = (opts.reasoning as 'none' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      max_completion_tokens: opts.maxTokens ?? 4000,
-      reasoning_effort: reasoning,
-      messages: [
-        ...(opts.system ? [{ role: 'system' as const, content: opts.system }] : []),
-        { role: 'user' as const, content: prompt },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'response', strict: true, schema: opts.schema },
+    const response = await this.client.chat.completions.create(
+      {
+        model: this.model,
+        max_completion_tokens: opts.maxTokens ?? 4000,
+        reasoning_effort: reasoning,
+        messages: [
+          ...(opts.system ? [{ role: 'system' as const, content: opts.system }] : []),
+          { role: 'user' as const, content: prompt },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: { name: 'response', strict: true, schema: opts.schema },
+        },
       },
-    });
+      opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
+    );
     const choice = response.choices[0];
     if (choice?.finish_reason === 'length') {
       throw new Error(
@@ -104,11 +123,19 @@ class OpenAIClient implements AIClient {
 class GeminiClient implements AIClient {
   private readonly client: GoogleGenAI;
   constructor(public readonly model: string) {
-    this.client = new GoogleGenAI({ apiKey: requireEnv('GEMINI_API_KEY'), httpOptions: { timeout: 120_000 } });
+    this.client = new GoogleGenAI({
+      apiKey: requireEnv('GEMINI_API_KEY'),
+      httpOptions: { timeout: DEFAULT_TIMEOUT_MS },
+    });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
     const thinkingLevel = (opts.reasoning as 'minimal' | 'low' | 'medium' | 'high') ?? 'low';
+    if (opts.timeoutMs && opts.timeoutMs !== DEFAULT_TIMEOUT_MS) {
+      console.warn(
+        `[gemini] per-call timeoutMs=${opts.timeoutMs} ignored — Gemini SDK only honors the constructor-time timeout (${DEFAULT_TIMEOUT_MS}ms).`,
+      );
+    }
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: prompt,
