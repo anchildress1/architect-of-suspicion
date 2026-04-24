@@ -1,0 +1,54 @@
+name: Seed Claims
+
+# Security note: all workflow_dispatch inputs are consumed via env: below,
+# never interpolated into shell commands. This is the safe pattern for
+# untrusted input (inputs.* are controllable by anyone with run-workflow
+# permission).
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_claims:
+        description: 'Number of claims to generate'
+        default: '5'
+        type: string
+      dry_run:
+        description: 'Log output without writing to Supabase'
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: Run claim engine pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run claim engine
+        run: pnpm tsx scripts/seed-claims/index.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAIM_ENGINE_GENERATE_CLAIMS: ${{ inputs.target_claims }}
+          CLAIM_ENGINE_DRY_RUN: ${{ inputs.dry_run }}
