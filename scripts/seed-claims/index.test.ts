@@ -5,7 +5,7 @@ import type { Config } from './config';
 function makeModels(overrides: Partial<Config['models']> = {}): Config['models'] {
   return {
     pass1: 'claude-sonnet-4-6',
-    pass2: 'gpt-5.4-mini',
+    pass2: 'gpt-5.4',
     pass3: 'gpt-5.4-mini',
     pass4: 'gemini-3.1-flash-lite-preview',
     ...overrides,

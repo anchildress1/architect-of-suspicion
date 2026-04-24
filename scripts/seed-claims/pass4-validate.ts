@@ -19,21 +19,19 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `You write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer.
+const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer.
 
-Each card has four raw materials: title, blurb, fact, and created_at (when this career event occurred). Use all four freely.
+Raw materials per card: title, blurb, fact, created_at. Use all four. Do not fabricate anything absent from these fields. Always write in third person — use "Ashley" by name, never pronouns as a substitute.
 
-The created_at timestamp is a key reasoning tool:
-- Cards from DIFFERENT time periods that appear contradictory may show evolution, not hypocrisy — weaken the claim accordingly in your objection.
-- Cards from the SAME period that contradict each other, or patterns that hold consistently across ALL years, carry real weight — strengthen the claim in your proof.
-- Surface this temporal dimension in the rewritten_blurb when it creates tension (e.g., "early in her career" or "more recently" — without signaling which reading it supports).
+Temporal reasoning rules:
+- DIFFERENT time periods + apparent contradiction → may show evolution, not hypocrisy. Weaken the claim in your objection.
+- SAME period + contradiction, or a pattern consistent across ALL years → real weight. Strengthen the claim in your proof.
+- Surface timing in the rewritten_blurb when it adds tension (e.g., "early in Ashley's career" or "more recently") without signaling which reading it supports.
 
-Do not fabricate anything not present in title, blurb, fact, or created_at. Always write in third person — use "Ashley" when a name is needed, never "she", "her", or "they" as a substitute for the name.
-
-For each card:
-1. proof — one sentence: how the fact (and timing) supports the claim
-2. objection — one sentence: how the fact (and timing) contradicts or complicates the claim
-3. rewritten_blurb — the player-facing text. Synthesise title, blurb, fact, and temporal context into a description that creates real tension against this specific claim. A player should be able to argue it both ways. Match original blurb length and register. The tension must come from the claim, not be generic.`;
+Output per card (all three fields required):
+1. proof — one sentence: how the fact and timing support the claim
+2. objection — one sentence: how the fact and timing contradict or complicate the claim
+3. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic.`;
 
 const SCHEMA = {
   type: 'object',
@@ -113,6 +111,7 @@ export async function runPass4(
       system: SYSTEM_PROMPT,
       maxTokens: 16000,
       schema: SCHEMA,
+      reasoning: 'low',
     });
 
     let parsed: { arguments: CardArgument[] };

@@ -12,9 +12,11 @@ import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, TensionMap } from './types';
 
-const SYSTEM_PROMPT = `You are analyzing a corpus of career-evidence cards for a narrative game called Architect of Suspicion. Your job is to surface fault lines — places where the same evidence can reasonably be read two contradictory ways, or where themes across categories conflict with each other.
+const SYSTEM_PROMPT = `You analyze a corpus of career-evidence cards for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports contradictory readings, or where themes across categories conflict.
 
-You are NOT writing claims yet. You are producing raw material: the tensions a later pass will weaponize into provocative claims.`;
+Produce raw material only — tensions that a later pass will use to generate claims. Do not write claims yourself.
+
+A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of the subject's behavior. A weak tension is generic (e.g. "ambition vs humility"), single-card, or unfalsifiable.`;
 
 const SCHEMA = {
   type: 'object',
@@ -44,13 +46,15 @@ function buildPrompt(cards: CardRow[]): string {
 ${formatCardCorpus(cards)}
 
 TASK:
-Identify 8-15 distinct tensions in this corpus. A tension is a place where:
-- The same evidence supports contradictory readings (e.g. "takes initiative" vs "ignores input")
-- Themes clash across categories (e.g. awards celebrate boldness, constraints flag risk-aversion)
-- A philosophy card could be read as virtue OR as cope
-- Career decisions contain inherent trade-offs the subject had to make
+Identify 8-15 distinct tensions in this corpus.
 
-Good tensions are specific and grounded in multiple cards. Bad tensions are generic ("ambition vs humility") or single-card.`;
+Tension types (find at least one of each):
+1. Dual-read evidence — the same card supports contradictory readings (e.g. "takes initiative" vs "ignores input")
+2. Cross-category clash — themes conflict across categories (e.g. Awards celebrate boldness while Constraints flag risk-aversion)
+3. Virtue-or-cope — a Philosophy or Work Style card reads as genuine principle OR as rationalization
+4. Trade-off fault line — career Decisions that required sacrificing one value for another
+
+Each tension must reference 3+ specific cards by title and span 2+ categories. Use the notes field for meta-observations about the corpus that did not rise to the level of a full tension.`;
 }
 
 export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
@@ -61,6 +65,7 @@ export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
     system: SYSTEM_PROMPT,
     maxTokens: 6000,
     schema: SCHEMA,
+    reasoning: 'high',
   });
 
   let parsed: TensionMap;

@@ -24,9 +24,10 @@ function bool(name: string, fallback: boolean): boolean {
 
 export const config = {
   models: {
-    // Pass 1 & 2: strong reasoning for tension analysis and claim generation (per PRD)
+    // Pass 1: strong reasoning for tension analysis (Anthropic per PRD)
     pass1: str('CLAIM_ENGINE_PASS1_MODEL', 'claude-sonnet-4-6'),
-    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-sonnet-4-6'),
+    // Pass 2: creative claim generation (OpenAI per PRD; must differ from Pass 4 vendor)
+    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'gpt-5.4'),
     // Pass 3: cheap/fast for bulk structured scoring (OpenAI per PRD)
     pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.4-mini'),
     // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google per PRD)

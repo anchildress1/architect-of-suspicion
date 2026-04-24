@@ -3,7 +3,7 @@
  *  Input:  tension map from Pass 1 + full card corpus.
  *  Output: config.targets.generate candidate claims (default 15), each phrased as a provocative accusation.
  *
- *  Model:  claude-sonnet-4-6
+ *  Model:  gpt-5.4
  */
 
 import { clientFor } from './clients';
@@ -17,9 +17,15 @@ interface ParsedClaim {
   tensions_targeted: string[];
 }
 
-const SYSTEM_PROMPT = `You are writing claims for Architect of Suspicion — a game where players sort career-evidence cards as "proof" or "objection" against a single claim about the subject, Ashley.
+const SYSTEM_PROMPT = `You write claims for Architect of Suspicion — a game where players sort career-evidence cards as "proof" or "objection" against a single claim about the subject, Ashley.
 
-A good claim is a blunt, provocative accusation a reasonable person could argue either way. It's framed from outside looking in, so the player has to make judgment calls against the evidence they see.`;
+A good claim is a blunt, provocative accusation that a reasonable person could argue either way using the available evidence. Claims are framed from an outsider's perspective — the player has no insider knowledge.
+
+Output contract:
+- Every claim must be a single declarative sentence in the form "Ashley [verb] [accusation]"
+- Each claim must be grounded in at least 2 tensions from the input
+- Rationale must name specific card titles or categories that support the claim
+- Return exactly the number of claims requested — no more, no fewer`;
 
 const SCHEMA = {
   type: 'object',
@@ -50,19 +56,27 @@ CORPUS SUMMARY (${cards.length} cards):
 ${formatCardCorpus(cards)}
 
 TASK:
-Generate ${target} candidate claims. Downstream scoring will pick the best ones, so cast a wide net:
-- Vary the breadth: some claims should span many categories (Awards, Experience, Decisions, Work Style, Philosophy, Constraints, Experimentation); some can be more focused but must cover at least 3-4 categories
-- Vary the angle: productivity vs quality, autonomy vs collaboration, craft vs speed, visibility vs substance
-- Each claim must be framed as an accusation someone could argue either way — not a compliment, not a neutral observation
-- Specific enough to evaluate against individual cards, no insider knowledge required
-- Ground in at least 2 tensions from the list above
+Generate exactly ${target} candidate claims. Downstream scoring selects the best ones, so cast a wide net.
 
-Examples of the shape:
+Requirements (all must hold for every claim):
+1. Framed as an accusation someone could argue either way — not a compliment, not neutral
+2. Specific enough to evaluate against individual cards without insider knowledge
+3. Grounded in at least 2 tensions from the list above — cite them in tensions_targeted
+4. Rationale must reference specific card titles or categories as supporting evidence
+
+Variety axes (spread claims across these):
+- Breadth: some claims span 5+ categories; others focus on 3-4 but go deeper
+- Angle: productivity vs quality, autonomy vs collaboration, craft vs speed, visibility vs substance, consistency vs adaptability
+
+Shape examples:
 - "Ashley prioritizes novelty over reliability"
 - "Ashley coasts on reputation rather than earning it"
 - "Ashley takes credit for what the team delivered"
 
-Reject claims that are too soft ("Ashley is ambitious"), too narrow ("Ashley over-tests her code"), or not falsifiable.`;
+Rejection criteria — do not generate claims that are:
+- Too soft: "Ashley is ambitious" (not falsifiable)
+- Too narrow: "Ashley over-tests her code" (too few cards apply)
+- Too specific: requires insider knowledge to evaluate`;
 }
 
 export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<GeneratedClaim[]> {
@@ -73,6 +87,7 @@ export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<
     system: SYSTEM_PROMPT,
     maxTokens: 5000,
     schema: SCHEMA,
+    reasoning: 'medium',
   });
 
   let parsed: { claims: ParsedClaim[] };

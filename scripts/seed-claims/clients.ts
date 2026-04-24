@@ -11,6 +11,10 @@ export interface CompletionOptions {
   maxTokens?: number;
   /** JSON Schema for structured output. Required — all passes must use it. */
   schema: Record<string, unknown>;
+  /** Anthropic: adaptive thinking + effort level (default 'high').
+   *  OpenAI: reasoning_effort ('none'|'low'|'medium'|'high'|'xhigh').
+   *  Gemini: thinkingConfig.thinkingLevel ('minimal'|'low'|'medium'|'high'). */
+  reasoning?: string;
 }
 
 export interface AIClient {
@@ -39,12 +43,15 @@ class AnthropicClient implements AIClient {
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
+    const effort = (opts.reasoning as 'low' | 'medium' | 'high' | 'max') ?? 'high';
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: opts.maxTokens ?? 4000,
       system: opts.system,
+      thinking: { type: 'adaptive' },
       messages: [{ role: 'user', content: prompt }],
       output_config: {
+        effort,
         format: { type: 'json_schema', schema: opts.schema },
       },
     });
@@ -53,18 +60,13 @@ class AnthropicClient implements AIClient {
         `Anthropic response truncated (stop_reason=max_tokens, model=${this.model}). Increase maxTokens (current: ${opts.maxTokens ?? 4000}).`,
       );
     }
-    const block = response.content[0];
-    if (!block) {
+    const textBlock = response.content.find((b) => b.type === 'text');
+    if (!textBlock || textBlock.type !== 'text') {
       throw new Error(
-        `Anthropic returned empty content array (stop_reason=${response.stop_reason}, model=${this.model}).`,
+        `Anthropic returned no text content block (stop_reason=${response.stop_reason}, model=${this.model}).`,
       );
     }
-    if (block.type !== 'text') {
-      throw new Error(
-        `Anthropic returned unexpected content block type "${block.type}" (model=${this.model}).`,
-      );
-    }
-    return block.text;
+    return textBlock.text;
   }
 }
 
@@ -75,9 +77,11 @@ class OpenAIClient implements AIClient {
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
+    const reasoning = (opts.reasoning as 'none' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
     const response = await this.client.chat.completions.create({
       model: this.model,
       max_completion_tokens: opts.maxTokens ?? 4000,
+      reasoning_effort: reasoning,
       messages: [
         ...(opts.system ? [{ role: 'system' as const, content: opts.system }] : []),
         { role: 'user' as const, content: prompt },
@@ -104,6 +108,7 @@ class GeminiClient implements AIClient {
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
+    const thinkingLevel = (opts.reasoning as 'minimal' | 'low' | 'medium' | 'high') ?? 'low';
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: prompt,
@@ -112,6 +117,7 @@ class GeminiClient implements AIClient {
         maxOutputTokens: opts.maxTokens ?? 4000,
         responseMimeType: 'application/json',
         responseJsonSchema: opts.schema,
+        thinkingConfig: { thinkingLevel },
       },
     });
     const candidate = response.candidates?.[0];

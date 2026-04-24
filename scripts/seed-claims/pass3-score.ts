@@ -24,13 +24,17 @@ import { config } from './config';
 import type { CardClaimScore, CardRow, GeneratedClaim, Pass3Result } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS } from './types';
 
-const SYSTEM_PROMPT = `You score how each card in a corpus plays against a single claim.
+const SYSTEM_PROMPT = `Score every card. Return one score object per card — never skip, never duplicate, never invent card IDs.
 
-Two axes:
-- AMBIGUITY (1-5): how torn a player would be classifying this card as proof or objection from title+blurb alone. 5 = both readings are equally defensible. 1 = obvious.
-- SURPRISE (1-5): how likely your evaluation (which sees the full "fact") will disagree with the player's gut read of just title+blurb. 5 = the player's gut is almost certainly wrong. 1 = the fact confirms the surface read.
+Scoring axes (integer 1-5 each):
+1. AMBIGUITY — how torn a player would be classifying this card as proof or objection from title+blurb alone.
+   5 = both readings equally defensible. 3 = leans one way but arguable. 1 = obvious classification.
+2. SURPRISE — how likely the hidden "fact" field contradicts the player's gut read of title+blurb.
+   5 = gut read is almost certainly wrong. 3 = fact adds nuance. 1 = fact confirms surface read.
 
-Score every card. Never skip cards.`;
+Edge cases:
+- Card seems irrelevant to the claim → ambiguity=1, surprise=1
+- Card has no fact → score surprise based on whether title+blurb alone is deceptive`;
 
 const SCHEMA = {
   type: 'object',
@@ -154,6 +158,7 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
         system: SYSTEM_PROMPT,
         maxTokens: 4000,
         schema: SCHEMA,
+        reasoning: 'low',
       });
       let batchResult: { scores: CardClaimScore[] };
       try {
