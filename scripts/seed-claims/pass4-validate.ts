@@ -11,6 +11,7 @@
 import { clientFor } from './clients';
 import { config } from './config';
 import type {
+  CardArgument,
   CardClaimScore,
   CardRow,
   ClaimValidation,
@@ -19,7 +20,7 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer.
+const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
 
 Raw materials per card: title, blurb, fact, created_at. Use all four. Do not fabricate anything absent from these fields. Always write in third person — use "Ashley" by name, never pronouns as a substitute.
 
@@ -28,10 +29,11 @@ Temporal reasoning rules:
 - SAME period + contradiction, or a pattern consistent across ALL years → real weight. Strengthen the claim in your proof.
 - Surface timing in the rewritten_blurb when it adds tension (e.g., "early in Ashley's career" or "more recently") without signaling which reading it supports.
 
-Output per card (all three fields required):
+Output per card (all four fields required):
 1. proof — one sentence: how the fact and timing support the claim
 2. objection — one sentence: how the fact and timing contradict or complicate the claim
-3. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic.`;
+3. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic.
+4. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = the evidence supports the claim. Negative = the evidence undermines it. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. This score is hidden from the player and drives the Architect's reactions at runtime.`;
 
 const SCHEMA = {
   type: 'object',
@@ -45,8 +47,9 @@ const SCHEMA = {
           proof: { type: 'string' },
           objection: { type: 'string' },
           rewritten_blurb: { type: 'string' },
+          ai_score: { type: 'number', minimum: -1, maximum: 1 },
         },
-        required: ['card_id', 'proof', 'objection', 'rewritten_blurb'],
+        required: ['card_id', 'proof', 'objection', 'rewritten_blurb', 'ai_score'],
         additionalProperties: false,
       },
     },
@@ -79,11 +82,18 @@ ${cardBlock}
 For each card: write proof and objection from the fact, then rewrite the blurb to make the player uncertain which way it goes.`;
 }
 
-interface CardArgument {
+interface RawCardArgument {
   card_id: string;
   proof: string;
   objection: string;
   rewritten_blurb: string;
+  ai_score: number;
+}
+
+function clampScore(value: number): number {
+  if (value < -1) return -1;
+  if (value > 1) return 1;
+  return value;
 }
 
 export async function runPass4(
@@ -96,7 +106,7 @@ export async function runPass4(
 
   const cardById = new Map(cards.map((c) => [c.objectID, c]));
   const validations: ClaimValidation[] = [];
-  const rewrites: Map<string, Map<string, string>> = new Map();
+  const argumentsByClaim: Map<string, Map<string, CardArgument>> = new Map();
 
   for (const claim of claims) {
     const scores = scoredByClaim.get(claim.id);
@@ -114,9 +124,9 @@ export async function runPass4(
       reasoning: 'low',
     });
 
-    let parsed: { arguments: CardArgument[] };
+    let parsed: { arguments: RawCardArgument[] };
     try {
-      parsed = JSON.parse(raw) as { arguments: CardArgument[] };
+      parsed = JSON.parse(raw) as { arguments: RawCardArgument[] };
     } catch (err) {
       throw new Error(
         `[pass4] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}).\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
@@ -124,21 +134,33 @@ export async function runPass4(
       );
     }
 
-    // Build rewrite map. Throw if the model omitted any card — a missing rewrite
-    // means the player-facing pool is smaller than expected, distorting survival checks.
-    const claimRewrites = new Map(parsed.arguments.map((a) => [a.card_id, a.rewritten_blurb]));
-    const missingRewrites = claimCards.filter((c) => !claimRewrites.has(c.objectID));
-    if (missingRewrites.length > 0) {
-      const missingIds = missingRewrites.map((c) => c.objectID).join(', ');
+    const claimArguments = new Map<string, CardArgument>();
+    for (const arg of parsed.arguments) {
+      if (typeof arg.ai_score !== 'number' || Number.isNaN(arg.ai_score)) {
+        throw new Error(
+          `[pass4] missing or invalid ai_score for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
+        );
+      }
+      claimArguments.set(arg.card_id, {
+        rewrittenBlurb: arg.rewritten_blurb,
+        aiScore: clampScore(arg.ai_score),
+      });
+    }
+
+    // Throw if the model omitted any card — a missing entry means the player-facing
+    // pool is smaller than expected, distorting survival checks.
+    const missing = claimCards.filter((c) => !claimArguments.has(c.objectID));
+    if (missing.length > 0) {
+      const missingIds = missing.map((c) => c.objectID).join(', ');
       throw new Error(
-        `[pass4] "${claim.claim_text}" (claim_id=${claim.id}): model omitted ${missingRewrites.length} card(s) from output. Missing card IDs: ${missingIds}. Increase maxTokens or reduce pool size.`,
+        `[pass4] "${claim.claim_text}" (claim_id=${claim.id}): model omitted ${missing.length} card(s) from output. Missing card IDs: ${missingIds}. Increase maxTokens or reduce pool size.`,
       );
     }
-    rewrites.set(claim.id, claimRewrites);
+    argumentsByClaim.set(claim.id, claimArguments);
 
-    // Survival check: minimum playable pool — cards that got a rewrite and cover
+    // Survival check: minimum playable pool — cards that got an argument and cover
     // enough rooms. This is a floor, not a quality bar; pass3 ranking does quality.
-    const rewrittenCards = claimCards.filter((c) => claimRewrites.has(c.objectID));
+    const rewrittenCards = claimCards.filter((c) => claimArguments.has(c.objectID));
     const coveredRooms = roomsCovered(rewrittenCards);
     const passedCoverage = coveredRooms >= config.targets.minRooms;
     const passedTotal = rewrittenCards.length >= config.targets.minTotalCards;
@@ -163,7 +185,7 @@ export async function runPass4(
     );
   }
 
-  return { validations, rewrites };
+  return { validations, arguments: argumentsByClaim };
 }
 
 function roomsCovered(cards: CardRow[]): number {

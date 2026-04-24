@@ -65,7 +65,7 @@ export async function main(): Promise<void> {
   const tensions = await runPass1(cards);
   const candidates = await runPass2(cards, tensions);
   const { scored, selected } = await runPass3(cards, candidates);
-  const { validations, rewrites } = await runPass4(selected, scored, cards);
+  const { validations, arguments: claimArguments } = await runPass4(selected, scored, cards);
 
   const inputs: PersistInput[] = selected.map((claim) => {
     const validation = validations.find((v) => v.claim_id === claim.id);
@@ -78,14 +78,14 @@ export async function main(): Promise<void> {
       );
     }
 
-    const claimRewrites = rewrites.get(claim.id);
-    if (!claimRewrites) {
+    const args = claimArguments.get(claim.id);
+    if (!args) {
       throw new Error(
-        `No rewrites for claim "${claim.claim_text}" (claim_id=${claim.id}) — pipeline bug`,
+        `No arguments for claim "${claim.claim_text}" (claim_id=${claim.id}) — pipeline bug`,
       );
     }
 
-    return { claim, validation, scores: claimScores, rewrites: claimRewrites };
+    return { claim, validation, scores: claimScores, arguments: args };
   });
 
   const survivors = inputs.filter((i) => i.validation.survived);

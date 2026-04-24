@@ -85,9 +85,19 @@ export interface Pass3Result {
   selected: GeneratedClaim[];
 }
 
-/** Pass 4 combined output: validation results + claim-specific blurb rewrites. */
+/** Per-card claim-specific output of Pass 4: rewritten blurb + directional score. */
+export interface CardArgument {
+  /** Player-facing blurb rewritten to create tension against this claim. */
+  rewrittenBlurb: string;
+  /** Directional score in [-1.0, 1.0]. Sign = direction (positive supports
+   *  the claim, negative undermines it). Magnitude = confidence. Pre-seeded
+   *  so the runtime never needs to call an LLM to score a pick. */
+  aiScore: number;
+}
+
+/** Pass 4 combined output: validation results + per-card arguments. */
 export interface Pass4Output {
   validations: ClaimValidation[];
-  /** Rewritten blurbs keyed by GeneratedClaim.id → card_id. */
-  rewrites: Map<string, Map<string, string>>;
+  /** Per-card arguments keyed by GeneratedClaim.id → card_id → argument. */
+  arguments: Map<string, Map<string, CardArgument>>;
 }
