@@ -36,9 +36,9 @@ export const config = {
   targets: {
     // Pass 2 generates this many candidate claims. More = better odds of finding
     // ones with cross-room coverage, at the cost of extra Pass 3 scoring calls.
-    generate: num('CLAIM_ENGINE_GENERATE_CLAIMS', 15),
+    generate: num('CLAIM_ENGINE_GENERATE_CLAIMS', 18),
     // Pass 3 selects this many top-ranked claims to send to Pass 4.
-    select: num('CLAIM_ENGINE_SELECT_CLAIMS', 5),
+    select: num('CLAIM_ENGINE_SELECT_CLAIMS', 7),
     // Pass 3 keeps this many top-scoring cards per claim (sorted by
     // ambiguity+surprise descending). Keeps pools claim-specific and bounded.
     topCards: num('CLAIM_ENGINE_TOP_CARDS', 50),
