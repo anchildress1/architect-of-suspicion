@@ -5,24 +5,25 @@ import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prompts/coverLetter';
 import { rateLimitGuard } from '$lib/server/rateLimit';
-import type { Classification, FullCard } from '$lib/types';
+import type { Classification, FullCard, Verdict } from '$lib/types';
 
 const FALLBACK_LETTER =
   'The record could not be composed. The verdict stands, but the letter will have to be written by hand.';
 
-const FALLBACK_CLOSING =
-  'The investigation is concluded. The record speaks for itself.';
+const FALLBACK_CLOSING = 'The investigation is concluded. The record speaks for itself.';
 
 interface GenerateLetterRequest {
   session_id?: string;
-  claim?: string;
   verdict?: string;
 }
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
-  const blocked = rateLimitGuard(getClientAddress());
-  if (blocked) return blocked;
+interface SessionRow {
+  claim_text: string;
+}
 
+type RuledPick = { card_id: string; classification: Exclude<Classification, 'dismiss'> };
+
+async function parseRequest(request: Request): Promise<{ sessionId: string; verdict: Verdict }> {
   let body: unknown;
   try {
     body = await request.json();
@@ -30,88 +31,90 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     error(400, 'Invalid JSON body');
   }
 
-  const { session_id, claim, verdict } = body as GenerateLetterRequest;
+  const { session_id, verdict } = body as GenerateLetterRequest;
 
   if (!session_id || typeof session_id !== 'string') {
     error(400, 'Missing or invalid session_id');
-  }
-  if (!claim || typeof claim !== 'string') {
-    error(400, 'Missing or invalid claim');
   }
   if (verdict !== 'accuse' && verdict !== 'pardon') {
     error(400, 'verdict must be "accuse" or "pardon"');
   }
 
-  const supabase = getSupabase();
-  const suspicion = supabase.schema('suspicion');
+  return { sessionId: session_id, verdict };
+}
 
-  const { data: picks, error: picksError } = await suspicion
+async function loadSessionClaim(sessionId: string): Promise<string> {
+  const { data, error: sessErr } = await getSupabase()
+    .schema('suspicion')
+    .from('sessions')
+    .select('claim_text')
+    .eq('session_id', sessionId)
+    .maybeSingle<SessionRow>();
+
+  if (sessErr) {
+    console.error('[generate-letter] sessions read failed:', sessErr.message);
+    error(500, 'Failed to read session');
+  }
+  if (!data) error(404, 'Session not found');
+  return data.claim_text;
+}
+
+async function loadRuledPicks(sessionId: string): Promise<RuledPick[]> {
+  const { data, error: picksErr } = await getSupabase()
+    .schema('suspicion')
     .from('picks')
     .select('card_id, classification')
-    .eq('session_id', session_id)
+    .eq('session_id', sessionId)
     .order('created_at', { ascending: true });
 
-  if (picksError) {
+  if (picksErr) {
+    console.error('[generate-letter] picks read failed:', picksErr.message);
     error(500, 'Failed to fetch picks');
   }
 
-  // Dismissed exhibits are struck from the record — they do not appear in the letter.
-  const ruledPicks = (picks ?? []).filter((p) => p.classification !== 'dismiss');
-  const cardIds = ruledPicks.map((p) => p.card_id as string);
-
-  let cards: Record<string, FullCard> = {};
-
-  if (cardIds.length > 0) {
-    const { data: cardRows, error: cardsError } = await supabase
-      .from('cards')
-      .select('objectID, title, blurb, fact, category, signal')
-      .in('objectID', cardIds)
-      .is('deleted_at', null);
-
-    if (cardsError) {
-      error(500, 'Failed to fetch cards');
-    }
-
-    cards = Object.fromEntries((cardRows ?? []).map((c) => [c.objectID as string, c as FullCard]));
-  }
-
-  const evidence = ruledPicks
-    .filter((p) => cards[p.card_id as string])
+  return (data ?? [])
+    .filter((p) => p.classification !== 'dismiss')
     .map((p) => ({
-      card: cards[p.card_id as string],
+      card_id: p.card_id as string,
       classification: p.classification as Exclude<Classification, 'dismiss'>,
     }));
+}
 
-  const { error: sessionError } = await suspicion
-    .from('sessions')
-    .update({ verdict, updated_at: new Date().toISOString() })
-    .eq('session_id', session_id);
+async function loadCardsById(ids: string[]): Promise<Record<string, FullCard>> {
+  if (ids.length === 0) return {};
+  const { data, error: cardsError } = await getSupabase()
+    .from('cards')
+    .select('objectID, title, blurb, fact, category, signal')
+    .in('objectID', ids)
+    .is('deleted_at', null);
 
-  if (sessionError) {
-    error(500, 'Failed to update session');
+  if (cardsError) {
+    console.error('[generate-letter] cards read failed:', cardsError.message);
+    error(500, 'Failed to fetch cards');
   }
 
-  let coverLetter = FALLBACK_LETTER;
-  let architectClosing = FALLBACK_CLOSING;
+  return Object.fromEntries((data ?? []).map((c) => [c.objectID as string, c as FullCard]));
+}
 
+async function generateLetter(
+  claimText: string,
+  verdict: Verdict,
+  evidence: Array<{ card: FullCard; classification: Exclude<Classification, 'dismiss'> }>,
+): Promise<{ coverLetter: string; architectClosing: string; ok: boolean }> {
   try {
     const client = getClaudeClient();
-
-    const letterPrompt = buildCoverLetterPrompt(claim, verdict, evidence);
-    const closingPrompt = buildClosingLinePrompt(verdict);
-
     const [letterResponse, closingResponse] = await Promise.all([
       client.messages.create({
         model: 'claude-haiku-4-5',
         max_tokens: 2000,
         system: ARCHITECT_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: letterPrompt }],
+        messages: [{ role: 'user', content: buildCoverLetterPrompt(claimText, verdict, evidence) }],
       }),
       client.messages.create({
         model: 'claude-haiku-4-5',
         max_tokens: 200,
         system: ARCHITECT_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: closingPrompt }],
+        messages: [{ role: 'user', content: buildClosingLinePrompt(verdict) }],
       }),
     ]);
 
@@ -120,20 +123,65 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     const closingText =
       closingResponse.content[0]?.type === 'text' ? closingResponse.content[0].text : '';
 
-    if (letterText) coverLetter = letterText;
-    if (closingText) architectClosing = closingText;
+    return {
+      coverLetter: letterText || FALLBACK_LETTER,
+      architectClosing: closingText || FALLBACK_CLOSING,
+      ok: Boolean(letterText && closingText),
+    };
   } catch (err) {
-    console.error('[generate-letter] Claude API failure:', err instanceof Error ? err.message : err);
+    console.error(
+      '[generate-letter] Claude API failure:',
+      err instanceof Error ? err.message : err,
+    );
+    return { coverLetter: FALLBACK_LETTER, architectClosing: FALLBACK_CLOSING, ok: false };
+  }
+}
+
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+  const blocked = rateLimitGuard(getClientAddress());
+  if (blocked) return blocked;
+
+  const { sessionId, verdict } = await parseRequest(request);
+
+  const claimText = await loadSessionClaim(sessionId);
+  const ruledPicks = await loadRuledPicks(sessionId);
+  const cards = await loadCardsById(ruledPicks.map((p) => p.card_id));
+
+  const evidence = ruledPicks
+    .filter((p) => cards[p.card_id])
+    .map((p) => ({ card: cards[p.card_id], classification: p.classification }));
+
+  const suspicion = getSupabase().schema('suspicion');
+
+  const { error: verdictError } = await suspicion
+    .from('sessions')
+    .update({ verdict, updated_at: new Date().toISOString() })
+    .eq('session_id', sessionId);
+
+  if (verdictError) {
+    console.error('[generate-letter] session verdict update failed:', verdictError.message);
+    error(500, 'Failed to update session');
   }
 
-  await suspicion
+  const { coverLetter, architectClosing, ok } = await generateLetter(claimText, verdict, evidence);
+
+  const { error: letterError } = await suspicion
     .from('sessions')
     .update({
       cover_letter: coverLetter,
       architect_closing: architectClosing,
       updated_at: new Date().toISOString(),
     })
-    .eq('session_id', session_id);
+    .eq('session_id', sessionId);
 
-  return json({ cover_letter: coverLetter, architect_closing: architectClosing });
+  if (letterError) {
+    console.error('[generate-letter] session letter update failed:', letterError.message);
+    error(500, 'Failed to persist letter');
+  }
+
+  return json({
+    cover_letter: coverLetter,
+    architect_closing: architectClosing,
+    letter_fallback: !ok,
+  });
 };

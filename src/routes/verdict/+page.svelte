@@ -59,7 +59,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: gameState.current.sessionId,
-          claim: gameState.current.claimText,
           verdict: v,
         }),
       });
@@ -130,9 +129,7 @@
           </div>
         </div>
 
-        <p class="choose-prompt">
-          The record cannot be amended. Hold to seal.
-        </p>
+        <p class="choose-prompt">The record cannot be amended. Hold to seal.</p>
 
         {#if errorMsg}
           <p class="choose-error" role="alert">{errorMsg}</p>
@@ -178,7 +175,8 @@
         </div>
 
         <footer class="sealed-actions">
-          <button class="link-btn" type="button" onclick={() => window.print()}>Print Letter</button>
+          <button class="link-btn" type="button" onclick={() => window.print()}>Print Letter</button
+          >
           <button class="link-btn link-btn-primary" type="button" onclick={playAgain}>
             Investigate Again
           </button>
@@ -220,8 +218,7 @@
   .verdict-main {
     position: relative;
     min-height: 100vh;
-    background:
-      radial-gradient(ellipse at center, #1a1218 0%, #0b0b0d 60%);
+    background: radial-gradient(ellipse at center, #1a1218 0%, #0b0b0d 60%);
     padding: 3rem 1.5rem 4rem;
   }
 

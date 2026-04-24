@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSupabase } from '$lib/server/supabase';
 import { getClaimById } from '$lib/server/claims';
+import { BASELINE_ATTENTION } from '$lib/attention';
 
 interface CreateSessionRequest {
   claim_id?: string;
@@ -21,20 +22,34 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   const { claim, error: claimErr } = await getClaimById(claim_id);
-  if (claimErr || !claim) {
-    error(404, claimErr ?? 'Claim not found');
+  if (claimErr && claimErr !== 'Claim not found') {
+    // getClaimById already logged the underlying Postgres error.
+    error(500, claimErr);
+  }
+  if (!claim) {
+    error(404, 'Claim not found');
   }
 
   const { data, error: dbError } = await getSupabase()
     .schema('suspicion')
     .from('sessions')
-    .insert({ claim_id: claim.id, claim_text: claim.text })
+    .insert({
+      claim_id: claim.id,
+      claim_text: claim.text,
+      attention: BASELINE_ATTENTION,
+    })
     .select('session_id')
     .single();
 
   if (dbError || !data?.session_id) {
+    console.error('[sessions] insert failed:', dbError?.message ?? 'no session_id returned');
     error(500, 'Failed to create session');
   }
 
-  return json({ session_id: data.session_id, claim_id: claim.id, claim_text: claim.text });
+  return json({
+    session_id: data.session_id,
+    claim_id: claim.id,
+    claim_text: claim.text,
+    attention: BASELINE_ATTENTION,
+  });
 };

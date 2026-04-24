@@ -1,5 +1,5 @@
 import type { Evidence, FeedEntry, GameState, Verdict } from '$lib/types';
-import { applyAttentionDelta, BASELINE_ATTENTION, clampAttention } from '$lib/attention';
+import { BASELINE_ATTENTION, clampAttention } from '$lib/attention';
 
 const STORAGE_KEY = 'architectGameState';
 const ATTENTION_KEY = 'architectAttention';
@@ -14,7 +14,10 @@ function loadState(): PersistedState | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PersistedState;
-  } catch {
+  } catch (err) {
+    // Malformed payload (e.g. after a deploy that changed the shape).
+    // Surface it during QA but don't crash the app — start fresh.
+    console.warn('[gameState] failed to parse persisted state:', err);
     return null;
   }
 }
@@ -24,8 +27,9 @@ function saveState(state: GameState, attention: number) {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, attention }));
     sessionStorage.setItem(ATTENTION_KEY, String(attention));
-  } catch {
-    /* quota exceeded — non-critical */
+  } catch (err) {
+    // Quota exceeded or storage disabled — non-critical but worth surfacing.
+    console.warn('[gameState] failed to persist state:', err);
   }
 }
 
@@ -96,10 +100,6 @@ function createGameState() {
     },
     removeFeedEntry(id: string) {
       state.feed = state.feed.filter((e) => e.id !== id);
-      persist();
-    },
-    nudgeAttention(delta: number) {
-      attention = applyAttentionDelta(attention, delta);
       persist();
     },
     setAttention(value: number) {

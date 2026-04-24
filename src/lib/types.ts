@@ -61,12 +61,16 @@ export interface GameState {
 export interface CoverLetterResponse {
   cover_letter: string;
   architect_closing: string;
+  /** True when the Claude letter call fell back to a static string. */
+  letter_fallback: boolean;
 }
 
 export interface EvaluateResponse {
   ai_reaction: string;
-  /** Hidden-from-player attention delta in [-1.0, 1.0]. Drives the meter
-   *  client-side. The raw score is server-only — only the smoothed needle
-   *  position is ever rendered to the user. */
-  attention_delta: number;
+  /** Post-smoothing needle position [0, 100]. Computed server-side so the raw
+   *  ai_score magnitude never reaches the client (Invariant #2). */
+  attention: number;
+  /** True when the Claude reaction call fell back to a static string — lets
+   *  the UI show a subdued state instead of pretending the Architect spoke. */
+  reaction_fallback: boolean;
 }

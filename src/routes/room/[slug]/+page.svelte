@@ -73,7 +73,7 @@
         return;
       }
 
-      const { ai_reaction, attention_delta } = (await res.json()) as EvaluateResponse;
+      const { ai_reaction, attention } = (await res.json()) as EvaluateResponse;
 
       gameState.addFeedEntry({
         id: crypto.randomUUID(),
@@ -95,7 +95,7 @@
       }
 
       gameState.addEvidence({ card, classification });
-      gameState.nudgeAttention(attention_delta);
+      gameState.setAttention(attention);
 
       rulings = { ...rulings, [card.objectID]: classification };
       const next = nextUnruledIndex(pointer);
@@ -183,7 +183,7 @@
       {/if}
     </div>
 
-    <WitnessQueue deck={deck} {rulings} currentIndex={pointer} onJump={jumpTo} />
+    <WitnessQueue {deck} {rulings} currentIndex={pointer} onJump={jumpTo} />
   </main>
 </div>
 
@@ -229,8 +229,7 @@
   .chamber-overlay {
     position: absolute;
     inset: 0;
-    background:
-      radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.78) 100%);
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.78) 100%);
     z-index: 1;
   }
 

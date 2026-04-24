@@ -56,7 +56,7 @@ describe('POST /api/sessions', () => {
     vi.clearAllMocks();
   });
 
-  it('creates a session and echoes the claim payload', async () => {
+  it('creates a session with baseline attention and echoes the claim payload', async () => {
     mockGetClaimById.mockResolvedValue({
       claim: { id: 'claim-1', text: 'A claim' },
       error: null,
@@ -66,8 +66,17 @@ describe('POST /api/sessions', () => {
     const res = await POST(makeRequest({ claim_id: 'claim-1' }));
     const body = await res.json();
 
-    expect(body).toEqual({ session_id: 'sess-1', claim_id: 'claim-1', claim_text: 'A claim' });
-    expect(mockInsert).toHaveBeenCalledWith({ claim_id: 'claim-1', claim_text: 'A claim' });
+    expect(body).toEqual({
+      session_id: 'sess-1',
+      claim_id: 'claim-1',
+      claim_text: 'A claim',
+      attention: 50,
+    });
+    expect(mockInsert).toHaveBeenCalledWith({
+      claim_id: 'claim-1',
+      claim_text: 'A claim',
+      attention: 50,
+    });
   });
 
   it('returns 400 for missing claim_id', async () => {
@@ -75,13 +84,21 @@ describe('POST /api/sessions', () => {
   });
 
   it('returns 400 for non-string claim_id', async () => {
-    await expect(POST(makeRequest({ claim_id: 42 }))).rejects.toThrow('Missing or invalid claim_id');
+    await expect(POST(makeRequest({ claim_id: 42 }))).rejects.toThrow(
+      'Missing or invalid claim_id',
+    );
   });
 
   it('returns 404 when claim does not resolve', async () => {
     mockGetClaimById.mockResolvedValue({ claim: null, error: 'Claim not found' });
 
     await expect(POST(makeRequest({ claim_id: 'missing' }))).rejects.toThrow('Claim not found');
+  });
+
+  it('returns 500 when the claim resolver errors beyond not-found', async () => {
+    mockGetClaimById.mockResolvedValue({ claim: null, error: 'Failed to fetch claim' });
+
+    await expect(POST(makeRequest({ claim_id: 'c-1' }))).rejects.toThrow('Failed to fetch claim');
   });
 
   it('returns 500 when DB insert fails', async () => {
@@ -91,7 +108,9 @@ describe('POST /api/sessions', () => {
     });
     setupSessionInsert({ data: null, error: { message: 'pg-down' } });
 
-    await expect(POST(makeRequest({ claim_id: 'claim-1' }))).rejects.toThrow('Failed to create session');
+    await expect(POST(makeRequest({ claim_id: 'claim-1' }))).rejects.toThrow(
+      'Failed to create session',
+    );
   });
 
   it('returns 500 when no session_id is returned', async () => {
@@ -101,7 +120,9 @@ describe('POST /api/sessions', () => {
     });
     setupSessionInsert({ data: null, error: null });
 
-    await expect(POST(makeRequest({ claim_id: 'claim-1' }))).rejects.toThrow('Failed to create session');
+    await expect(POST(makeRequest({ claim_id: 'claim-1' }))).rejects.toThrow(
+      'Failed to create session',
+    );
   });
 
   it('returns 400 for invalid JSON body', async () => {
