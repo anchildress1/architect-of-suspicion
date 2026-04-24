@@ -40,7 +40,7 @@ export const config = {
     // per-claim work (validate + rewrite 30-50 blurbs + assign ai_score per
     // claim) and only runs on the top-N selected claims, so the spend is
     // proportionate to the stakes.
-    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gemini-3.1-pro'),
+    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gemini-3.1-pro-preview'),
   },
   targets: {
     // Pass 2 generates this many candidate claims. More = better odds of finding
@@ -64,6 +64,10 @@ export const config = {
     // Cards per scoring batch. Smaller = fewer output tokens per call.
     // 50 cards × ~48 tokens/entry ≈ 2,400 tokens output — well within any limit.
     scoreBatch: num('CLAIM_ENGINE_SCORE_BATCH', 50),
+    // Cards per Pass 4 rewrite batch. 15 keeps each call around 3-4k output
+    // tokens (well under the provider ceiling) and means a flaky batch only
+    // costs its own retry — not the whole claim's spend.
+    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 15),
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),
 } as const;
