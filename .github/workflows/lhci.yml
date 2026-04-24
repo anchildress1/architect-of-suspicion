@@ -1,0 +1,55 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  lhci:
+    name: Lighthouse desktop and mobile
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    timeout-minutes: 12
+
+    env:
+      # Stub envs let SvelteKit boot for static-route audits without real services.
+      SUPABASE_URL: https://stub.supabase.co
+      SUPABASE_SECRET_KEY: stub-secret-key-for-lhci-only
+      ANTHROPIC_API_KEY: stub-anthropic-key-for-lhci-only
+      ORIGIN: http://localhost:3000
+      PORT: '3000'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Sync SvelteKit
+        run: pnpm exec svelte-kit sync
+
+      - name: Build production bundle
+        run: pnpm run build
+
+      - name: Lighthouse desktop
+        run: pnpm dlx '@lhci/cli@0.15.x' autorun --config=lighthouserc.json
+
+      - name: Lighthouse mobile
+        run: pnpm dlx '@lhci/cli@0.15.x' autorun --config=lighthouserc.mobile.json

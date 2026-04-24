@@ -1,0 +1,42 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": null,
+      "startServerCommand": "node build/index.js",
+      "startServerReadyPattern": "Listening on",
+      "url": [
+        "http://localhost:3000/",
+        "http://localhost:3000/attic"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "perf",
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 360,
+          "height": 640,
+          "deviceScaleFactor": 2,
+          "disabled": false
+        }
+      }
+    },
+    "assert": {
+      "preset": "lighthouse:recommended",
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.75, "aggregationMethod": "median-run" }],
+        "csp-xss": "off",
+        "uses-http2": "off",
+        "is-on-https": "off",
+        "redirects-http": "off",
+        "uses-long-cache-ttl": "off",
+        "unused-javascript": "off",
+        "unused-css-rules": "off"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}
