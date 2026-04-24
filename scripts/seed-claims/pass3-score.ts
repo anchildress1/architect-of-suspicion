@@ -36,26 +36,34 @@ Edge cases:
 - Card seems irrelevant to the claim → ambiguity=1, surprise=1
 - Card has no fact → score surprise based on whether title+blurb alone is deceptive`;
 
-const SCHEMA = {
-  type: 'object',
-  properties: {
-    scores: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          card_id: { type: 'string' },
-          ambiguity: { type: 'integer', minimum: 1, maximum: 5 },
-          surprise: { type: 'integer', minimum: 1, maximum: 5 },
+/** Build a batch-specific schema that constrains `card_id` to the exact UUID
+ *  set in the batch via JSON Schema `enum`. OpenAI strict mode enforces this,
+ *  so the model cannot hallucinate or mistype a UUID — GPT-5.4-mini was doing
+ *  both on ~250-card runs with 50-card batches. */
+function schemaForBatch(batchIds: string[]): Record<string, unknown> {
+  return {
+    type: 'object',
+    properties: {
+      scores: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            card_id: { type: 'string', enum: batchIds },
+            ambiguity: { type: 'integer', minimum: 1, maximum: 5 },
+            surprise: { type: 'integer', minimum: 1, maximum: 5 },
+          },
+          required: ['card_id', 'ambiguity', 'surprise'],
+          additionalProperties: false,
         },
-        required: ['card_id', 'ambiguity', 'surprise'],
-        additionalProperties: false,
+        minItems: batchIds.length,
+        maxItems: batchIds.length,
       },
     },
-  },
-  required: ['scores'],
-  additionalProperties: false,
-} as const;
+    required: ['scores'],
+    additionalProperties: false,
+  };
+}
 
 function buildPrompt(claim: GeneratedClaim, cards: CardRow[]): string {
   return `CLAIM: "${claim.claim_text}"
@@ -157,7 +165,7 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
       const raw = await client.complete(buildPrompt(claim, batch), {
         system: SYSTEM_PROMPT,
         maxTokens: 4000,
-        schema: SCHEMA,
+        schema: schemaForBatch(batch.map((c) => c.objectID)),
         reasoning: 'low',
       });
       let batchResult: { scores: CardClaimScore[] };
