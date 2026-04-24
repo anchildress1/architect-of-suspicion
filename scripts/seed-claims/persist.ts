@@ -13,6 +13,24 @@ export interface PersistInput {
 }
 
 export async function persistSeed(inputs: PersistInput[]): Promise<void> {
+  const survivors = inputs.filter((i) => i.validation.survived);
+  if (survivors.length === 0) {
+    throw new Error('persistSeed called with no surviving inputs — refusing to truncate DB');
+  }
+
+  // Pre-validate all rewrites before touching the DB. The truncate+insert sequence
+  // is not atomic — a bug discovered mid-loop would leave the DB partially written.
+  // Fail fast here so the existing seed is never destroyed by a pipeline bug.
+  for (const input of survivors) {
+    for (const cardId of input.validation.eligible_card_ids) {
+      if (!input.rewrites.has(cardId)) {
+        throw new Error(
+          `Missing rewrite for card ${cardId} on claim "${input.claim.claim_text}" — aborting before DB truncation`,
+        );
+      }
+    }
+  }
+
   const supabase = seedSupabase();
 
   // FK-safe truncation: claim_cards first, then claims.

@@ -27,7 +27,7 @@ export const GAMEPLAY_ROOMS = [
 export type RoomSlug = (typeof GAMEPLAY_ROOMS)[number];
 
 /** Maps card category → playable room slug. Categories omitted here
- *  (Architecture, Principle, Process) have no playable room. */
+ *  (About) have no playable room — About cards are excluded from gameplay per Invariant #9. */
 export const CATEGORY_TO_ROOM: Record<string, RoomSlug> = {
   Awards: 'gallery',
   Constraints: 'control-room',
@@ -74,15 +74,6 @@ export interface ClaimValidation {
   eligible_card_ids: string[];
 }
 
-/** Final seed payload written to Supabase. */
-export interface SeedPayload {
-  claim_text: string;
-  rationale: string;
-  room_coverage: number;
-  total_eligible_cards: number;
-  cards: CardClaimScore[];
-}
-
 /** Output of Pass 3: floor-cleared scores per claim + ranked selection for Pass 4. */
 export interface Pass3Result {
   /** Cards that cleared the quality floor, keyed by claim_text. */
@@ -94,7 +85,6 @@ export interface Pass3Result {
 /** Pass 4 combined output: validation results + claim-specific blurb rewrites. */
 export interface Pass4Output {
   validations: ClaimValidation[];
-  /** Rewritten blurbs keyed by claim_text → card_id. Generated in the same
-   *  pass as false-ambiguity detection to avoid a separate API round-trip. */
+  /** Rewritten blurbs keyed by claim_text → card_id. */
   rewrites: Map<string, Map<string, string>>;
 }

@@ -16,7 +16,23 @@ import { runPass3 } from './pass3-score';
 import { runPass4 } from './pass4-validate';
 import { persistSeed, type PersistInput } from './persist';
 
+function validateEnv(): void {
+  const required = [
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'GEMINI_API_KEY',
+    'SUPABASE_URL',
+    'SUPABASE_SECRET_KEY',
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
 async function main(): Promise<void> {
+  validateEnv();
+
   console.log('[seed-claims] starting pipeline');
   console.log('[seed-claims] config:', JSON.stringify(config, null, 2));
 
@@ -33,12 +49,13 @@ async function main(): Promise<void> {
     const validation = validations.find((v) => v.claim_text === claim.claim_text);
     if (!validation) throw new Error(`No validation for claim: ${claim.claim_text}`);
 
-    return {
-      claim,
-      validation,
-      scores: scored.get(claim.claim_text) ?? [],
-      rewrites: rewrites.get(claim.claim_text) ?? new Map<string, string>(),
-    };
+    const claimScores = scored.get(claim.claim_text);
+    if (!claimScores) throw new Error(`No scores for claim: "${claim.claim_text}" — pipeline bug`);
+
+    const claimRewrites = rewrites.get(claim.claim_text);
+    if (!claimRewrites) throw new Error(`No rewrites for claim: "${claim.claim_text}" — pipeline bug`);
+
+    return { claim, validation, scores: claimScores, rewrites: claimRewrites };
   });
 
   const survivors = inputs.filter((i) => i.validation.survived);
@@ -48,7 +65,8 @@ async function main(): Promise<void> {
 
   if (config.dryRun) {
     console.log('[seed-claims] DRY RUN — skipping persistence');
-    console.log(JSON.stringify(inputs, null, 2));
+    // Maps serialize as {} with JSON.stringify — use a replacer to show rewrite content.
+    console.log(JSON.stringify(inputs, (_, v) => (v instanceof Map ? Object.fromEntries(v) : v), 2));
     return;
   }
 
@@ -62,5 +80,5 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.error('[seed-claims] FAILED:', err);
-  process.exitCode = 1;
+  process.exit(1);
 });

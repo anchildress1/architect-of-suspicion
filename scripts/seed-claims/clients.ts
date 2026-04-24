@@ -35,7 +35,7 @@ export function requireEnv(name: string): string {
 class AnthropicClient implements AIClient {
   private readonly client: Anthropic;
   constructor(public readonly model: string) {
-    this.client = new Anthropic({ apiKey: requireEnv('ANTHROPIC_API_KEY') });
+    this.client = new Anthropic({ apiKey: requireEnv('ANTHROPIC_API_KEY'), timeout: 120_000 });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
@@ -48,15 +48,30 @@ class AnthropicClient implements AIClient {
         format: { type: 'json_schema', schema: opts.schema },
       },
     });
+    if (response.stop_reason === 'max_tokens') {
+      throw new Error(
+        `Anthropic response truncated (stop_reason=max_tokens, model=${this.model}). Increase maxTokens (current: ${opts.maxTokens ?? 4000}).`,
+      );
+    }
     const block = response.content[0];
-    return block?.type === 'text' ? block.text : '';
+    if (!block) {
+      throw new Error(
+        `Anthropic returned empty content array (stop_reason=${response.stop_reason}, model=${this.model}).`,
+      );
+    }
+    if (block.type !== 'text') {
+      throw new Error(
+        `Anthropic returned unexpected content block type "${block.type}" (model=${this.model}).`,
+      );
+    }
+    return block.text;
   }
 }
 
 class OpenAIClient implements AIClient {
   private readonly client: OpenAI;
   constructor(public readonly model: string) {
-    this.client = new OpenAI({ apiKey: requireEnv('OPENAI_API_KEY') });
+    this.client = new OpenAI({ apiKey: requireEnv('OPENAI_API_KEY'), timeout: 120_000 });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
@@ -85,7 +100,7 @@ class OpenAIClient implements AIClient {
 class GeminiClient implements AIClient {
   private readonly client: GoogleGenAI;
   constructor(public readonly model: string) {
-    this.client = new GoogleGenAI({ apiKey: requireEnv('GEMINI_API_KEY') });
+    this.client = new GoogleGenAI({ apiKey: requireEnv('GEMINI_API_KEY'), httpOptions: { timeout: 120_000 } });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
@@ -99,6 +114,19 @@ class GeminiClient implements AIClient {
         responseJsonSchema: opts.schema,
       },
     });
-    return response.text ?? '';
+    const candidate = response.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+      throw new Error(
+        `Gemini response did not complete normally (finishReason=${finishReason}, model=${this.model}). This may indicate a safety filter block, truncation, or recitation filter.`,
+      );
+    }
+    const text = response.text;
+    if (text === undefined || text === null) {
+      throw new Error(
+        `Gemini returned no text content (model=${this.model}, finishReason=${finishReason ?? 'unknown'}).`,
+      );
+    }
+    return text;
   }
 }

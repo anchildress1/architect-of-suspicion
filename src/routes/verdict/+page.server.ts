@@ -6,12 +6,17 @@ export const load: PageServerLoad = async ({ url }) => {
   if (!sessionId) return { session: null };
 
   const supabase = getSupabase();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema('suspicion')
     .from('sessions')
     .select('claim_text, verdict, cover_letter, architect_closing')
     .eq('session_id', sessionId)
     .single();
+
+  if (error) {
+    console.error('[verdict] session lookup failed:', error.message);
+    return { session: null };
+  }
 
   if (!data?.cover_letter) return { session: null };
 

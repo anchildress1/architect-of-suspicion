@@ -41,9 +41,12 @@ See `config.ts` for thresholds:
 
 - `CLAIM_ENGINE_GENERATE_CLAIMS` — how many candidate claims Pass 2 generates (default 15)
 - `CLAIM_ENGINE_SELECT_CLAIMS` — how many Pass 3 selects for Pass 4 (default 5)
+- `CLAIM_ENGINE_TOP_CARDS` — max cards kept per claim pool after Pass 3 scoring (default 50)
 - `CLAIM_ENGINE_CARD_FLOOR` — combined `ambiguity+surprise` minimum for a card to count toward claim quality (default 3)
-- `CLAIM_ENGINE_MIN_TOTAL_CARDS` — Pass 4 total minimum (default 30)
+- `CLAIM_ENGINE_SCORE_BATCH` — cards per Pass 3 scoring API call (default 50)
+- `CLAIM_ENGINE_MIN_TOTAL_CARDS` — Pass 4 survival floor: rewritten cards per claim (default 30)
+- `CLAIM_ENGINE_MIN_ROOMS` — Pass 4 survival floor: distinct gameplay rooms that must be covered (default 5)
 
 Pass 3 ranks claims by `rooms² × cardCount × avgScore`, where rooms is the count of gameplay rooms with at least one floor-cleared card. The quadratic room factor heavily rewards cross-category claims. The top `SELECT_CLAIMS` are sent to Pass 4.
 
-A claim survives Pass 4 if every gameplay room has at least 1 card after false-ambiguity stripping AND the total is at least `MIN_TOTAL_CARDS`.
+A claim survives Pass 4 if it has at least `CLAIM_ENGINE_MIN_ROOMS` rooms covered (default 5) AND at least `CLAIM_ENGINE_MIN_TOTAL_CARDS` rewritten cards (default 30).

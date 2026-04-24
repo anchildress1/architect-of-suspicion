@@ -63,7 +63,15 @@ export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
     schema: SCHEMA,
   });
 
-  const parsed = JSON.parse(raw) as TensionMap;
+  let parsed: TensionMap;
+  try {
+    parsed = JSON.parse(raw) as TensionMap;
+  } catch (err) {
+    throw new Error(
+      `[pass1] JSON.parse failed.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+      { cause: err },
+    );
+  }
   if (!Array.isArray(parsed.tensions) || parsed.tensions.length === 0) {
     throw new TypeError('Pass 1 produced no tensions');
   }

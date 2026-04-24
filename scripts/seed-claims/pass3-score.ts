@@ -102,6 +102,7 @@ export async function runPass3(
   const scored = new Map<string, CardClaimScore[]>();
   const qualities = new Map<string, number>();
   const batchSize = config.thresholds.scoreBatch;
+  const cardById = new Map(cards.map((c) => [c.objectID, c]));
 
   for (const claim of claims) {
     // Score in batches to keep output tokens bounded per call.
@@ -113,8 +114,34 @@ export async function runPass3(
         maxTokens: 4000,
         schema: SCHEMA,
       });
-      const { scores } = JSON.parse(raw) as { scores: CardClaimScore[] };
+      let batchResult: { scores: CardClaimScore[] };
+      try {
+        batchResult = JSON.parse(raw) as { scores: CardClaimScore[] };
+      } catch (err) {
+        throw new Error(
+          `[pass3] JSON.parse failed for "${claim.claim_text}" batch offset=${offset}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+          { cause: err },
+        );
+      }
+      const { scores } = batchResult;
+      if (scores.length !== batch.length) {
+        const missingIds = batch
+          .filter((c) => !scores.find((s) => s.card_id === c.objectID))
+          .map((c) => c.objectID);
+        throw new Error(
+          `[pass3] model returned ${scores.length} scores for ${batch.length} cards (claim="${claim.claim_text}", batch offset=${offset}). Missing card IDs: ${missingIds.join(', ')}`,
+        );
+      }
       allScores.push(...scores);
+    }
+
+    // Verify all returned card IDs are in the corpus — hallucinated IDs distort
+    // room coverage and quality metrics.
+    const unknownIds = allScores.filter((s) => !cardById.has(s.card_id)).map((s) => s.card_id);
+    if (unknownIds.length > 0) {
+      throw new Error(
+        `[pass3] model returned scores for unknown card IDs: ${unknownIds.join(', ')} (claim="${claim.claim_text}")`,
+      );
     }
 
     // Build a claim-specific pool: drop below-floor cards, sort by combined
@@ -129,7 +156,6 @@ export async function runPass3(
     scored.set(claim.claim_text, pool);
     qualities.set(claim.claim_text, quality);
 
-    const cardById = new Map(cards.map((c) => [c.objectID, c]));
     const rooms = new Set(
       pool
         .map((s) => CATEGORY_TO_ROOM[cardById.get(s.card_id)?.category ?? ''])

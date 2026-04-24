@@ -1,7 +1,7 @@
 /** Pass 2: Claim Generation.
  *
  *  Input:  tension map from Pass 1 + full card corpus.
- *  Output: 3-5 claims, each phrased as a provocative accusation.
+ *  Output: config.targets.generate candidate claims (default 15), each phrased as a provocative accusation.
  *
  *  Model:  claude-sonnet-4-6
  */
@@ -71,7 +71,15 @@ export async function runPass2(
     { system: SYSTEM_PROMPT, maxTokens: 5000, schema: SCHEMA },
   );
 
-  const parsed = JSON.parse(raw) as { claims: GeneratedClaim[] };
+  let parsed: { claims: GeneratedClaim[] };
+  try {
+    parsed = JSON.parse(raw) as { claims: GeneratedClaim[] };
+  } catch (err) {
+    throw new Error(
+      `[pass2] JSON.parse failed.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+      { cause: err },
+    );
+  }
   if (!Array.isArray(parsed.claims) || parsed.claims.length === 0) {
     throw new TypeError('Pass 2 produced no claims');
   }

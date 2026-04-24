@@ -98,7 +98,7 @@ Rewriting rules:
 
 The model also produces a one-sentence proof and one-sentence objection per card (grounded in fact) to inform the rewrite framing. These are not stored.
 
-**Survival floor:** A claim survives if its pool has ≥ 20 rewritten cards covering ≥ 5 gameplay rooms. This is a playability minimum — Pass 3 ranking handles quality selection. Claims that pass are written to Supabase; claims that fail are dropped for this run.
+**Survival floor:** A claim survives if its pool has ≥ 30 rewritten cards (`CLAIM_ENGINE_MIN_TOTAL_CARDS`) covering ≥ 5 gameplay rooms (`CLAIM_ENGINE_MIN_ROOMS`). This is a playability minimum — Pass 3 ranking handles quality selection. Claims that pass are written to Supabase; claims that fail are dropped for this run.
 
 **Output:** For each surviving claim: `rewritten_blurb` for every card in its pool. Stored in `suspicion.claim_cards.rewritten_blurb` — this is the text the player sees at runtime, not `public.cards.blurb`.
 
@@ -158,9 +158,9 @@ This curve is implemented in the `/api/cards` query (ORDER BY weighting), not in
 
 ### Where It Runs
 
-The seed pipeline is a standalone script in the game repo (`scripts/seed-claims.ts`). It is not a deployed service. Execution options:
+The seed pipeline is a standalone script directory in the game repo (`scripts/seed-claims/`), entry point `index.ts`. It is not a deployed service. Execution options:
 
-1. **Local:** `npx tsx scripts/seed-claims.ts` from developer machine
+1. **Local:** `make seed-claims` or `pnpm tsx scripts/seed-claims/index.ts` from developer machine
 2. **GitHub Actions:** Manual `workflow_dispatch` trigger, runs the same script on a GHA runner
 
 Both paths write directly to Supabase via service role key.
@@ -170,12 +170,12 @@ Both paths write directly to Supabase via service role key.
 ```
 # Required
 SUPABASE_URL=<project url>
-SUPABASE_SERVICE_ROLE_KEY=<key>
+SUPABASE_SECRET_KEY=<service role key>
 
-# Model API keys (at least one per provider)
+# Model API keys (all required when using default model assignments)
 ANTHROPIC_API_KEY=<key>
 OPENAI_API_KEY=<key>
-GOOGLE_AI_API_KEY=<key>
+GEMINI_API_KEY=<key>
 
 # Model assignment per pass (defaults shown)
 CLAIM_ENGINE_PASS1_MODEL=claude-sonnet-4-6      # Tension analysis
@@ -189,48 +189,17 @@ CLAIM_ENGINE_SELECT_CLAIMS=5         # Pass 3 top-N to rewrite
 CLAIM_ENGINE_TOP_CARDS=50            # Max cards per claim pool (Pass 3)
 CLAIM_ENGINE_CARD_FLOOR=3            # Min ambiguity+surprise to stay in pool
 CLAIM_ENGINE_SCORE_BATCH=50          # Cards per Pass 3 scoring call
-CLAIM_ENGINE_MIN_TOTAL_CARDS=20      # Survival floor: rewritten cards per claim
+CLAIM_ENGINE_MIN_TOTAL_CARDS=30      # Survival floor: rewritten cards per claim
 CLAIM_ENGINE_MIN_ROOMS=5             # Survival floor: distinct rooms per claim
 CLAIM_ENGINE_DRY_RUN=false           # Log output without writing to Supabase
 ```
 
 ### GitHub Actions Workflow
 
-```yaml
-# .github/workflows/seed-claims.yml
-name: seed-claims
+The canonical workflow is `.github/workflows/seed-claims.yml`. Trigger it manually via `workflow_dispatch` with optional inputs:
 
-on:
-  workflow_dispatch:
-    inputs:
-      target_claims:
-        description: 'Number of claims to generate'
-        default: '5'
-        type: string
-      dry_run:
-        description: 'Log output without writing to Supabase'
-        default: false
-        type: boolean
-
-jobs:
-  seed:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npx tsx scripts/seed-claims.ts
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GOOGLE_AI_API_KEY: ${{ secrets.GOOGLE_AI_API_KEY }}
-          SEED_TARGET_CLAIMS: ${{ inputs.target_claims }}
-          SEED_DRY_RUN: ${{ inputs.dry_run }}
-```
+- `target_claims` — number of candidate claims Pass 2 generates (maps to `CLAIM_ENGINE_GENERATE_CLAIMS`, default 5 in the workflow)
+- `dry_run` — when true, logs output without writing to Supabase
 
 ### Run Cadence
 
@@ -274,8 +243,8 @@ The game PRD's card retrieval strategy, `/api/cards` endpoint, and data model se
 
 All other game PRD sections (Architect persona, room map, scoring, verdict, cover letter, resume) are unaffected.
 
-## Open Questions
+## Decided
 
-1. **Claim expiry:** Should claims have a version or generation number so the game can detect stale data? No
-2. **Partial re-seed:** Should the pipeline support adding claims to an existing set without regenerating all, or is full replacement always correct? Always full.
-3. **Card dealing weights:** Exact weighting formula for the ambiguity/surprise curve needs playtesting to tune. Should the PRD prescribe starting values or leave to implementation? We'll test.
+1. **Claim expiry:** No version/generation number on claims — stale detection not needed given manual trigger cadence.
+2. **Partial re-seed:** Full replacement always. Pipeline overwrites all claims each run.
+3. **Card dealing weights:** Starting values left to implementation; tune via playtesting.

@@ -105,7 +105,10 @@ export async function runPass4(
   const rewrites: Map<string, Map<string, string>> = new Map();
 
   for (const claim of claims) {
-    const scores = scoredByClaim.get(claim.claim_text) ?? [];
+    const scores = scoredByClaim.get(claim.claim_text);
+    if (!scores) {
+      throw new Error(`[pass4] No scores found for claim "${claim.claim_text}" — this is a pipeline bug`);
+    }
     const claimCards = scores
       .map((s) => cardById.get(s.card_id))
       .filter((c): c is CardRow => !!c);
@@ -116,15 +119,24 @@ export async function runPass4(
       schema: SCHEMA,
     });
 
-    const { arguments: args } = JSON.parse(raw) as { arguments: CardArgument[] };
+    let parsed: { arguments: CardArgument[] };
+    try {
+      parsed = JSON.parse(raw) as { arguments: CardArgument[] };
+    } catch (err) {
+      throw new Error(
+        `[pass4] JSON.parse failed for "${claim.claim_text}".\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+        { cause: err },
+      );
+    }
 
-    // Build rewrite map. Warn if the model omitted any card — pipeline will throw
-    // at persist time rather than silently writing an empty blurb.
-    const claimRewrites = new Map(args.map((a) => [a.card_id, a.rewritten_blurb]));
+    // Build rewrite map. Throw if the model omitted any card — a missing rewrite
+    // means the player-facing pool is smaller than expected, distorting survival checks.
+    const claimRewrites = new Map(parsed.arguments.map((a) => [a.card_id, a.rewritten_blurb]));
     const missingRewrites = claimCards.filter((c) => !claimRewrites.has(c.objectID));
     if (missingRewrites.length > 0) {
-      console.warn(
-        `[pass4] "${claim.claim_text}": model omitted ${missingRewrites.length} card(s) from output`,
+      const missingIds = missingRewrites.map((c) => c.objectID).join(', ');
+      throw new Error(
+        `[pass4] "${claim.claim_text}": model omitted ${missingRewrites.length} card(s) from output. Missing card IDs: ${missingIds}. Increase maxTokens or reduce pool size.`,
       );
     }
     rewrites.set(claim.claim_text, claimRewrites);

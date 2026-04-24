@@ -10,6 +10,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['lcov', 'text'],
       reportsDirectory: 'coverage',
+      include: ['src/**/*.{ts,svelte}'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.d.ts'],
     },
   },
 });

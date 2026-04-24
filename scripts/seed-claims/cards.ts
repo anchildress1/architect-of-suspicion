@@ -23,7 +23,11 @@ export async function loadEligibleCards(signalThreshold: number): Promise<CardRo
     .neq('category', 'About');
 
   if (error) throw new Error(`Failed to load cards: ${error.message}`);
-  return (data ?? []) as CardRow[];
+  const rows = (data ?? []) as CardRow[];
+  if (rows.length === 0) {
+    console.warn('[cards] 0 eligible cards returned — check RLS policies and signal threshold');
+  }
+  return rows;
 }
 
 /** Format the corpus as a compact text block for prompt injection. */
