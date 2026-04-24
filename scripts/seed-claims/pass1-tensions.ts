@@ -63,11 +63,14 @@ export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
 
   const raw = await client.complete(buildPrompt(cards), {
     system: SYSTEM_PROMPT,
-    maxTokens: 12000,
+    // Adaptive thinking + high effort on ~250 cards routinely burns
+    // 15-25k tokens in thinking blocks alone before the structured tensions
+    // output. Sonnet 4.6 caps output at 64k — leave a wide margin.
+    maxTokens: 32000,
     schema: SCHEMA,
     reasoning: 'high',
-    // Adaptive thinking + high effort + 12k tokens routinely runs past 2 min
-    // on the full corpus — override the default client timeout for this pass.
+    // At 32k tokens and high reasoning effort, wall-clock can run past the
+    // default 2-min client timeout — override for this pass only.
     timeoutMs: 300_000,
   });
 
