@@ -28,8 +28,12 @@ export const config = {
     // Opus 4.7 over Sonnet 4.6 — tensions shape every downstream pass, so
     // the flagship model earns its ~1.7x cost on one call per seed run.
     pass1: str('CLAIM_ENGINE_PASS1_MODEL', 'claude-opus-4-7'),
-    // Pass 2: creative claim generation (OpenAI per PRD; must differ from Pass 4 vendor)
-    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'gpt-5.4'),
+    // Pass 2: creative claim generation. Must differ from Pass 4 vendor
+    // (enforced in index.ts) to keep the adversarial cross-check honest.
+    // Claude Opus 4.7 over gpt-5.4 — Opus's adaptive thinking produces
+    // better-shaped provocative claims in our tests. Prompt is tuned for
+    // Claude's XML-ish section tags; see pass2-claims.ts.
+    pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-opus-4-7'),
     // Pass 3: bulk structured scoring (OpenAI per PRD). Full gpt-5.4 over
     // gpt-5.4-mini — mini was emitting hallucinated and duplicated card IDs
     // even with enum-constrained JSON Schema. Pass 3 fires 108+ calls per
