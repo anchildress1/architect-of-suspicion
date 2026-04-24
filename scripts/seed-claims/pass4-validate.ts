@@ -28,7 +28,7 @@ The created_at timestamp is a key reasoning tool:
 - Cards from the SAME period that contradict each other, or patterns that hold consistently across ALL years, carry real weight — strengthen the claim in your proof.
 - Surface this temporal dimension in the rewritten_blurb when it creates tension (e.g., "early in her career" or "more recently" — without signaling which reading it supports).
 
-Do not fabricate anything not present in title, blurb, fact, or created_at.
+Do not fabricate anything not present in title, blurb, fact, or created_at. Always write in third person — use "Ashley" when a name is needed, never "she", "her", or "they" as a substitute for the name.
 
 For each card:
 1. proof — one sentence: how the fact (and timing) supports the claim
