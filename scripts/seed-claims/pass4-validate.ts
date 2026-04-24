@@ -134,7 +134,11 @@ async function processBatch(
   const batchIds = batchCards.map((c) => c.objectID);
   const raw = await client.complete(buildPrompt(claim, batchCards, scoreById), {
     system: SYSTEM_PROMPT,
-    maxTokens: 8000,
+    // Gemini 3.1 Pro Preview's default thinking budget is non-trivial and
+    // counts against maxOutputTokens. 8k truncated with MAX_TOKENS; 24k
+    // leaves ~20k for thinking and ~4k for the actual rewrites (10 cards ×
+    // ~300 tokens). Still well under the model's sync output cap.
+    maxTokens: 24000,
     schema: schemaForBatch(batchIds),
     reasoning: 'low',
   });

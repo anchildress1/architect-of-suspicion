@@ -71,10 +71,11 @@ export const config = {
     // Cards per scoring batch. Smaller = fewer output tokens per call.
     // 50 cards × ~48 tokens/entry ≈ 2,400 tokens output — well within any limit.
     scoreBatch: num('CLAIM_ENGINE_SCORE_BATCH', 50),
-    // Cards per Pass 4 rewrite batch. 15 keeps each call around 3-4k output
-    // tokens (well under the provider ceiling) and means a flaky batch only
-    // costs its own retry — not the whole claim's spend.
-    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 15),
+    // Cards per Pass 4 rewrite batch. 10 keeps each call around ~3k output
+    // tokens of actual rewrite + notes, leaving headroom for Gemini 3.1
+    // Pro's non-trivial default thinking budget under maxOutputTokens.
+    // A flaky batch only costs its own retry — not the whole claim's spend.
+    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 10),
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),
 } as const;
