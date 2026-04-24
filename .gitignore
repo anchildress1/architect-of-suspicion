@@ -11,6 +11,9 @@
 *.log
 .DS_Store
 
+# Seed pipeline per-pass cache (see scripts/seed-claims/checkpoint.ts)
+.seed-cache/
+
 # Javascript
 node_modules/
 dist/
