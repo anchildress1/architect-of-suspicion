@@ -139,19 +139,8 @@ class OpenAIClient implements AIClient {
 class GeminiClient implements AIClient {
   private readonly client: GoogleGenAI;
   constructor(public readonly model: string) {
-    // @google/genai runs getApiKeyFromEnv() unconditionally in its constructor
-    // and emits "Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using
-    // GOOGLE_API_KEY." whenever both are present. That conflates a globally-
-    // exported GOOGLE_API_KEY (for other tools) with this project's
-    // GEMINI_API_KEY, and with `tsx --env-file=.env` the shell's global leaks
-    // through the child process. Scrub both vars from process.env before
-    // constructing the client so the SDK has no env signal to pick up —
-    // only the explicit apiKey we pass reaches the wire.
-    const apiKey = requireEnv('GEMINI_API_KEY');
-    delete process.env.GOOGLE_API_KEY;
-    delete process.env.GEMINI_API_KEY;
     this.client = new GoogleGenAI({
-      apiKey,
+      apiKey: requireEnv('GEMINI_API_KEY'),
       httpOptions: { timeout: DEFAULT_TIMEOUT_MS },
     });
   }
