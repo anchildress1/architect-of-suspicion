@@ -62,11 +62,21 @@ Portfolio piece needs SEO. Recruiters and AI agents need to find it under Ashley
 
 All server routes live in `src/routes/api/` and run server-side only.
 
+#### `GET /api/claim`
+
+Picks one claim at random from `suspicion.claims`. Used by the Summons screen
+on first load.
+
+**Response:**
+```json
+{ "id": "uuid", "text": "Ashley depends on AI too much" }
+```
+
 #### `GET /api/cards`
 
-Fetches cards for a given room category, stripped of hidden fields.
+Fetches the witness deck for the active claim, restricted to one chamber category.
 
-**Query params:** `category` (required), `exclude` (comma-separated objectIDs of collected cards)
+**Query params:** `claim_id` (required, uuid), `category` (required), `exclude` (comma-separated objectIDs of already-ruled cards)
 
 **Response:**
 ```json
@@ -75,52 +85,68 @@ Fetches cards for a given room category, stripped of hidden fields.
     {
       "objectID": "uuid",
       "title": "...",
-      "blurb": "...",
+      "blurb": "...claim-specific rewritten blurb...",
       "category": "Awards",
-      "signal": 4
+      "weight": 9
     }
   ]
 }
 ```
 
-Fields excluded from response: `fact`, `tags`, `projects`, `url`, `created_at`, `updated_at`, `deleted_at`.
+Cards arrive in **Witness mode order**: ascending `ambiguity * surprise`
+(`weight`). The runtime never sees `fact`, raw `ai_score`, `ambiguity`, or
+`surprise` separately.
 
-**Query:**
+**Query (joined via Supabase client):**
 ```sql
-SELECT "objectID", title, blurb, category, signal
-FROM public.cards
-WHERE category = :category AND signal > 2
-  AND "objectID" NOT IN (:exclude)
-ORDER BY random() LIMIT 6
+SELECT cc.card_id, cc.ambiguity, cc.surprise, cc.rewritten_blurb,
+       c."objectID", c.title, c.category
+FROM suspicion.claim_cards cc
+JOIN public.cards c ON c."objectID" = cc.card_id
+WHERE cc.claim_id = :claim_id
+  AND c.deleted_at IS NULL
+  AND c.category = :category
+  AND cc.card_id NOT IN (:exclude)
+ORDER BY (cc.ambiguity * cc.surprise) ASC;
 ```
 
 #### `POST /api/evaluate`
 
-Evaluates whether a card supports or undermines the active claim. Server retrieves full card data (including `fact`) from Supabase — client never sends `fact`.
+Records a witness ruling. Reads the **pre-seeded** directional score from
+`suspicion.claim_cards`. Calls Claude only for the in-character reaction —
+the runtime AI never produces a score.
 
 **Request:**
 ```json
 {
   "session_id": "uuid",
-  "claim": "Ashley depends on AI too much",
+  "claim_id": "uuid",
   "card_id": "uuid",
   "classification": "proof"
 }
 ```
 
-**Server-side:** Fetches full card from `public.cards` by `card_id`, passes to Claude SDK with claim.
+`classification` ∈ `{"proof", "objection", "dismiss"}`. Dismiss = struck from
+record (no contribution to attention, no appearance in cover letter).
+
+**Server-side:**
+1. Reads `ai_score` from `suspicion.claim_cards` for `(claim_id, card_id)`.
+2. Reads full card (with `fact`) from `public.cards` for the reaction prompt.
+3. Calls Claude for reaction text.
+4. Writes pick to `suspicion.picks` (with the pre-seeded `ai_score` copied,
+   or `0` for Dismiss) **before** returning the response.
 
 **Response:**
 ```json
 {
-  "ai_score": 0.72,
-  "ai_reaction": "The Architect's theatrical response..."
+  "ai_reaction": "...the Architect's reaction text...",
+  "attention_delta": 0.72
 }
 ```
 
-Score range: -1.0 to 1.0. Magnitude = confidence, sign = direction (negative undermines claim, positive supports).
-
-**Side effect:** Writes to `suspicion.picks` before returning response.
+`attention_delta = pickSign × ai_score` where `pickSign = +1 / -1 / 0` for
+proof / objection / dismiss. The client uses it to nudge the smoothed
+attention meter — the raw value is never displayed.
 
 #### `POST /api/narrate`
 
@@ -167,9 +193,15 @@ Generates the cover letter from collected evidence.
 }
 ```
 
-### Card Retrieval Strategy
+### Card Retrieval Strategy (Witness Mode)
 
-Cards are fetched per-room when the player enters. The 6-card hand persists while in the room. When a card is picked, one replacement is drawn from the remaining pool. The client tracks collected card IDs and passes them as exclusions.
+The full witness deck for a chamber is fetched server-side via the room's
+`+page.server.ts` load function and rendered client-side as a single exhibit
+on stage with the queue down the right rail. Exhibits are dealt in order of
+ascending `ambiguity * surprise` so the case warms up.
+
+The client tracks ruled card IDs and passes them via `?exclude=…` so the deck
+re-loads cleanly on refresh.
 
 ## Database
 
@@ -195,10 +227,24 @@ CREATE TABLE suspicion.picks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES suspicion.sessions(session_id),
   card_id uuid NOT NULL,
-  classification text NOT NULL CHECK (classification IN ('proof', 'objection')),
+  classification text NOT NULL CHECK (classification IN ('proof', 'objection', 'dismiss')),
   ai_score numeric(3,2) NOT NULL CHECK (ai_score >= -1.0 AND ai_score <= 1.0),
   ai_reaction_text text NOT NULL,
   created_at timestamptz DEFAULT now()
+);
+
+-- Pre-seeded by the claim engine (scripts/seed-claims). At runtime only the
+-- runtime READS this table; writes happen through the service-role-only
+-- replace_claim_seed RPC.
+CREATE TABLE suspicion.claim_cards (
+  claim_id uuid NOT NULL REFERENCES suspicion.claims(id) ON DELETE CASCADE,
+  card_id  uuid NOT NULL REFERENCES public.cards("objectID"),
+  ambiguity smallint NOT NULL CHECK (ambiguity BETWEEN 1 AND 5),
+  surprise  smallint NOT NULL CHECK (surprise  BETWEEN 1 AND 5),
+  ai_score  numeric(3,2) NOT NULL DEFAULT 0.0
+            CHECK (ai_score >= -1.0 AND ai_score <= 1.0),
+  rewritten_blurb text NOT NULL,
+  PRIMARY KEY (claim_id, card_id)
 );
 ```
 
@@ -262,21 +308,20 @@ architect-of-suspicion/
 │   │   │   ├── claude.ts              # Claude SDK client
 │   │   │   └── prompts/               # AI prompt templates
 │   │   ├── components/
-│   │   │   ├── Mansion.svelte         # Room grid
-│   │   │   ├── Room.svelte            # Card display
-│   │   │   ├── EvidenceCard.svelte    # Individual card
-│   │   │   ├── ArchitectPanel.svelte  # Left-side persistent panel
-│   │   │   ├── ArchitectFeed.svelte   # Feed entries
-│   │   │   ├── EvidenceTally.svelte   # Proof/objection counts
-│   │   │   ├── Verdict.svelte         # Accuse/Pardon flow
-│   │   │   ├── CoverLetter.svelte     # Generated letter display
-│   │   │   └── Resume.svelte          # Static resume
+│   │   │   ├── ArchitectPanel.svelte  # Left rail: meter + claim + feed + tally + render link
+│   │   │   ├── AttentionMeter.svelte  # Needle gauge — Drifting / Watching / Interested / Riveted
+│   │   │   ├── ArchitectFeed.svelte   # action / reaction / narration entries
+│   │   │   ├── EvidenceTally.svelte   # Proof / Objection / Struck counts
+│   │   │   ├── WitnessCard.svelte     # The exhibit on stage (with stamps)
+│   │   │   ├── WitnessQueue.svelte    # Right-rail queue of remaining exhibits
+│   │   │   ├── CoverLetter.svelte     # Sealed editorial-noir letter
+│   │   │   ├── Resume.svelte          # Static resume
+│   │   │   └── MobileGate.svelte      # <768px notice
 │   │   ├── stores/
-│   │   │   ├── gameState.ts           # Central game state store
-│   │   │   └── architect.ts           # Feed entries store
-│   │   ├── types.ts                   # Game state, card types
-│   │   ├── claims.ts                  # Static claim list (v1)
-│   │   └── rooms.ts                   # Room-to-category mapping + grid positions
+│   │   │   └── gameState.svelte.ts    # Central game state + Architect attention
+│   │   ├── attention.ts               # Smoothed attention meter math
+│   │   ├── types.ts                   # Game state, claim/card types
+│   │   └── rooms.ts                   # Chamber-to-category mapping + grid positions
 │   └── app.css                        # Tailwind + design tokens
 ├── supabase/
 │   └── migrations/                    # suspicion schema DDL
@@ -322,12 +367,13 @@ gcloud run deploy architect-of-suspicion \
 ## Invariants
 
 1. The `fact` field never reaches the client
-2. The Architect never speaks unprompted
-3. Score is -1.0 to 1.0, never binary
-4. Every pick is logged to `suspicion.picks` before client response
-5. The cover letter references only collected evidence
-6. The cover letter is written in The Architect's theatrical voice
-7. The resume is static content, not AI-generated
-8. Room names and grid positions match background images exactly
-9. `public.cards` schema is never modified
-10. About category cards are excluded from gameplay
+2. The raw `ai_score` from `suspicion.claim_cards` never reaches the client — only the smoothed attention value
+3. The Architect never speaks unprompted
+4. Score is `-1.0` to `1.0`, **pre-seeded** in `suspicion.claim_cards.ai_score`. Runtime AI never scores.
+5. Every pick is logged to `suspicion.picks` before client response
+6. The cover letter references only **ruled** evidence (proof + objection); dismissed exhibits are excluded
+7. The cover letter is written in The Architect's editorial-noir voice
+8. The resume is static content, not AI-generated
+9. Chamber names and grid positions match background images exactly
+10. `public.cards` schema is never modified
+11. About category cards are excluded from gameplay
