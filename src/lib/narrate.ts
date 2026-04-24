@@ -2,7 +2,7 @@ import { gameState } from '$lib/stores/gameState.svelte';
 
 /**
  * Request narration from The Architect and add it to the feed.
- * Non-critical: failures are silently ignored.
+ * Non-critical: failures are logged as warnings, not surfaced to the user.
  */
 export async function requestNarration(
   action: 'enter_room' | 'wander' | 'idle',
@@ -33,7 +33,7 @@ export async function requestNarration(
         timestamp: Date.now(),
       });
     }
-  } catch {
-    /* Narration is non-critical */
+  } catch (err) {
+    console.warn('[narrate] request failed:', err instanceof Error ? err.message : err);
   }
 }

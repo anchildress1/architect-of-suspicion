@@ -55,9 +55,13 @@ describe('requestNarration', () => {
     expect(gameState.current.feed.filter((e) => e.type === 'narration')).toHaveLength(0);
   });
 
-  it('silently swallows fetch failures', async () => {
+  it('logs a warning and does not throw on fetch failures', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     fetchMock.mockRejectedValue(new Error('network'));
 
     await expect(requestNarration('idle', 'parlor')).resolves.toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith('[narrate] request failed:', 'network');
+
+    warnSpy.mockRestore();
   });
 });

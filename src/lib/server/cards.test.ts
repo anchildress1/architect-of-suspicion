@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSelect = vi.fn();
-const mockEq = vi.fn();
+const mockEqClaim = vi.fn();
+const mockEqCategory = vi.fn();
+const mockIsDeleted = vi.fn();
 const mockNot = vi.fn();
-const mockFrom = vi.fn();
 const mockSchemaFrom = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
     schema: () => ({ from: (...args: unknown[]) => mockSchemaFrom(...args) }),
-    from: (...args: unknown[]) => mockFrom(...args),
+    from: vi.fn(),
   }),
 }));
 
@@ -18,22 +19,28 @@ import { fetchClaimDeck, fetchClaimDeckSize } from './cards';
 const VALID_CLAIM_ID = '550e8400-e29b-41d4-a716-446655440000';
 const VALID_CARD_ID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
+/**
+ * The query chain is:
+ *   from('claim_cards').select(...).eq('claim_id', ...).eq('card.category', ...).is('card.deleted_at', null)[.not(...)]
+ * The terminal `is()` (or `not()` if exclude is used) resolves to the query result.
+ */
 function setupQuery(rows: unknown[] | null, error: unknown = null) {
   const result = { data: rows, error };
   const notThenable = Object.assign(Promise.resolve(result), {});
   mockNot.mockReturnValue(notThenable);
-  const eqThenable = Object.assign(Promise.resolve(result), { not: mockNot });
-  mockEq.mockReturnValue(eqThenable);
-  mockSelect.mockReturnValue({ eq: mockEq });
+  const isThenable = Object.assign(Promise.resolve(result), { not: mockNot });
+  mockIsDeleted.mockReturnValue(isThenable);
+  mockEqCategory.mockReturnValue({ is: mockIsDeleted });
+  mockEqClaim.mockReturnValue({ eq: mockEqCategory });
+  mockSelect.mockReturnValue({ eq: mockEqClaim });
   mockSchemaFrom.mockReturnValue({ select: mockSelect });
 }
 
 function setupCount(count: number, error: unknown = null) {
   const result = { count, error };
   const eqThenable = Object.assign(Promise.resolve(result), {});
-  mockEq.mockReturnValue(eqThenable);
-  mockSelect.mockReturnValue({ eq: mockEq });
-  mockSchemaFrom.mockReturnValue({ select: mockSelect });
+  const selectForCount = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue(eqThenable) });
+  mockSchemaFrom.mockReturnValue({ select: selectForCount });
 }
 
 describe('fetchClaimDeck', () => {
@@ -73,6 +80,39 @@ describe('fetchClaimDeck', () => {
     expect(cards.map((c) => c.weight)).toEqual([2, 9, 25]);
   });
 
+  it('pushes category and soft-delete filters into the query', async () => {
+    setupQuery([]);
+
+    await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
+
+    expect(mockEqClaim).toHaveBeenCalledWith('claim_id', VALID_CLAIM_ID);
+    expect(mockEqCategory).toHaveBeenCalledWith('card.category', 'Awards');
+    expect(mockIsDeleted).toHaveBeenCalledWith('card.deleted_at', null);
+  });
+
+  it('breaks ties deterministically by objectID', async () => {
+    setupQuery([
+      {
+        card_id: 'z-id',
+        ambiguity: 2,
+        surprise: 3,
+        rewritten_blurb: 'z',
+        card: { objectID: 'z-id', title: 'Z', category: 'Awards', deleted_at: null },
+      },
+      {
+        card_id: 'a-id',
+        ambiguity: 2,
+        surprise: 3,
+        rewritten_blurb: 'a',
+        card: { objectID: 'a-id', title: 'A', category: 'Awards', deleted_at: null },
+      },
+    ]);
+
+    const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
+
+    expect(cards.map((c) => c.objectID)).toEqual(['a-id', 'z-id']);
+  });
+
   it('substitutes the rewritten_blurb for the player-facing blurb', async () => {
     setupQuery([
       {
@@ -87,45 +127,6 @@ describe('fetchClaimDeck', () => {
     const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
 
     expect(cards[0].blurb).toBe('pulls two ways');
-  });
-
-  it('drops cards in another category', async () => {
-    setupQuery([
-      {
-        card_id: 'a',
-        ambiguity: 3,
-        surprise: 3,
-        rewritten_blurb: 'x',
-        card: { objectID: 'a', title: 'X', category: 'Decisions', deleted_at: null },
-      },
-      {
-        card_id: 'b',
-        ambiguity: 3,
-        surprise: 3,
-        rewritten_blurb: 'y',
-        card: { objectID: 'b', title: 'Y', category: 'Awards', deleted_at: null },
-      },
-    ]);
-
-    const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
-
-    expect(cards.map((c) => c.objectID)).toEqual(['b']);
-  });
-
-  it('drops soft-deleted cards', async () => {
-    setupQuery([
-      {
-        card_id: 'a',
-        ambiguity: 3,
-        surprise: 3,
-        rewritten_blurb: 'x',
-        card: { objectID: 'a', title: 'X', category: 'Awards', deleted_at: '2025-01-01' },
-      },
-    ]);
-
-    const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
-
-    expect(cards).toHaveLength(0);
   });
 
   it('handles array-shaped joined card row', async () => {
@@ -178,6 +179,22 @@ describe('fetchClaimDeck', () => {
     expect(cards).toEqual([]);
     expect(error).toBe('Failed to fetch deck');
   });
+
+  it('skips rows whose joined card is null', async () => {
+    setupQuery([
+      {
+        card_id: 'dangling',
+        ambiguity: 2,
+        surprise: 2,
+        rewritten_blurb: 'x',
+        card: null,
+      },
+    ]);
+
+    const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
+
+    expect(cards).toHaveLength(0);
+  });
 });
 
 describe('fetchClaimDeckSize', () => {
@@ -185,17 +202,30 @@ describe('fetchClaimDeckSize', () => {
     vi.clearAllMocks();
   });
 
-  it('returns 0 for invalid claim_id', async () => {
-    expect(await fetchClaimDeckSize('not-a-uuid')).toBe(0);
+  it('returns 0 with an error message for invalid claim_id', async () => {
+    const { count, error } = await fetchClaimDeckSize('not-a-uuid');
+    expect(count).toBe(0);
+    expect(error).toBe('Invalid claim_id');
   });
 
   it('returns the row count when the query succeeds', async () => {
     setupCount(42);
-    expect(await fetchClaimDeckSize(VALID_CLAIM_ID)).toBe(42);
+    const { count, error } = await fetchClaimDeckSize(VALID_CLAIM_ID);
+    expect(count).toBe(42);
+    expect(error).toBeNull();
   });
 
-  it('returns 0 on query error', async () => {
+  it('returns null count=0 with an error on query failure', async () => {
     setupCount(0, { message: 'oops' });
-    expect(await fetchClaimDeckSize(VALID_CLAIM_ID)).toBe(0);
+    const { count, error } = await fetchClaimDeckSize(VALID_CLAIM_ID);
+    expect(count).toBe(0);
+    expect(error).toBe('Failed to fetch deck size');
+  });
+
+  it('returns count=0 when the query returns null count with no error', async () => {
+    setupCount(null as unknown as number);
+    const { count, error } = await fetchClaimDeckSize(VALID_CLAIM_ID);
+    expect(count).toBe(0);
+    expect(error).toBeNull();
   });
 });
