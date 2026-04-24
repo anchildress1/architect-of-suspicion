@@ -18,6 +18,8 @@ export interface ClaimCardSeedRow {
   surprise: number;
   ai_score: number;
   rewritten_blurb: string;
+  /** Server-only auditor note. Persisted to `suspicion.claim_cards.notes`. */
+  notes: string;
 }
 
 export interface ClaimSeedRow {
@@ -90,6 +92,11 @@ export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
         );
       }
       assertAiScore(arg.aiScore, cardId, input.claim);
+      if (typeof arg.notes !== 'string' || arg.notes.trim().length === 0) {
+        throw new Error(
+          `Missing notes for card ${cardId} on claim "${input.claim.claim_text}" (${input.claim.id})`,
+        );
+      }
 
       cards.push({
         card_id: cardId,
@@ -97,6 +104,7 @@ export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
         surprise: score.surprise,
         ai_score: arg.aiScore,
         rewritten_blurb: arg.rewrittenBlurb,
+        notes: arg.notes,
       });
     }
 

@@ -93,6 +93,11 @@ export interface CardArgument {
    *  the claim, negative undermines it). Magnitude = confidence. Pre-seeded
    *  so the runtime never needs to call an LLM to score a pick. */
   aiScore: number;
+  /** Server-only auditor note: tension levers used, how work/play + deadline
+   *  context shaped the rewrite, and any caveats a QA reviewer should check.
+   *  Persisted to `suspicion.claim_cards.notes`. Never crosses the wire to
+   *  the client (same posture as `fact` on public.cards). */
+  notes: string;
 }
 
 /** Pass 4 combined output: validation results + per-card arguments. */

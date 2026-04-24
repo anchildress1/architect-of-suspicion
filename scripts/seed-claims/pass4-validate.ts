@@ -29,11 +29,12 @@ Temporal reasoning rules:
 - SAME period + contradiction, or a pattern consistent across ALL years → real weight. Strengthen the claim in your proof.
 - Surface timing in the rewritten_blurb when it adds tension (e.g., "early in Ashley's career" or "more recently") without signaling which reading it supports.
 
-Output per card (all four fields required):
+Output per card (all five fields required):
 1. proof — one sentence: how the fact and timing support the claim
 2. objection — one sentence: how the fact and timing contradict or complicate the claim
 3. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic.
-4. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = the evidence supports the claim. Negative = the evidence undermines it. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. This score is hidden from the player and drives the Architect's reactions at runtime.`;
+4. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = the evidence supports the claim. Negative = the evidence undermines it. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. This score is hidden from the player and drives the Architect's reactions at runtime.
+5. notes — server-only auditor note (1-3 sentences, plain prose, not seen by the player). State the tension levers this rewrite pulls, how work/play context and any deadline signal were handled, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't know this was a 2-week constraint", or "work-vs-play ambiguity intentional; blurb reads as production but the fact is a hackathon build"). This is the QA trail for each rewrite.`;
 
 const SCHEMA = {
   type: 'object',
@@ -48,8 +49,9 @@ const SCHEMA = {
           objection: { type: 'string' },
           rewritten_blurb: { type: 'string' },
           ai_score: { type: 'number', minimum: -1, maximum: 1 },
+          notes: { type: 'string', minLength: 1 },
         },
-        required: ['card_id', 'proof', 'objection', 'rewritten_blurb', 'ai_score'],
+        required: ['card_id', 'proof', 'objection', 'rewritten_blurb', 'ai_score', 'notes'],
         additionalProperties: false,
       },
     },
@@ -88,6 +90,7 @@ interface RawCardArgument {
   objection: string;
   rewritten_blurb: string;
   ai_score: number;
+  notes: string;
 }
 
 function clampScore(value: number): number {
@@ -141,9 +144,15 @@ export async function runPass4(
           `[pass4] missing or invalid ai_score for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
         );
       }
+      if (typeof arg.notes !== 'string' || arg.notes.trim().length === 0) {
+        throw new Error(
+          `[pass4] missing or empty notes for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
+        );
+      }
       claimArguments.set(arg.card_id, {
         rewrittenBlurb: arg.rewritten_blurb,
         aiScore: clampScore(arg.ai_score),
+        notes: arg.notes.trim(),
       });
     }
 
