@@ -47,9 +47,15 @@ describe('verdict/+page.server load', () => {
   });
 
   it('returns null session when DB returns an error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setupMocks({ data: null, error: { message: 'connection refused' } });
     const result = await load(makeEvent({ session: 'some-id' }));
     expect(result).toEqual({ session: null });
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[verdict] session lookup failed:',
+      'connection refused',
+    );
+    errorSpy.mockRestore();
   });
 
   it('returns null session when data is null with no error', async () => {

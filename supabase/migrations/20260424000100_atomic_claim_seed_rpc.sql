@@ -18,8 +18,8 @@ BEGIN
   END IF;
 
   -- Replace all seed data atomically.
-  DELETE FROM suspicion.claim_cards WHERE claim_id IS NOT NULL;
-  DELETE FROM suspicion.claims WHERE id IS NOT NULL;
+  DELETE FROM suspicion.claim_cards;
+  DELETE FROM suspicion.claims;
 
   FOR claim IN SELECT value FROM jsonb_array_elements(seed_payload)
   LOOP

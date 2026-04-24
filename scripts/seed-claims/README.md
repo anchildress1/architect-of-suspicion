@@ -33,7 +33,7 @@ Trigger `.github/workflows/seed-claims.yml` with `workflow_dispatch`. The workfl
 
 ## Idempotency
 
-Every real run truncates `suspicion.claim_cards` then `suspicion.claims` (FK order) and inserts fresh rows. Only claims that survive Pass 4 validation are written. If zero claims survive, the script aborts rather than wiping the existing seed.
+Every real run calls `suspicion.replace_claim_seed(payload)`, a DB-side RPC that atomically deletes all existing claim data and inserts the new seed in a single transaction. Only claims that survive Pass 4 validation are included. If zero claims survive, the script aborts rather than wiping the existing seed.
 
 ## Tuning
 

@@ -36,7 +36,7 @@ const SCHEMA = {
     },
     notes: { type: 'string' },
   },
-  required: ['tensions', 'notes'],
+  required: ['tensions'],
   additionalProperties: false,
 } as const;
 

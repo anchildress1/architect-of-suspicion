@@ -47,7 +47,7 @@ The solution: don't change the cards in `public.cards`. Instead, generate claim-
 - "Leadership recognition in Awards contradicts independence signals in Work Style"
 - "Philosophy cards about restraint could read as strategic thinking OR risk aversion"
 
-**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`)
+**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`) with adaptive thinking (effort=high).
 
 ### Pass 2: Claim Generation
 
@@ -64,7 +64,7 @@ Casting wide here is intentional — Pass 3 will rank and select the best 5.
 
 **Output:** 15 claim strings, each with a brief rationale explaining which tensions it targets.
 
-**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`)
+**Model:** GPT 5.4 (`gpt-5.4`) with reasoning_effort=medium. Different provider than Pass 1 (Anthropic) — broadens model diversity across the pipeline.
 
 ### Pass 3: Card-Claim Scoring + Claim Ranking
 
@@ -179,7 +179,7 @@ GEMINI_API_KEY=<key>
 
 # Model assignment per pass (defaults shown)
 CLAIM_ENGINE_PASS1_MODEL=claude-sonnet-4-6      # Tension analysis
-CLAIM_ENGINE_PASS2_MODEL=claude-sonnet-4-6      # Claim generation
+CLAIM_ENGINE_PASS2_MODEL=gpt-5.4                # Claim generation
 CLAIM_ENGINE_PASS3_MODEL=gpt-5.4-mini          # Card-claim scoring + ranking
 CLAIM_ENGINE_PASS4_MODEL=gemini-3.1-flash-lite-preview  # Claim-specific rewriting
 
@@ -213,8 +213,7 @@ Each run produces a fresh set of claims and crossref data. The script:
 
 1. Reads all current cards from `public.cards`
 2. Runs the 4-pass pipeline
-3. Truncates `suspicion.claim_cards` and `suspicion.claims` (in that order, FK constraint)
-4. Inserts new claims and crossref data
+3. Calls `suspicion.replace_claim_seed(payload)` — a DB-side RPC that atomically deletes all existing claim data and inserts the new seed in a single transaction
 
 Previous claims are not preserved. The game always uses whatever the latest seed produced.
 
@@ -225,7 +224,7 @@ For a corpus of ~258 eligible cards, 15 candidate claims, 5 selected for rewriti
 | Pass | Model | Calls | Cost (est.) |
 |---|---|---|---|
 | Pass 1: Tension analysis | Claude Sonnet | 1 | ~$0.50 |
-| Pass 2: Claim generation | Claude Sonnet | 1 | ~$0.50 |
+| Pass 2: Claim generation | GPT 5.4 | 1 | ~$0.50 |
 | Pass 3: Scoring (batched) | GPT 5.4 Mini | 15 claims × ~6 batches | ~$1.00-2.00 |
 | Pass 4: Rewriting | Gemini Flash Lite | 5 claims × 50 cards | ~$0.50-1.00 |
 | **Total** | | **~100** | **~$2.50-4.00 per run** |
