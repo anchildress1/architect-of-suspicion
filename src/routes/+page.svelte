@@ -3,27 +3,25 @@
   import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { gameState } from '$lib/stores/gameState.svelte';
+  import type { PageData } from './$types';
 
-  let loadingClaim = $state(true);
+  let { data }: { data: PageData } = $props();
+
+  let loadingClaim = $state(!data.claim);
   let entering = $state(false);
-  let errorMsg = $state('');
+  let errorMsg = $state(data.claim ? '' : 'The docket could not be read.');
 
-  onMount(async () => {
+  onMount(() => {
     gameState.reset();
-    try {
-      const res = await fetch('/api/claim');
-      if (!res.ok) throw new Error('Failed to fetch claim');
-      const claim = (await res.json()) as { id: string; text: string };
-      gameState.setClaim(claim);
-    } catch (err) {
-      errorMsg = err instanceof Error ? err.message : 'Failed to load case';
-    } finally {
+    if (data.claim) {
+      gameState.setClaim(data.claim);
       loadingClaim = false;
     }
   });
 
   async function enterMansion() {
-    if (entering || !gameState.current.claimId) return;
+    const claimId = data.claim?.id ?? gameState.current.claimId;
+    if (entering || !claimId) return;
     entering = true;
     errorMsg = '';
 
@@ -31,7 +29,7 @@
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claim_id: gameState.current.claimId }),
+        body: JSON.stringify({ claim_id: claimId }),
       });
 
       if (!res.ok) {
@@ -39,15 +37,15 @@
         throw new Error(detail?.message ?? 'Failed to create session');
       }
 
-      const data = (await res.json()) as {
+      const body = (await res.json()) as {
         session_id: string;
         claim_id: string;
         claim_text: string;
       };
       gameState.initSession({
-        sessionId: data.session_id,
-        claimId: data.claim_id,
-        claimText: data.claim_text,
+        sessionId: body.session_id,
+        claimId: body.claim_id,
+        claimText: body.claim_text,
       });
       goto(resolve('/mansion'));
     } catch (err) {
@@ -77,7 +75,8 @@
       Architect <span class="summons-amp">of</span> Suspicion
     </h1>
     <p class="summons-sub">
-      An investigation <span class="dot">&middot;</span> in IX chambers <span class="dot">&middot;</span> concerning one Ashley Childress
+      An investigation <span class="dot">&middot;</span> in IX chambers
+      <span class="dot">&middot;</span> concerning one Ashley Childress
     </p>
   </div>
 
@@ -89,17 +88,23 @@
 
     <div class="dossier-head">
       <span class="dossier-id">Case &numero;&nbsp;0426 &middot; Docket&nbsp;AA-XII</span>
-      <span class="dossier-date">{new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+      <span class="dossier-date"
+        >{new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span
+      >
     </div>
 
     <p class="dossier-eyebrow">The Claim, entered into evidence</p>
 
-    {#if loadingClaim}
-      <h2 class="dossier-claim dossier-claim-loading">&hellip;the docket is being read aloud&hellip;</h2>
-    {:else if gameState.current.claimText}
-      <h2 class="dossier-claim transition-claim">&ldquo;{gameState.current.claimText}&rdquo;</h2>
+    {#if data.claim}
+      <h2 class="dossier-claim transition-claim">&ldquo;{data.claim.text}&rdquo;</h2>
+    {:else if loadingClaim}
+      <h2 class="dossier-claim dossier-claim-loading">
+        &hellip;the docket is being read aloud&hellip;
+      </h2>
     {:else}
-      <h2 class="dossier-claim dossier-claim-error">&ldquo;The docket is empty. Seed the claims pipeline.&rdquo;</h2>
+      <h2 class="dossier-claim dossier-claim-error">
+        &ldquo;The docket is empty. Seed the claims pipeline.&rdquo;
+      </h2>
     {/if}
 
     <div class="dossier-meta-row">
@@ -115,15 +120,13 @@
     </div>
 
     <p class="dossier-intro">
-      The doors are bolted. The gallery has assembled. Nine chambers stand between you and a verdict &mdash; each holds witnesses, nothing more. You will pick. You will rule. And I, the Architect, will be watching.
+      The doors are bolted. The gallery has assembled. Nine chambers stand between you and a verdict
+      &mdash; each holds witnesses, nothing more. You will pick. You will rule. And I, the
+      Architect, will be watching.
     </p>
 
     <div class="dossier-cta">
-      <button
-        class="lever-btn"
-        disabled={entering || loadingClaim || !gameState.current.claimId}
-        onclick={enterMansion}
-      >
+      <button class="lever-btn" disabled={entering || !data.claim} onclick={enterMansion}>
         {entering ? 'Bolting the doors&hellip;' : 'Enter the Mansion'}
       </button>
       <p class="dossier-meta-text">
@@ -159,7 +162,11 @@
     right: 0;
     bottom: 0;
     height: 45%;
-    background: radial-gradient(ellipse 70% 100% at 50% 120%, rgba(210, 58, 42, 0.22), transparent 60%);
+    background: radial-gradient(
+      ellipse 70% 100% at 50% 120%,
+      rgba(210, 58, 42, 0.22),
+      transparent 60%
+    );
     mix-blend-mode: screen;
     pointer-events: none;
   }
@@ -168,7 +175,12 @@
     position: absolute;
     bottom: 0;
     width: 3px;
-    background: linear-gradient(to top, rgba(255, 240, 220, 0), rgba(255, 240, 220, 0.18) 50%, rgba(255, 240, 220, 0));
+    background: linear-gradient(
+      to top,
+      rgba(255, 240, 220, 0),
+      rgba(255, 240, 220, 0.18) 50%,
+      rgba(255, 240, 220, 0)
+    );
     filter: blur(3px);
     animation: steam 6s ease-in infinite;
     pointer-events: none;
