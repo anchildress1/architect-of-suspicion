@@ -208,11 +208,15 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
         system: SYSTEM_PROMPT,
         maxTokens: 4000,
         schema: schemaForBatch(batch.map((c) => c.objectID)),
-        // GPT-5.5 guidance: pure structured scoring has no benefit from
-        // reasoning tokens — 'none' is both fastest and most reliable per
-        // the OpenAI cookbook. 'low' caused drift on mini; 'none' locks
-        // output to pure schema emission.
-        reasoning: 'none',
+        // Pass 3 isn't template-filling — it's calibrated judgment: simulate
+        // the player's gut read from title+blurb, compare against what the
+        // hidden fact actually reveals, weigh against the specific claim.
+        // 'none' (pure scoring) under-thinks borderline cases; 'low' is
+        // overkill for integer outputs. 'minimal' is the GPT-5.5 tier
+        // designed for "slight deliberation" — enough for theory-of-mind
+        // and fact-vs-surface comparison without the full thinking cost.
+        // Escalate to 'low' only if eval shows systematic miscalibration.
+        reasoning: 'minimal',
         // GPT-5+ verbosity knob: 'low' suppresses narrative padding around
         // structured JSON. The schema already forbids extra fields; this
         // belt-and-suspenders keeps output latency + token spend tight.
