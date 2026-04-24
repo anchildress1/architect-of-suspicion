@@ -12,89 +12,107 @@ export interface PersistInput {
   rewrites: Map<string, string>;
 }
 
-export async function persistSeed(inputs: PersistInput[]): Promise<void> {
+export interface ClaimCardSeedRow {
+  card_id: string;
+  ambiguity: number;
+  surprise: number;
+  rewritten_blurb: string;
+}
+
+export interface ClaimSeedRow {
+  claim_text: string;
+  rationale: string | null;
+  room_coverage: number;
+  total_eligible_cards: number;
+  cards: ClaimCardSeedRow[];
+}
+
+function assertScoreBounds(score: CardClaimScore, claim: GeneratedClaim): void {
+  if (!Number.isInteger(score.ambiguity) || score.ambiguity < 1 || score.ambiguity > 5) {
+    throw new Error(
+      `Invalid ambiguity=${score.ambiguity} for card ${score.card_id} on claim "${claim.claim_text}" (${claim.id}); expected integer 1..5`,
+    );
+  }
+  if (!Number.isInteger(score.surprise) || score.surprise < 1 || score.surprise > 5) {
+    throw new Error(
+      `Invalid surprise=${score.surprise} for card ${score.card_id} on claim "${claim.claim_text}" (${claim.id}); expected integer 1..5`,
+    );
+  }
+}
+
+export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
   const survivors = inputs.filter((i) => i.validation.survived);
   if (survivors.length === 0) {
-    throw new Error('persistSeed called with no surviving inputs — refusing to truncate DB');
+    throw new Error('buildSeedPayload called with no surviving inputs — refusing to truncate DB');
   }
 
-  // Pre-validate all rewrites before touching the DB. The truncate+insert sequence
-  // is not atomic — a bug discovered mid-loop would leave the DB partially written.
-  // Fail fast here so the existing seed is never destroyed by a pipeline bug.
+  const payload: ClaimSeedRow[] = [];
   for (const input of survivors) {
+    if (input.validation.claim_id !== input.claim.id) {
+      throw new Error(
+        `Validation key mismatch for claim "${input.claim.claim_text}" (${input.claim.id}); got validation for ${input.validation.claim_id}`,
+      );
+    }
+
+    const scoreByCard = new Map(input.scores.map((score) => [score.card_id, score]));
+    const seenEligible = new Set<string>();
+    const cards: ClaimCardSeedRow[] = [];
+
     for (const cardId of input.validation.eligible_card_ids) {
-      if (!input.rewrites.has(cardId)) {
+      if (seenEligible.has(cardId)) {
         throw new Error(
-          `Missing rewrite for card ${cardId} on claim "${input.claim.claim_text}" — aborting before DB truncation`,
+          `Duplicate eligible card ${cardId} on claim "${input.claim.claim_text}" (${input.claim.id})`,
         );
       }
+      seenEligible.add(cardId);
+
+      const score = scoreByCard.get(cardId);
+      if (!score) {
+        throw new Error(
+          `Missing score for card ${cardId} on claim "${input.claim.claim_text}" (${input.claim.id})`,
+        );
+      }
+      assertScoreBounds(score, input.claim);
+
+      const rewritten_blurb = input.rewrites.get(cardId);
+      if (!rewritten_blurb) {
+        throw new Error(
+          `Missing rewrite for card ${cardId} on claim "${input.claim.claim_text}" (${input.claim.id})`,
+        );
+      }
+
+      cards.push({
+        card_id: cardId,
+        ambiguity: score.ambiguity,
+        surprise: score.surprise,
+        rewritten_blurb,
+      });
     }
+
+    payload.push({
+      claim_text: input.claim.claim_text,
+      rationale: input.claim.rationale,
+      room_coverage: input.validation.room_coverage,
+      total_eligible_cards: input.validation.total_eligible_cards,
+      cards,
+    });
   }
 
+  return payload;
+}
+
+export async function persistSeed(inputs: PersistInput[]): Promise<void> {
+  const payload = buildSeedPayload(inputs);
   const supabase = seedSupabase();
-
-  // FK-safe truncation: claim_cards first, then claims.
-  const { error: deleteCardsErr } = await supabase
+  const { error } = await supabase
     .schema('suspicion')
-    .from('claim_cards')
-    .delete()
-    .not('claim_id', 'is', null);
-  if (deleteCardsErr) throw new Error(`truncate claim_cards: ${deleteCardsErr.message}`);
+    .rpc('replace_claim_seed', { seed_payload: payload });
 
-  const { error: deleteClaimsErr } = await supabase
-    .schema('suspicion')
-    .from('claims')
-    .delete()
-    .not('id', 'is', null);
-  if (deleteClaimsErr) throw new Error(`truncate claims: ${deleteClaimsErr.message}`);
+  if (error) {
+    throw new Error(`replace_claim_seed rpc failed: ${error.message}`);
+  }
 
-  for (const input of inputs) {
-    if (!input.validation.survived) continue;
-
-    const { data: inserted, error: insertClaimErr } = await supabase
-      .schema('suspicion')
-      .from('claims')
-      .insert({
-        claim_text: input.claim.claim_text,
-        rationale: input.claim.rationale,
-        room_coverage: input.validation.room_coverage,
-        total_eligible_cards: input.validation.total_eligible_cards,
-      })
-      .select('id')
-      .single();
-    if (insertClaimErr || !inserted) {
-      throw new Error(`insert claim: ${insertClaimErr?.message ?? 'no row returned'}`);
-    }
-
-    const eligible = new Set(input.validation.eligible_card_ids);
-    const rows = input.scores
-      .filter((s) => eligible.has(s.card_id))
-      .map((s) => {
-        const rewritten_blurb = input.rewrites.get(s.card_id);
-        if (!rewritten_blurb) {
-          throw new Error(
-            `Missing rewrite for card ${s.card_id} on claim "${input.claim.claim_text}" — every surviving pair must have a rewritten blurb`,
-          );
-        }
-        return {
-          claim_id: inserted.id,
-          card_id: s.card_id,
-          ambiguity: s.ambiguity,
-          surprise: s.surprise,
-          rewritten_blurb,
-        };
-      });
-
-    if (rows.length > 0) {
-      const { error: insertPairsErr } = await supabase
-        .schema('suspicion')
-        .from('claim_cards')
-        .insert(rows);
-      if (insertPairsErr) {
-        throw new Error(`insert claim_cards: ${insertPairsErr.message}`);
-      }
-    }
-
-    console.log(`[persist] wrote claim "${input.claim.claim_text}" + ${rows.length} pairs`);
+  for (const claim of payload) {
+    console.log(`[persist] wrote claim "${claim.claim_text}" + ${claim.cards.length} pairs`);
   }
 }

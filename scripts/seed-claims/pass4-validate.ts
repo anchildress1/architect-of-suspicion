@@ -61,11 +61,7 @@ function roomFor(card: CardRow): RoomSlug | null {
   return CATEGORY_TO_ROOM[card.category] ?? null;
 }
 
-function buildPrompt(
-  claim: GeneratedClaim,
-  cards: CardRow[],
-  scores: CardClaimScore[],
-): string {
+function buildPrompt(claim: GeneratedClaim, cards: CardRow[], scores: CardClaimScore[]): string {
   const scoreById = new Map(scores.map((s) => [s.card_id, s]));
   const eligible = cards.filter((c) => scoreById.has(c.objectID));
 
@@ -105,13 +101,13 @@ export async function runPass4(
   const rewrites: Map<string, Map<string, string>> = new Map();
 
   for (const claim of claims) {
-    const scores = scoredByClaim.get(claim.claim_text);
+    const scores = scoredByClaim.get(claim.id);
     if (!scores) {
-      throw new Error(`[pass4] No scores found for claim "${claim.claim_text}" — this is a pipeline bug`);
+      throw new Error(
+        `[pass4] No scores found for claim "${claim.claim_text}" (claim_id=${claim.id}) — this is a pipeline bug`,
+      );
     }
-    const claimCards = scores
-      .map((s) => cardById.get(s.card_id))
-      .filter((c): c is CardRow => !!c);
+    const claimCards = scores.map((s) => cardById.get(s.card_id)).filter((c): c is CardRow => !!c);
 
     const raw = await client.complete(buildPrompt(claim, claimCards, scores), {
       system: SYSTEM_PROMPT,
@@ -124,7 +120,7 @@ export async function runPass4(
       parsed = JSON.parse(raw) as { arguments: CardArgument[] };
     } catch (err) {
       throw new Error(
-        `[pass4] JSON.parse failed for "${claim.claim_text}".\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+        `[pass4] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}).\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
         { cause: err },
       );
     }
@@ -136,10 +132,10 @@ export async function runPass4(
     if (missingRewrites.length > 0) {
       const missingIds = missingRewrites.map((c) => c.objectID).join(', ');
       throw new Error(
-        `[pass4] "${claim.claim_text}": model omitted ${missingRewrites.length} card(s) from output. Missing card IDs: ${missingIds}. Increase maxTokens or reduce pool size.`,
+        `[pass4] "${claim.claim_text}" (claim_id=${claim.id}): model omitted ${missingRewrites.length} card(s) from output. Missing card IDs: ${missingIds}. Increase maxTokens or reduce pool size.`,
       );
     }
-    rewrites.set(claim.claim_text, claimRewrites);
+    rewrites.set(claim.id, claimRewrites);
 
     // Survival check: minimum playable pool — cards that got a rewrite and cover
     // enough rooms. This is a floor, not a quality bar; pass3 ranking does quality.
@@ -150,6 +146,7 @@ export async function runPass4(
     const survived = passedCoverage && passedTotal;
 
     validations.push({
+      claim_id: claim.id,
       claim_text: claim.claim_text,
       room_coverage: coveredRooms,
       total_eligible_cards: rewrittenCards.length,

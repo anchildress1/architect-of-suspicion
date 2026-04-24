@@ -9,29 +9,51 @@
  */
 
 import { loadEligibleCards } from './cards';
-import { config } from './config';
+import { config, type Config } from './config';
 import { runPass1 } from './pass1-tensions';
 import { runPass2 } from './pass2-claims';
 import { runPass3 } from './pass3-score';
 import { runPass4 } from './pass4-validate';
 import { persistSeed, type PersistInput } from './persist';
+import { pathToFileURL } from 'node:url';
 
-function validateEnv(): void {
-  const required = [
-    'ANTHROPIC_API_KEY',
-    'OPENAI_API_KEY',
-    'GEMINI_API_KEY',
-    'SUPABASE_URL',
-    'SUPABASE_SECRET_KEY',
-  ];
-  const missing = required.filter((k) => !process.env[k]);
+type Provider = 'anthropic' | 'openai' | 'gemini';
+
+function providerForModel(model: string): Provider {
+  if (model.startsWith('claude-')) return 'anthropic';
+  if (model.startsWith('gpt-')) return 'openai';
+  if (model.startsWith('gemini-')) return 'gemini';
+  throw new TypeError(`Unrecognized model provider for "${model}"`);
+}
+
+export function requiredEnvVarsForModels(models: Config['models']): string[] {
+  const required = new Set<string>(['SUPABASE_URL', 'SUPABASE_SECRET_KEY']);
+  for (const model of Object.values(models)) {
+    const provider = providerForModel(model);
+    if (provider === 'anthropic') required.add('ANTHROPIC_API_KEY');
+    if (provider === 'openai') required.add('OPENAI_API_KEY');
+    if (provider === 'gemini') required.add('GEMINI_API_KEY');
+  }
+  return [...required];
+}
+
+export function validateEnv(
+  models: Config['models'] = config.models,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  const missing = requiredEnvVarsForModels(models).filter((k) => !env[k]);
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
+  if (providerForModel(models.pass2) === providerForModel(models.pass4)) {
+    throw new Error(
+      `Pass 4 model provider must differ from Pass 2 for adversarial validation (pass2=${models.pass2}, pass4=${models.pass4})`,
+    );
+  }
 }
 
-async function main(): Promise<void> {
-  validateEnv();
+export async function main(): Promise<void> {
+  validateEnv(config.models, process.env);
 
   console.log('[seed-claims] starting pipeline');
   console.log('[seed-claims] config:', JSON.stringify(config, null, 2));
@@ -46,27 +68,35 @@ async function main(): Promise<void> {
   const { validations, rewrites } = await runPass4(selected, scored, cards);
 
   const inputs: PersistInput[] = selected.map((claim) => {
-    const validation = validations.find((v) => v.claim_text === claim.claim_text);
+    const validation = validations.find((v) => v.claim_id === claim.id);
     if (!validation) throw new Error(`No validation for claim: ${claim.claim_text}`);
 
-    const claimScores = scored.get(claim.claim_text);
-    if (!claimScores) throw new Error(`No scores for claim: "${claim.claim_text}" — pipeline bug`);
+    const claimScores = scored.get(claim.id);
+    if (!claimScores) {
+      throw new Error(
+        `No scores for claim "${claim.claim_text}" (claim_id=${claim.id}) — pipeline bug`,
+      );
+    }
 
-    const claimRewrites = rewrites.get(claim.claim_text);
-    if (!claimRewrites) throw new Error(`No rewrites for claim: "${claim.claim_text}" — pipeline bug`);
+    const claimRewrites = rewrites.get(claim.id);
+    if (!claimRewrites) {
+      throw new Error(
+        `No rewrites for claim "${claim.claim_text}" (claim_id=${claim.id}) — pipeline bug`,
+      );
+    }
 
     return { claim, validation, scores: claimScores, rewrites: claimRewrites };
   });
 
   const survivors = inputs.filter((i) => i.validation.survived);
-  console.log(
-    `[seed-claims] ${survivors.length}/${inputs.length} claims survived validation`,
-  );
+  console.log(`[seed-claims] ${survivors.length}/${inputs.length} claims survived validation`);
 
   if (config.dryRun) {
     console.log('[seed-claims] DRY RUN — skipping persistence');
     // Maps serialize as {} with JSON.stringify — use a replacer to show rewrite content.
-    console.log(JSON.stringify(inputs, (_, v) => (v instanceof Map ? Object.fromEntries(v) : v), 2));
+    console.log(
+      JSON.stringify(inputs, (_, v) => (v instanceof Map ? Object.fromEntries(v) : v), 2),
+    );
     return;
   }
 
@@ -78,7 +108,14 @@ async function main(): Promise<void> {
   console.log('[seed-claims] done');
 }
 
-main().catch((err) => {
-  console.error('[seed-claims] FAILED:', err);
-  process.exit(1);
-});
+function isExecutedDirectly(): boolean {
+  if (!process.argv[1]) return false;
+  return import.meta.url === pathToFileURL(process.argv[1]).href;
+}
+
+if (isExecutedDirectly()) {
+  main().catch((err) => {
+    console.error('[seed-claims] FAILED:', err);
+    process.exit(1);
+  });
+}

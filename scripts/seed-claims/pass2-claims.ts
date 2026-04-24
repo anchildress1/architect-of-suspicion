@@ -11,6 +11,12 @@ import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, GeneratedClaim, TensionMap } from './types';
 
+interface ParsedClaim {
+  claim_text: string;
+  rationale: string;
+  tensions_targeted: string[];
+}
+
 const SYSTEM_PROMPT = `You are writing claims for Architect of Suspicion — a game where players sort career-evidence cards as "proof" or "objection" against a single claim about the subject, Ashley.
 
 A good claim is a blunt, provocative accusation a reasonable person could argue either way. It's framed from outside looking in, so the player has to make judgment calls against the evidence they see.`;
@@ -59,37 +65,41 @@ Examples of the shape:
 Reject claims that are too soft ("Ashley is ambitious"), too narrow ("Ashley over-tests her code"), or not falsifiable.`;
 }
 
-export async function runPass2(
-  cards: CardRow[],
-  tensions: TensionMap,
-): Promise<GeneratedClaim[]> {
+export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<GeneratedClaim[]> {
   const client = clientFor(config.models.pass2);
   console.log(`[pass2] model=${client.model} generate=${config.targets.generate}`);
 
-  const raw = await client.complete(
-    buildPrompt(cards, tensions, config.targets.generate),
-    { system: SYSTEM_PROMPT, maxTokens: 5000, schema: SCHEMA },
-  );
+  const raw = await client.complete(buildPrompt(cards, tensions, config.targets.generate), {
+    system: SYSTEM_PROMPT,
+    maxTokens: 5000,
+    schema: SCHEMA,
+  });
 
-  let parsed: { claims: GeneratedClaim[] };
+  let parsed: { claims: ParsedClaim[] };
   try {
-    parsed = JSON.parse(raw) as { claims: GeneratedClaim[] };
+    parsed = JSON.parse(raw) as { claims: ParsedClaim[] };
   } catch (err) {
-    throw new Error(
-      `[pass2] JSON.parse failed.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
-      { cause: err },
-    );
+    throw new Error(`[pass2] JSON.parse failed.\nRaw (first 500 chars): ${raw.slice(0, 500)}`, {
+      cause: err,
+    });
   }
   if (!Array.isArray(parsed.claims) || parsed.claims.length === 0) {
     throw new TypeError('Pass 2 produced no claims');
   }
 
-  console.log(`[pass2] ${parsed.claims.length} claims:`);
-  for (let i = 0; i < parsed.claims.length; i++) {
-    const c = parsed.claims[i];
-    console.log(`  ${i + 1}. "${c.claim_text}"`);
+  const claims: GeneratedClaim[] = parsed.claims.map((claim, index) => ({
+    id: `claim-${index + 1}`,
+    claim_text: claim.claim_text,
+    rationale: claim.rationale,
+    tensions_targeted: claim.tensions_targeted,
+  }));
+
+  console.log(`[pass2] ${claims.length} claims:`);
+  for (let i = 0; i < claims.length; i++) {
+    const c = claims[i];
+    console.log(`  ${i + 1}. [${c.id}] "${c.claim_text}"`);
     console.log(`     → ${c.rationale}`);
   }
 
-  return parsed.claims;
+  return claims;
 }

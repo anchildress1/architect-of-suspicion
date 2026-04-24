@@ -52,6 +52,8 @@ export interface TensionMap {
 
 /** Raw output of Pass 2. */
 export interface GeneratedClaim {
+  /** Stable pipeline-local key; assigned after Pass 2 parsing. */
+  id: string;
   claim_text: string;
   rationale: string;
   tensions_targeted: string[];
@@ -66,6 +68,7 @@ export interface CardClaimScore {
 
 /** Validation result for a single claim (Pass 4 output). */
 export interface ClaimValidation {
+  claim_id: string;
   claim_text: string;
   room_coverage: number;
   total_eligible_cards: number;
@@ -76,7 +79,7 @@ export interface ClaimValidation {
 
 /** Output of Pass 3: floor-cleared scores per claim + ranked selection for Pass 4. */
 export interface Pass3Result {
-  /** Cards that cleared the quality floor, keyed by claim_text. */
+  /** Cards that cleared the quality floor, keyed by GeneratedClaim.id. */
   scored: Map<string, CardClaimScore[]>;
   /** Top-N claims by card-pool quality (rooms² × count × avg score), in rank order. */
   selected: GeneratedClaim[];
@@ -85,6 +88,6 @@ export interface Pass3Result {
 /** Pass 4 combined output: validation results + claim-specific blurb rewrites. */
 export interface Pass4Output {
   validations: ClaimValidation[];
-  /** Rewritten blurbs keyed by claim_text → card_id. */
+  /** Rewritten blurbs keyed by GeneratedClaim.id → card_id. */
   rewrites: Map<string, Map<string, string>>;
 }

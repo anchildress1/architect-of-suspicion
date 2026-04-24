@@ -21,12 +21,7 @@
 import { clientFor } from './clients';
 import { formatCardCorpus } from './cards';
 import { config } from './config';
-import type {
-  CardClaimScore,
-  CardRow,
-  GeneratedClaim,
-  Pass3Result,
-} from './types';
+import type { CardClaimScore, CardRow, GeneratedClaim, Pass3Result } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS } from './types';
 
 const SYSTEM_PROMPT = `You score how each card in a corpus plays against a single claim.
@@ -46,8 +41,8 @@ const SCHEMA = {
         type: 'object',
         properties: {
           card_id: { type: 'string' },
-          ambiguity: { type: 'integer' },
-          surprise: { type: 'integer' },
+          ambiguity: { type: 'integer', minimum: 1, maximum: 5 },
+          surprise: { type: 'integer', minimum: 1, maximum: 5 },
         },
         required: ['card_id', 'ambiguity', 'surprise'],
         additionalProperties: false,
@@ -68,6 +63,56 @@ ${formatCardCorpus(cards)}
 Score every card against the claim.`;
 }
 
+function assertBatchScores(
+  claim: GeneratedClaim,
+  batch: CardRow[],
+  scores: CardClaimScore[],
+  offset: number,
+): void {
+  if (scores.length !== batch.length) {
+    const missingIds = batch
+      .filter((c) => !scores.find((s) => s.card_id === c.objectID))
+      .map((c) => c.objectID);
+    throw new Error(
+      `[pass3] model returned ${scores.length} scores for ${batch.length} cards (claim="${claim.claim_text}", claim_id=${claim.id}, batch offset=${offset}). Missing card IDs: ${missingIds.join(', ')}`,
+    );
+  }
+
+  const allowedIds = new Set(batch.map((c) => c.objectID));
+  const seen = new Set<string>();
+  const duplicateIds: string[] = [];
+  const unexpectedIds: string[] = [];
+  for (const score of scores) {
+    if (!allowedIds.has(score.card_id)) {
+      unexpectedIds.push(score.card_id);
+    }
+    if (seen.has(score.card_id)) {
+      duplicateIds.push(score.card_id);
+    }
+    seen.add(score.card_id);
+    if (!Number.isInteger(score.ambiguity) || score.ambiguity < 1 || score.ambiguity > 5) {
+      throw new Error(
+        `[pass3] invalid ambiguity=${score.ambiguity} for card_id=${score.card_id} (claim_id=${claim.id}). Expected integer 1..5.`,
+      );
+    }
+    if (!Number.isInteger(score.surprise) || score.surprise < 1 || score.surprise > 5) {
+      throw new Error(
+        `[pass3] invalid surprise=${score.surprise} for card_id=${score.card_id} (claim_id=${claim.id}). Expected integer 1..5.`,
+      );
+    }
+  }
+  if (unexpectedIds.length > 0) {
+    throw new Error(
+      `[pass3] model returned out-of-batch card IDs: ${unexpectedIds.join(', ')} (claim_id=${claim.id}, batch offset=${offset})`,
+    );
+  }
+  if (duplicateIds.length > 0) {
+    throw new Error(
+      `[pass3] model returned duplicate card IDs: ${duplicateIds.join(', ')} (claim_id=${claim.id}, batch offset=${offset})`,
+    );
+  }
+}
+
 /** Compute a quality score for a claim given its floor-cleared cards.
  *  rooms² × cardCount × avgScore — quadratic room factor prioritises
  *  claims that naturally span the most gameplay rooms. */
@@ -83,16 +128,12 @@ function claimQuality(floorCards: CardClaimScore[], allCards: CardRow[]): number
   }
 
   const avgScore =
-    floorCards.reduce((sum, s) => sum + s.ambiguity + s.surprise, 0) /
-    floorCards.length;
+    floorCards.reduce((sum, s) => sum + s.ambiguity + s.surprise, 0) / floorCards.length;
 
   return rooms.size * rooms.size * floorCards.length * avgScore;
 }
 
-export async function runPass3(
-  cards: CardRow[],
-  claims: GeneratedClaim[],
-): Promise<Pass3Result> {
+export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Promise<Pass3Result> {
   const client = clientFor(config.models.pass3);
   const batches = Math.ceil(cards.length / config.thresholds.scoreBatch);
   console.log(
@@ -119,19 +160,12 @@ export async function runPass3(
         batchResult = JSON.parse(raw) as { scores: CardClaimScore[] };
       } catch (err) {
         throw new Error(
-          `[pass3] JSON.parse failed for "${claim.claim_text}" batch offset=${offset}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+          `[pass3] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch offset=${offset}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
           { cause: err },
         );
       }
       const { scores } = batchResult;
-      if (scores.length !== batch.length) {
-        const missingIds = batch
-          .filter((c) => !scores.find((s) => s.card_id === c.objectID))
-          .map((c) => c.objectID);
-        throw new Error(
-          `[pass3] model returned ${scores.length} scores for ${batch.length} cards (claim="${claim.claim_text}", batch offset=${offset}). Missing card IDs: ${missingIds.join(', ')}`,
-        );
-      }
+      assertBatchScores(claim, batch, scores, offset);
       allScores.push(...scores);
     }
 
@@ -140,7 +174,7 @@ export async function runPass3(
     const unknownIds = allScores.filter((s) => !cardById.has(s.card_id)).map((s) => s.card_id);
     if (unknownIds.length > 0) {
       throw new Error(
-        `[pass3] model returned scores for unknown card IDs: ${unknownIds.join(', ')} (claim="${claim.claim_text}")`,
+        `[pass3] model returned scores for unknown card IDs: ${unknownIds.join(', ')} (claim_id=${claim.id}, claim="${claim.claim_text}")`,
       );
     }
 
@@ -149,17 +183,15 @@ export async function runPass3(
     // because the same card scores differently against different accusations.
     const pool = allScores
       .filter((s) => s.ambiguity + s.surprise >= config.thresholds.cardFloor)
-      .sort((a, b) => (b.ambiguity + b.surprise) - (a.ambiguity + a.surprise))
+      .sort((a, b) => b.ambiguity + b.surprise - (a.ambiguity + a.surprise))
       .slice(0, config.targets.topCards);
 
     const quality = claimQuality(pool, cards);
-    scored.set(claim.claim_text, pool);
-    qualities.set(claim.claim_text, quality);
+    scored.set(claim.id, pool);
+    qualities.set(claim.id, quality);
 
     const rooms = new Set(
-      pool
-        .map((s) => CATEGORY_TO_ROOM[cardById.get(s.card_id)?.category ?? ''])
-        .filter(Boolean),
+      pool.map((s) => CATEGORY_TO_ROOM[cardById.get(s.card_id)?.category ?? '']).filter(Boolean),
     );
 
     console.log(
@@ -169,16 +201,14 @@ export async function runPass3(
 
   // Rank all claims by quality and select the top N for Pass 4.
   const ranked = [...claims].sort(
-    (a, b) => (qualities.get(b.claim_text) ?? 0) - (qualities.get(a.claim_text) ?? 0),
+    (a, b) => (qualities.get(b.id) ?? 0) - (qualities.get(a.id) ?? 0),
   );
   const selected = ranked.slice(0, config.targets.select);
 
-  console.log(
-    `[pass3] selected top ${selected.length} of ${claims.length} for validation:`,
-  );
+  console.log(`[pass3] selected top ${selected.length} of ${claims.length} for validation:`);
   for (const c of selected) {
     console.log(
-      `  • (quality=${(qualities.get(c.claim_text) ?? 0).toFixed(0)}) "${c.claim_text}"`,
+      `  • (quality=${(qualities.get(c.id) ?? 0).toFixed(0)}) [${c.id}] "${c.claim_text}"`,
     );
   }
 
