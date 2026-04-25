@@ -6,18 +6,19 @@
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
   // Pin coordinates expressed as percent of the house exterior image. Tuned
-  // to land each pin over the corresponding window/door in the artwork.
-  // `flip: true` means the leader/tag are drawn to the LEFT of the pin.
+  // for label visibility — pins live closer to the building centerline so
+  // the tag (and its 200px width) stays inside the canvas without crowding
+  // a neighbor on the same band. `flip: true` draws the leader/tag LEFT.
   const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 12, y: 16, flip: false, chamber: 'I' },
-    gallery: { x: 48, y: 10, flip: false, chamber: 'II' },
-    'control-room': { x: 86, y: 20, flip: true, chamber: 'III' },
-    parlor: { x: 10, y: 50, flip: false, chamber: 'IV' },
-    'entry-hall': { x: 52, y: 44, flip: false, chamber: 'V' },
-    library: { x: 88, y: 54, flip: true, chamber: 'VI' },
-    workshop: { x: 14, y: 82, flip: false, chamber: 'VII' },
-    cellar: { x: 46, y: 76, flip: false, chamber: 'VIII' },
-    'back-hall': { x: 84, y: 86, flip: true, chamber: 'IX' },
+    attic: { x: 38, y: 22, flip: false, chamber: 'I' },
+    gallery: { x: 60, y: 13, flip: false, chamber: 'II' },
+    'control-room': { x: 88, y: 25, flip: true, chamber: 'III' },
+    parlor: { x: 36, y: 56, flip: false, chamber: 'IV' },
+    'entry-hall': { x: 60, y: 50, flip: false, chamber: 'V' },
+    library: { x: 88, y: 53, flip: true, chamber: 'VI' },
+    workshop: { x: 36, y: 82, flip: false, chamber: 'VII' },
+    cellar: { x: 58, y: 76, flip: false, chamber: 'VIII' },
+    'back-hall': { x: 88, y: 84, flip: true, chamber: 'IX' },
   };
 
   let wanderNarrated = $state(false);
