@@ -97,7 +97,7 @@
     <p class="dossier-eyebrow">The Claim, entered into evidence</p>
 
     {#if data.claim}
-      <h2 class="dossier-claim transition-claim">&ldquo;{data.claim.text}&rdquo;</h2>
+      <h2 class="dossier-claim transition-claim">{data.claim.text}</h2>
     {:else if loadingClaim}
       <h2 class="dossier-claim dossier-claim-loading">
         &hellip;the docket is being read aloud&hellip;
@@ -292,35 +292,37 @@
     pointer-events: none;
   }
 
+  /* Printer's marks — registration marks at the dossier corners.
+     38×38 brass-dim, flush with the frame. Understated, not alarmed. */
   .dossier-corner {
     position: absolute;
-    width: 14px;
-    height: 14px;
-    border: 1px solid rgba(210, 58, 42, 0.4);
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--color-brass-dim);
     pointer-events: none;
   }
 
   .dossier-corner.tl {
-    top: 6px;
-    left: 6px;
+    top: -1px;
+    left: -1px;
     border-right: none;
     border-bottom: none;
   }
   .dossier-corner.tr {
-    top: 6px;
-    right: 6px;
+    top: -1px;
+    right: -1px;
     border-left: none;
     border-bottom: none;
   }
   .dossier-corner.bl {
-    bottom: 6px;
-    left: 6px;
+    bottom: -1px;
+    left: -1px;
     border-right: none;
     border-top: none;
   }
   .dossier-corner.br {
-    bottom: 6px;
-    right: 6px;
+    bottom: -1px;
+    right: -1px;
     border-left: none;
     border-top: none;
   }
@@ -348,6 +350,7 @@
   }
 
   .dossier-claim {
+    position: relative;
     font-family: var(--font-display);
     font-style: italic;
     font-size: clamp(1.6rem, 3vw, 2.4rem);
@@ -355,6 +358,31 @@
     line-height: 1.25;
     margin-bottom: 1.8rem;
     text-wrap: balance;
+  }
+
+  /* Giant serif quotation marks framing the claim. Decorative — only
+     the live claim gets them, not loading/error placeholders. */
+  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::before,
+  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::after {
+    position: absolute;
+    font-family: var(--font-display);
+    font-style: normal;
+    font-size: 72px;
+    line-height: 1;
+    color: var(--color-bone-dim);
+    pointer-events: none;
+  }
+
+  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::before {
+    content: '\201C';
+    top: 18px;
+    left: -36px;
+  }
+
+  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::after {
+    content: '\201D';
+    bottom: 18px;
+    right: -36px;
   }
 
   .dossier-claim-loading {
