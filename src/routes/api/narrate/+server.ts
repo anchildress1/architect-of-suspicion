@@ -4,6 +4,7 @@ import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildNarrationPrompt, type NarrationAction } from '$lib/server/prompts/narrate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
+import { loadSessionCapability } from '$lib/server/sessionCapability';
 import {
   parseJsonBodyWithLimit,
   requireBoundedString,
@@ -24,7 +25,6 @@ const MAX_ROOMS_VISITED = 12;
 const MAX_EVIDENCE_COUNT = 1_000;
 
 interface NarrateRequest {
-  claim?: string;
   action?: string;
   room?: string;
   evidence_count?: { proof?: number; objection?: number };
@@ -32,7 +32,6 @@ interface NarrateRequest {
 }
 
 interface ValidatedNarrationInput {
-  claim: string;
   action: NarrationAction;
   room: string;
   evidenceCount: { proof: number; objection: number };
@@ -40,8 +39,6 @@ interface ValidatedNarrationInput {
 }
 
 function validateInput(body: NarrateRequest): ValidatedNarrationInput {
-  const claim = requireBoundedString(body.claim, 'claim', MAX_CLAIM_LENGTH);
-
   if (!body.action || !VALID_ACTIONS.includes(body.action as NarrationAction)) {
     error(400, 'action must be "enter_room", "idle", or "wander"');
   }
@@ -76,7 +73,6 @@ function validateInput(body: NarrateRequest): ValidatedNarrationInput {
   });
 
   return {
-    claim,
     action: body.action as NarrationAction,
     room,
     evidenceCount: { proof, objection },
@@ -84,15 +80,16 @@ function validateInput(body: NarrateRequest): ValidatedNarrationInput {
   };
 }
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
   const blocked = rateLimitGuard(getClientAddress());
   if (blocked) return blocked;
 
+  const session = await loadSessionCapability(cookies);
   const body = await parseJsonBodyWithLimit<NarrateRequest>(request, MAX_NARRATE_REQUEST_BYTES);
   const input = validateInput(body);
 
   const prompt = buildNarrationPrompt({
-    claim: input.claim,
+    claim: session.claimText,
     action: input.action,
     room: input.room,
     evidenceCount: input.evidenceCount,
@@ -100,6 +97,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   });
 
   let dialogue = FALLBACK_DIALOGUE;
+  let narrationFallback = false;
 
   try {
     const client = getClaudeClient();
@@ -114,10 +112,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
     if (text.trim()) {
       dialogue = text.trim();
+    } else {
+      narrationFallback = true;
     }
   } catch (err) {
     console.error('[narrate] Claude API failure:', err instanceof Error ? err.message : err);
+    narrationFallback = true;
   }
 
-  return json({ dialogue });
+  return json({ dialogue, narration_fallback: narrationFallback });
 };
