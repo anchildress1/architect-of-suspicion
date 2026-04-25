@@ -5,8 +5,10 @@
 ALTER TABLE suspicion.sessions
   ADD COLUMN IF NOT EXISTS session_token_hash text;
 
-UPDATE suspicion.sessions
-SET session_token_hash = encode(gen_random_bytes(32), 'hex')
+-- Pre-existing sessions have no token hash and cannot authenticate under the
+-- new capability scheme. Per the no-backwards-compatibility rule, delete them
+-- rather than backfilling unmatchable fake hashes that would just block auth.
+DELETE FROM suspicion.sessions
 WHERE session_token_hash IS NULL;
 
 ALTER TABLE suspicion.sessions
