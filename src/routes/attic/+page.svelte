@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
 </script>
 
 <svelte:head>
@@ -15,7 +14,7 @@
   <div class="attic-overlay" aria-hidden="true"></div>
 
   <div class="attic-content reveal">
-    <a href={resolve('/mansion')} class="attic-back">&larr; Back to the Mansion</a>
+    <a href="/mansion" class="attic-back">&larr; Back to the Mansion</a>
 
     <header class="attic-head">
       <p class="attic-eyebrow">Chamber I &middot; Meta</p>

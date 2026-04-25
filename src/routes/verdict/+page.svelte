@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
   import CoverLetter from '$lib/components/CoverLetter.svelte';
   import Resume from '$lib/components/Resume.svelte';
@@ -83,7 +82,7 @@
 
   function playAgain() {
     gameState.reset();
-    goto(resolve('/'));
+    goto('/');
   }
 
   onMount(() => {
@@ -97,7 +96,7 @@
       return;
     }
     if (!gameState.current.sessionId) {
-      goto(resolve('/'));
+      goto('/');
     }
   });
 </script>
@@ -140,7 +139,7 @@
           {@render verdictButton('accuse', 'Hold to Accuse')}
         </div>
 
-        <a class="choose-cancel" href={resolve('/mansion')}>&larr; Reconsider in the Mansion</a>
+        <a class="choose-cancel" href="/mansion">&larr; Reconsider in the Mansion</a>
       </section>
     {:else if phase === 'composing'}
       <section class="composing reveal" aria-live="polite">

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
-  import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
@@ -115,7 +114,7 @@
 
   onMount(async () => {
     if (!gameState.current.sessionId) {
-      window.location.href = resolve('/');
+      window.location.href = '/';
       return;
     }
     const alreadyVisited = gameState.current.roomsVisited.includes(room.slug);
@@ -143,7 +142,7 @@
     <div class="chamber-overlay" aria-hidden="true"></div>
 
     <header class="chamber-head">
-      <a class="back-link" href={resolve('/mansion')}>&larr; Back to Mansion</a>
+      <a class="back-link" href="/mansion">&larr; Back to Mansion</a>
       <div class="chamber-title-wrap">
         <p class="chamber-eyebrow">{room.category}</p>
         <h1 class="chamber-title">The <span class="flourish">{room.name}</span></h1>
@@ -161,11 +160,11 @@
             The Architect rests their gaze. You may render your verdict, or seek another chamber.
           </p>
           <div class="chamber-empty-actions">
-            <a class="link-btn" href={resolve('/mansion')}>Return to Mansion</a>
+            <a class="link-btn" href="/mansion">Return to Mansion</a>
             {#if gameState.current.sessionId}
               <a
                 class="link-btn link-btn-primary"
-                href={resolve(`/verdict?session=${gameState.current.sessionId}`)}
+                href={'/verdict?session=' + gameState.current.sessionId}
               >
                 Render Verdict &rarr;
               </a>

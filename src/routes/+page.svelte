@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { gameState } from '$lib/stores/gameState.svelte';
   import type { PageData } from './$types';
@@ -47,7 +46,7 @@
         claimId: body.claim_id,
         claimText: body.claim_text,
       });
-      goto(resolve('/mansion'));
+      goto('/mansion');
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : 'Something went wrong';
       entering = false;

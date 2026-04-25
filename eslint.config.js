@@ -18,6 +18,9 @@ export default ts.config(
       // TypeScript handles undefined-variable checks; ESLint's no-undef
       // doesn't understand DOM globals inside Svelte script blocks.
       'no-undef': 'off',
+      // No paths.base configured — resolve() is a no-op and the rule blocks
+      // legitimate query-string navigation (e.g. /room/parlor?claim_id=…).
+      'svelte/no-navigation-without-resolve': 'off',
     },
   },
   {

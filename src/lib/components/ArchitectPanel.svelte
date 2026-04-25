@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
   import { gameState } from '$lib/stores/gameState.svelte';
   import AttentionMeter from './AttentionMeter.svelte';
   import ArchitectFeed from './ArchitectFeed.svelte';
@@ -40,7 +39,7 @@
   {#if showVerdictLink && gameState.current.sessionId}
     <a
       class="panel-render"
-      href={resolve(`/verdict?session=${gameState.current.sessionId}`)}
+      href={'/verdict?session=' + gameState.current.sessionId}
       data-active={gameState.ruledCount > 0}
     >
       <span class="pr-mark">&sect;</span>

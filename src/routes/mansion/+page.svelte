@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { resolve } from '$app/paths';
   import { rooms } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
@@ -26,7 +25,7 @@
   onMount(async () => {
     if (!gameState.current.sessionId || !gameState.current.claimId) {
       // No session — bounce back to summons.
-      window.location.href = resolve('/');
+      window.location.href = '/';
       return;
     }
     if (!wanderNarrated && gameState.current.roomsVisited.length >= 2) {
@@ -90,7 +89,7 @@
                 <p class="pin-cat">Sealed &middot; no entry</p>
               </div>
             {:else if room.slug === 'attic'}
-              <a href={resolve('/attic')} class="pin-tag pin-tag-meta">
+              <a href="/attic" class="pin-tag pin-tag-meta">
                 <p class="pin-row1">
                   <span>Ch. {pin.chamber}</span>
                   <span class="pin-tag-status">Meta</span>
@@ -100,7 +99,7 @@
               </a>
             {:else}
               <a
-                href={`${resolve('/room/[slug]', { slug: room.slug })}?claim_id=${gameState.current.claimId}`}
+                href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
                 class="pin-tag"
                 aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
               >
