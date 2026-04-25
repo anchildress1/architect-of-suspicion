@@ -10,9 +10,7 @@
 
   // Half-circle gauge from -90° (left/Drifting) to +90° (right/Riveted).
   // Smooth easing applied via CSS transition; per-pick deltas stay illegible.
-  const angle = $derived(
-    -90 + ((value - ATTENTION_MIN) / (ATTENTION_MAX - ATTENTION_MIN)) * 180,
-  );
+  const angle = $derived(-90 + ((value - ATTENTION_MIN) / (ATTENTION_MAX - ATTENTION_MIN)) * 180);
   const mood = $derived(moodFor(value));
 </script>
 
@@ -31,8 +29,19 @@
     </defs>
 
     <!-- Outer ring -->
-    <path d="M 20 130 A 110 110 0 0 1 240 130" fill="none" stroke="rgba(233,228,216,0.15)" stroke-width="1" />
-    <path d="M 30 130 A 100 100 0 0 1 230 130" fill="none" stroke="url(#meter-arc)" stroke-width="6" opacity="0.5" />
+    <path
+      d="M 20 130 A 110 110 0 0 1 240 130"
+      fill="none"
+      stroke="rgba(233,228,216,0.15)"
+      stroke-width="1"
+    />
+    <path
+      d="M 30 130 A 100 100 0 0 1 230 130"
+      fill="none"
+      stroke="url(#meter-arc)"
+      stroke-width="6"
+      opacity="0.5"
+    />
 
     <!-- Tick marks -->
     {#each Array.from({ length: 21 }, (_, idx) => idx) as i (i)}
@@ -44,7 +53,14 @@
       {@const y1 = 130 + Math.sin(a) * r1}
       {@const x2 = 130 + Math.cos(a) * r2}
       {@const y2 = 130 + Math.sin(a) * r2}
-      <line {x1} {y1} {x2} {y2} stroke="rgba(233,228,216,0.42)" stroke-width={i % 5 === 0 ? 1.2 : 0.6} />
+      <line
+        {x1}
+        {y1}
+        {x2}
+        {y2}
+        stroke="rgba(233,228,216,0.42)"
+        stroke-width={i % 5 === 0 ? 1.2 : 0.6}
+      />
     {/each}
 
     <!-- Needle -->

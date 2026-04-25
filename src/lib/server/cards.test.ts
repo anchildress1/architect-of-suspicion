@@ -104,10 +104,7 @@ describe('fetchClaimDeck', () => {
   });
 
   it('uses claim_id in step-1 query and category + deleted_at in step-2 query', async () => {
-    setupQueries(
-      [{ card_id: VALID_CARD_ID, ambiguity: 1, surprise: 1, rewritten_blurb: 'x' }],
-      [],
-    );
+    setupQueries([{ card_id: VALID_CARD_ID, ambiguity: 1, surprise: 1, rewritten_blurb: 'x' }], []);
 
     await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
 
@@ -206,10 +203,7 @@ describe('fetchClaimDeck', () => {
   });
 
   it('skips claim_cards rows whose card_id has no match in public.cards', async () => {
-    setupQueries(
-      [{ card_id: 'dangling', ambiguity: 2, surprise: 2, rewritten_blurb: 'x' }],
-      [],
-    );
+    setupQueries([{ card_id: 'dangling', ambiguity: 2, surprise: 2, rewritten_blurb: 'x' }], []);
 
     const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
 

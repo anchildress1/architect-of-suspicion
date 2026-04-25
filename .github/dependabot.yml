@@ -1,19 +1,19 @@
 version: 2
 updates:
   # "npm" ecosystem auto-detects pnpm from pnpm-lock.yaml
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 2
     groups:
       npm-all:
-        patterns: ["*"]
-  - package-ecosystem: "github-actions"
-    directory: "/"
+        patterns: ['*']
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 2
     groups:
       actions-all:
-        patterns: ["*"]
+        patterns: ['*']

@@ -54,17 +54,17 @@
 
   {#if !chosen}
     <div class="wc-levers">
-      <button class="lv lv-dismiss" onclick={() => decide('dismiss')} disabled={disabled}>
+      <button class="lv lv-dismiss" onclick={() => decide('dismiss')} {disabled}>
         <span class="lv-key">&larr; &#x232B;</span>
         <span class="lv-name">Dismiss</span>
         <span class="lv-hint">Strike from record</span>
       </button>
-      <button class="lv lv-objection" onclick={() => decide('objection')} disabled={disabled}>
+      <button class="lv lv-objection" onclick={() => decide('objection')} {disabled}>
         <span class="lv-key">&uarr; O</span>
         <span class="lv-name">Objection</span>
         <span class="lv-hint">Counter-evidence</span>
       </button>
-      <button class="lv lv-proof" onclick={() => decide('proof')} disabled={disabled}>
+      <button class="lv lv-proof" onclick={() => decide('proof')} {disabled}>
         <span class="lv-key">P &rarr;</span>
         <span class="lv-name">Proof</span>
         <span class="lv-hint">Enter as evidence</span>
@@ -77,8 +77,7 @@
   .witness-card {
     position: relative;
     width: min(100%, 36rem);
-    background:
-      linear-gradient(180deg, rgba(20, 20, 23, 0.92) 0%, rgba(11, 11, 13, 0.96) 100%);
+    background: linear-gradient(180deg, rgba(20, 20, 23, 0.92) 0%, rgba(11, 11, 13, 0.96) 100%);
     border: 1px solid rgba(233, 228, 216, 0.18);
     box-shadow:
       0 30px 60px rgba(0, 0, 0, 0.55),

@@ -38,7 +38,10 @@
 <svelte:head>
   <title>The Mansion | Architect of Suspicion</title>
   <link rel="preload" as="image" href="/backgrounds/house-exterior.webp" fetchpriority="high" />
-  <meta name="description" content="The mansion — nine chambers, each holding witnesses. Choose where to begin." />
+  <meta
+    name="description"
+    content="The mansion — nine chambers, each holding witnesses. Choose where to begin."
+  />
 </svelte:head>
 
 <div class="mansion-shell">
@@ -60,7 +63,8 @@
           <p class="board-sub">Nine chambers &middot; pick one to enter</p>
         </div>
         <p class="board-clock">
-          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &middot; chamber clock
+          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &middot; chamber
+          clock
         </p>
       </header>
 

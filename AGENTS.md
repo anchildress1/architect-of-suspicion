@@ -3,6 +3,7 @@
 Source of truth for AI coding agents. This file overrides any default behavior.
 
 Companion docs (read these first):
+
 - [PRD.md](docs/PRD.md) — game rules, persona, chamber map, scoring, output
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — stack, API contracts, DB schema, project structure, design tokens
 - [SPRINT-PLAN.md](docs/SPRINT-PLAN.md) — milestones, issues, CI setup, dependencies

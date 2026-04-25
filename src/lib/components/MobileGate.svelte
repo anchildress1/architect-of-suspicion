@@ -3,17 +3,10 @@
 </script>
 
 {#if !dismissed}
-  <div
-    class="mobile-gate"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Desktop recommended notice"
-  >
+  <div class="mobile-gate" role="dialog" aria-modal="true" aria-label="Desktop recommended notice">
     <div class="mobile-gate-card">
       <p class="mobile-gate-eyebrow">Notice from The Architect</p>
-      <h2 class="mobile-gate-title">
-        This investigation is best conducted at a proper desk.
-      </h2>
+      <h2 class="mobile-gate-title">This investigation is best conducted at a proper desk.</h2>
       <p class="mobile-gate-body">
         The mansion, witness stand, and verdict letter are designed for screens 768&thinsp;px or
         wider. Proceed if you must.

@@ -39,7 +39,10 @@
       <p class="letter-from-sub">Software Engineer &middot; Architect of Systems</p>
     </div>
     <div class="letter-meta">
-      Sealed &middot; {new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}<br />
+      Sealed &middot; {new Date().toLocaleDateString(undefined, {
+        month: 'long',
+        year: 'numeric',
+      })}<br />
       Case &numero;&nbsp;0426<br />
       By the Architect's hand
     </div>

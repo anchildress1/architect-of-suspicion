@@ -81,21 +81,21 @@ describe('POST /api/narrate', () => {
   });
 
   it('returns 400 for invalid action', async () => {
-    await expect(
-      POST(makeRequest({ ...validBody, action: 'dance' })),
-    ).rejects.toThrow('action must be "enter_room", "idle", or "wander"');
+    await expect(POST(makeRequest({ ...validBody, action: 'dance' }))).rejects.toThrow(
+      'action must be "enter_room", "idle", or "wander"',
+    );
   });
 
   it('returns 400 for missing claim', async () => {
-    await expect(
-      POST(makeRequest({ ...validBody, claim: undefined })),
-    ).rejects.toThrow('Missing or invalid claim');
+    await expect(POST(makeRequest({ ...validBody, claim: undefined }))).rejects.toThrow(
+      'Missing or invalid claim',
+    );
   });
 
   it('returns 400 for missing room', async () => {
-    await expect(
-      POST(makeRequest({ ...validBody, room: undefined })),
-    ).rejects.toThrow('Missing or invalid room');
+    await expect(POST(makeRequest({ ...validBody, room: undefined }))).rejects.toThrow(
+      'Missing or invalid room',
+    );
   });
 
   it('returns 400 for invalid JSON', async () => {

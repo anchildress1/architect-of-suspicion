@@ -27,7 +27,8 @@
         A claim has been filed against Ashley Childress. The mansion holds nine chambers, each
         containing witnesses &mdash; pieces of evidence drawn from real career decisions. You will
         examine each in turn and rule it as <strong>Proof</strong> (it supports the claim),
-        <strong>Objection</strong> (it counters the claim), or <strong>Struck from the record</strong>
+        <strong>Objection</strong> (it counters the claim), or
+        <strong>Struck from the record</strong>
         (you decline to rule).
       </p>
       <p>
@@ -57,7 +58,9 @@
       <h2 class="attic-section-title">Credits</h2>
       <p><span class="credit-label">Design &amp; development:</span> Ashley Childress</p>
       <p><span class="credit-label">AI collaborator:</span> Claude by Anthropic</p>
-      <p><span class="credit-label">Type:</span> Instrument Serif &middot; Geist &middot; JetBrains Mono</p>
+      <p>
+        <span class="credit-label">Type:</span> Instrument Serif &middot; Geist &middot; JetBrains Mono
+      </p>
     </section>
   </div>
 </main>

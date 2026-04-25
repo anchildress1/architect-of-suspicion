@@ -8,12 +8,12 @@ Reads every eligible card from `public.cards`, runs a 4-pass AI pipeline to gene
 
 ## Passes
 
-| Pass | Role | Default model | Provider | Reasoning |
-|---|---|---|---|---|
-| 1. Tensions | Find fault lines in the corpus | `claude-sonnet-4-6` | Anthropic | adaptive thinking, effort=high |
-| 2. Claims | Generate provocative claims from tensions | `gpt-5.4` | OpenAI | reasoning_effort=medium |
-| 3. Score | Rate ambiguity + surprise per card/claim pair | `gpt-5.4-mini` | OpenAI | reasoning_effort=low |
-| 4. Validate | Adversarial cross-check from a different vendor than Pass 2 | `gemini-3.1-flash-lite-preview` | Google | thinkingLevel=low |
+| Pass        | Role                                                        | Default model                   | Provider  | Reasoning                      |
+| ----------- | ----------------------------------------------------------- | ------------------------------- | --------- | ------------------------------ |
+| 1. Tensions | Find fault lines in the corpus                              | `claude-sonnet-4-6`             | Anthropic | adaptive thinking, effort=high |
+| 2. Claims   | Generate provocative claims from tensions                   | `gpt-5.4`                       | OpenAI    | reasoning_effort=medium        |
+| 3. Score    | Rate ambiguity + surprise per card/claim pair               | `gpt-5.4-mini`                  | OpenAI    | reasoning_effort=low           |
+| 4. Validate | Adversarial cross-check from a different vendor than Pass 2 | `gemini-3.1-flash-lite-preview` | Google    | thinkingLevel=low              |
 
 Pass 4 must be a different vendor from Pass 2 — the point is cross-model pressure. Any other combination undermines the validation.
 
