@@ -165,13 +165,15 @@
           </div>
         </div>
       {:else}
-        <WitnessCard
-          card={current}
-          index={pointer}
-          total={deck.length}
-          onDecide={decide}
-          disabled={evaluating}
-        />
+        {#key current.objectID}
+          <WitnessCard
+            card={current}
+            index={pointer}
+            total={deck.length}
+            onDecide={decide}
+            disabled={evaluating}
+          />
+        {/key}
       {/if}
     </div>
 
