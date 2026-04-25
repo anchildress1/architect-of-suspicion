@@ -38,6 +38,7 @@ Do not duplicate information from those docs here.
 - ALWAYS test changes locally before pushing — at minimum: `pnpm install --frozen-lockfile`, `pnpm run lint`, `pnpm run typecheck`, `pnpm run test`, `pnpm run build`
 - Conventional commits enforced via commitlint + Lefthook
 - `Generated-By` trailer on all AI-generated commits
+- Always include any uncommitted or untracked user changes in the same commit — never leave user work unstaged when committing AI changes
 - Prefer `async`/`await` over `.then()`/`.catch()` chains
 - No raw SQL in server routes — use Supabase client with parameterized queries
 - All server-side secrets via environment variables, never in source
