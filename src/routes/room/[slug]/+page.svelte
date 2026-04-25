@@ -225,6 +225,9 @@
     inset: 0;
     background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.78) 100%);
     z-index: 1;
+    /* Decorative wash — never absorb pointer events that belong to the
+       picker (z-index auto under this layer) or any overlaid control. */
+    pointer-events: none;
   }
 
   .chamber-head {
