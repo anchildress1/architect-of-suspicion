@@ -1,4 +1,6 @@
 {
+  "bumpMinorPreMajor": true,
+  "bumpPatchForMinorPreMajor": true,
   "packages": {
     ".": {
       "release-type": "node",
