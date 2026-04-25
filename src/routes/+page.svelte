@@ -238,15 +238,11 @@
 
   .summons-headline {
     font-family: var(--font-display);
-    font-style: normal;
-    font-size: clamp(48px, 5.2vw, 64px);
+    font-style: italic;
+    font-size: clamp(2.5rem, 6vw, 4.25rem);
     color: var(--color-bone);
     line-height: 1;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    text-shadow:
-      0 0 30px rgba(210, 58, 42, 0.18),
-      0 2px 0 rgba(0, 0, 0, 0.8);
+    text-shadow: 0 4px 40px rgba(210, 58, 42, 0.18);
   }
 
   .summons-amp {
