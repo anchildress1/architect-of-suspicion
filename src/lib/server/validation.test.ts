@@ -48,10 +48,7 @@ describe('validation helpers', () => {
       ),
     ).rejects.toThrow('Invalid JSON body');
 
-    expect(errorSpy).toHaveBeenCalledWith(
-      '[validation] JSON parse failed:',
-      expect.any(String),
-    );
+    expect(errorSpy).toHaveBeenCalledWith('[validation] JSON parse failed:', expect.any(String));
     errorSpy.mockRestore();
   });
 
@@ -94,7 +91,7 @@ describe('validation helpers', () => {
     ).rejects.toThrow('Request body too large (max 1024 bytes)');
   });
 
-  it('throws when actual body size exceeds limit', async () => {
+  it('throws when actual body size exceeds limit (no Content-Length — streaming path)', async () => {
     await expect(
       parseJsonBodyWithLimit(
         new Request('http://localhost', {
@@ -105,6 +102,11 @@ describe('validation helpers', () => {
         1024,
       ),
     ).rejects.toThrow('Request body too large (max 1024 bytes)');
+  });
+
+  it('returns empty-body parse error for a request with no body', async () => {
+    const req = new Request('http://localhost', { method: 'POST' });
+    await expect(parseJsonBodyWithLimit(req, 1024)).rejects.toThrow('Invalid JSON body');
   });
 
   it('requires bounded non-empty strings', () => {

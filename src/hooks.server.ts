@@ -10,7 +10,7 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self' data:",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https://*.supabase.co https://api.anthropic.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com",
 ].join('; ');
 
 export const handle: Handle = async ({ event, resolve }) => {

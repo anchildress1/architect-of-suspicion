@@ -43,7 +43,8 @@ describe('hooks.server handle', () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("form-action 'self'");
     expect(csp).toContain("connect-src 'self'");
-    expect(csp).toContain('supabase.co');
+    expect(csp).toContain('https://*.supabase.co');
+    expect(csp).toContain('wss://*.supabase.co');
     expect(csp).toContain('api.anthropic.com');
   });
 
