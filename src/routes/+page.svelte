@@ -1,14 +1,16 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { gameState } from '$lib/stores/gameState.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
 
-  let loadingClaim = $state(!data.claim);
+  // untrack: we intentionally want only the initial page-load value.
+  // data.claim doesn't change mid-session on this page.
+  let loadingClaim = $state(!untrack(() => data.claim));
   let entering = $state(false);
-  let errorMsg = $state(data.claim ? '' : 'The docket could not be read.');
+  let errorMsg = $state(untrack(() => (data.claim ? '' : 'The docket could not be read.')));
 
   onMount(() => {
     gameState.reset();

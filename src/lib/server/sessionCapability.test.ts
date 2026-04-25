@@ -18,7 +18,7 @@ vi.mock('@sveltejs/kit', () => ({
   },
 }));
 
-const mockEnvironment = { dev: true };
+const mockEnvironment = vi.hoisted(() => ({ dev: true }));
 vi.mock('$app/environment', () => mockEnvironment);
 
 import {
