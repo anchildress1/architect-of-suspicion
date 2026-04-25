@@ -88,18 +88,6 @@
     border-bottom: none;
   }
 
-  /* Diamond marker — the visual mode-switch between voices. */
-  .feed-entry::before {
-    content: '';
-    position: absolute;
-    top: 0.7rem;
-    left: -4px;
-    width: 8px;
-    height: 8px;
-    background: currentColor;
-    transform: rotate(45deg);
-  }
-
   .feed-time {
     font-family: var(--font-mono);
     font-size: 9px;
@@ -134,14 +122,10 @@
     text-transform: none;
   }
 
-  /* Reaction = the Architect speaking (ember, italic serif, glowing diamond). */
+  /* Reaction = the Architect speaking (ember rule, italic serif body). */
   .feed-reaction {
     border-left: 2px solid var(--color-ember);
     color: var(--color-ember);
-  }
-
-  .feed-reaction::before {
-    box-shadow: 0 0 8px var(--color-ember);
   }
 
   /* Narration = atmospheric prompts; quiet brass-dim rule. */

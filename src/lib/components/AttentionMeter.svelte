@@ -83,6 +83,11 @@
       />
     {/each}
 
+    <!-- Quiet readout above the arc; mood + value, never the headline. -->
+    <text x="246" y="14" class="meter-readout-label" text-anchor="end">
+      {mood} · {value}<tspan class="meter-readout-suffix">/100</tspan>
+    </text>
+
     <!-- Mood labels — geographic on the arc, no separate track. -->
     <text x="24" y="146" class="meter-arc-label" text-anchor="start">COOL</text>
     <text x="130" y="36" class="meter-arc-label" text-anchor="middle">ENGAGED</text>
@@ -99,10 +104,9 @@
     <circle cx="130" cy="130" r="3" fill="#0b0b0d" />
   </svg>
 
-  <div class="meter-readout">
-    <span class="meter-mood">{mood}</span>
-    <span class="meter-sep">&middot;</span>
-    <span class="meter-value">{value}<small>/100</small></span>
+  <div class="meter-poles" aria-hidden="true">
+    <span>Pardon</span>
+    <span>Accuse</span>
   </div>
 
   {#if delta !== null}
@@ -148,29 +152,28 @@
     fill: var(--color-brass-dim);
   }
 
-  .meter-readout {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0.4rem;
-    margin-top: 0.4rem;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.18em;
+  .meter-readout-label {
+    font-family: var(--font-readout, monospace);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    fill: var(--color-bone-dim);
     text-transform: uppercase;
-    color: var(--color-ember);
   }
 
-  .meter-mood {
-    font-weight: 500;
+  .meter-readout-suffix {
+    font-size: 0.78em;
+    fill: var(--color-brass-dim);
   }
 
-  .meter-sep {
-    color: var(--color-brass-dim);
-  }
-
-  .meter-value small {
-    font-size: 0.75em;
+  .meter-poles {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -0.4rem;
+    padding: 0 0.4rem;
+    font-family: var(--font-readout);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
     color: var(--color-brass-dim);
   }
 
