@@ -51,7 +51,7 @@
   }
 
   .tally-proof {
-    color: var(--color-bone);
+    color: var(--color-cyan-ink);
   }
   .tally-objection {
     color: var(--color-ember);
@@ -81,9 +81,9 @@
     color: var(--color-brass-dim);
   }
 
-  /* Proof reads in bone-glow, Objection in ember; Struck stays neutral. */
+  /* Proof = blue (cyan-ink), Objection = red (ember), Struck stays neutral. */
   .tally-row-proof .tally-count {
-    color: var(--color-bone);
+    color: var(--color-cyan-ink);
   }
   .tally-row-objection .tally-count {
     color: var(--color-ember);

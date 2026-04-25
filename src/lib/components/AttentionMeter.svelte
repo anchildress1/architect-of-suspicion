@@ -38,7 +38,7 @@
   <svg viewBox="0 0 260 150" aria-hidden="true">
     <defs>
       <linearGradient id="meter-arc" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#3a3a42" />
+        <stop offset="0%" stop-color="#6b8fb0" />
         <stop offset="50%" stop-color="#c9c4b4" />
         <stop offset="100%" stop-color="#d23a2a" />
       </linearGradient>
