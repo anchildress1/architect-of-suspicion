@@ -10,7 +10,7 @@ import { pickRandomClaim } from '$lib/server/claims';
  * and the page shows a muted "docket unavailable" state rather than logging a
  * network error.
  */
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async (_event) => {
   const { claim, error } = await pickRandomClaim();
   if (error || !claim) {
     return { claim: null };
