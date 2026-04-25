@@ -94,11 +94,12 @@
     <text x="130" y="36" class="meter-arc-label" text-anchor="middle">ENGAGED</text>
     <text x="236" y="146" class="meter-arc-label" text-anchor="end">FURY</text>
 
-    <!-- Needle: tip lands at the arc inner edge (radius 100); short
-         base tucks inside the hub at any rotation. -->
+    <!-- Needle: tip lands at the arc inner edge (radius 100); base
+         widens into the hub so the triangle reads as a connected
+         needle, not a stranded tip. -->
     <g transform="translate(130,130) rotate({angle})" class="needle-g">
-      <polygon points="0,-100 -2.5,2 2.5,2" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.5" />
-      <polygon points="0,-100 -1.5,-50 0,-58 1.5,-50" fill="#ffd2cc" opacity="0.6" />
+      <polygon points="0,-100 -5,4 5,4" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.6" />
+      <polygon points="0,-100 -2,-40 0,-48 2,-40" fill="#ffd2cc" opacity="0.7" />
     </g>
 
     <!-- Hub -->
