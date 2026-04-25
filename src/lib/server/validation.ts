@@ -26,7 +26,8 @@ export async function parseJsonBodyWithLimit<T>(request: Request, maxBytes: numb
 
   try {
     return JSON.parse(raw) as T;
-  } catch {
+  } catch (err) {
+    console.error('[validation] JSON parse failed:', err instanceof Error ? err.message : err);
     error(400, 'Invalid JSON body');
   }
 }

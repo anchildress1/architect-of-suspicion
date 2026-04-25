@@ -34,7 +34,9 @@ describe('validation helpers', () => {
     expect(body).toEqual({ ok: true });
   });
 
-  it('throws on invalid JSON', async () => {
+  it('throws on invalid JSON and logs the parse error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     await expect(
       parseJsonBodyWithLimit(
         new Request('http://localhost', {
@@ -45,6 +47,12 @@ describe('validation helpers', () => {
         1024,
       ),
     ).rejects.toThrow('Invalid JSON body');
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[validation] JSON parse failed:',
+      expect.any(String),
+    );
+    errorSpy.mockRestore();
   });
 
   it('throws on invalid Content-Length header', async () => {
@@ -101,10 +109,20 @@ describe('validation helpers', () => {
 
   it('requires bounded non-empty strings', () => {
     expect(requireBoundedString('  hello ', 'claim', 10)).toBe('hello');
+    expect(requireBoundedString('x'.repeat(10), 'claim', 10)).toBe('x'.repeat(10));
     expect(() => requireBoundedString(123, 'claim', 10)).toThrow('Missing or invalid claim');
     expect(() => requireBoundedString('  ', 'claim', 10)).toThrow('Missing or invalid claim');
     expect(() => requireBoundedString('x'.repeat(11), 'claim', 10)).toThrow(
       'Missing or invalid claim',
+    );
+  });
+
+  it('trims before checking max length', () => {
+    // Untrimmed length would be 12, trimmed length is 10 — should pass.
+    expect(requireBoundedString('  xxxxxxxxxx', 'field', 10)).toBe('xxxxxxxxxx');
+    // Trimmed length is 11 — should fail.
+    expect(() => requireBoundedString('  xxxxxxxxxxx', 'field', 10)).toThrow(
+      'Missing or invalid field',
     );
   });
 
