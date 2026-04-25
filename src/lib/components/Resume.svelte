@@ -40,23 +40,19 @@
     <p class="resume-entry-title">Bachelor of Science</p>
     <p class="resume-entry-meta">Placeholder University</p>
   </section>
-
-  <p class="resume-disclaimer">
-    Placeholder content. Actual resume details require Ashley&rsquo;s approval.
-  </p>
 </div>
 
 <style>
   .resume {
     user-select: text;
-    color: var(--color-paper);
+    color: var(--color-paper-ink);
   }
 
   .resume-name {
     font-family: var(--font-display);
     font-style: italic;
     font-size: 1.6rem;
-    color: var(--color-bone);
+    color: var(--color-paper-ink);
     line-height: 1;
   }
 
@@ -65,13 +61,13 @@
     font-size: 0.55rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: rgba(20, 20, 26, 0.6);
     margin-top: 0.35rem;
   }
 
   .resume-divider {
     border: none;
-    border-top: 1px solid rgba(233, 228, 216, 0.18);
+    border-top: 1px solid rgba(20, 20, 26, 0.15);
     margin: 1.25rem 0;
   }
 
@@ -79,13 +75,20 @@
     margin-bottom: 1.4rem;
   }
 
+  /* Section labels in italic Instrument Serif with a brass underline.
+     Reads like an exhibit appendix, not a SaaS sidebar. */
   .resume-section-title {
-    font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-bone);
+    display: inline-block;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: var(--color-paper-ink);
     margin-bottom: 0.65rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid rgba(196, 162, 78, 0.55);
   }
 
   .resume-entry {
@@ -96,21 +99,21 @@
     font-family: var(--font-body);
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--color-bone);
+    color: var(--color-paper-ink);
   }
 
   .resume-entry-meta {
     font-family: var(--font-readout);
     font-size: 0.55rem;
     letter-spacing: 0.12em;
-    color: var(--color-brass-dim);
+    color: rgba(20, 20, 26, 0.55);
     margin-top: 0.15rem;
   }
 
   .resume-list {
     font-family: var(--font-body);
     font-size: 0.78rem;
-    color: var(--color-paper-dim);
+    color: rgba(20, 20, 26, 0.78);
     line-height: 1.7;
     margin-top: 0.4rem;
     padding-left: 1.1rem;
@@ -123,21 +126,14 @@
     gap: 0.4rem;
   }
 
+  /* Ink-on-bone tags with a hairline border — exhibit labels, not chips. */
   .resume-skill {
     font-family: var(--font-readout);
     font-size: 0.55rem;
-    color: var(--color-paper);
-    background: rgba(58, 58, 66, 0.5);
+    letter-spacing: 0.05em;
+    color: var(--color-paper-ink);
+    background: transparent;
     padding: 0.25rem 0.55rem;
-    border: 1px solid rgba(233, 228, 216, 0.16);
-  }
-
-  .resume-disclaimer {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 0.78rem;
-    color: var(--color-brass-dim);
-    text-align: center;
-    margin-top: 1.4rem;
+    border: 1px solid rgba(20, 20, 26, 0.25);
   }
 </style>

@@ -173,11 +173,26 @@
         </div>
 
         <footer class="sealed-actions">
-          <button class="link-btn" type="button" onclick={() => window.print()}>Print Letter</button
-          >
-          <button class="link-btn link-btn-primary" type="button" onclick={playAgain}>
-            Investigate Again
+          <button class="link-btn link-btn-primary" type="button" onclick={() => window.print()}>
+            <svg
+              class="link-btn-seal"
+              width="22"
+              height="22"
+              viewBox="0 0 22 22"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              stroke-linecap="round"
+            >
+              <circle cx="11" cy="11" r="6.5" />
+              <line x1="11" y1="6.5" x2="11" y2="15.5" />
+              <line x1="6.6" y1="9.2" x2="15.4" y2="12.8" />
+              <line x1="6.6" y1="12.8" x2="15.4" y2="9.2" />
+            </svg>
+            <span>Print Letter</span>
           </button>
+          <button class="link-btn" type="button" onclick={playAgain}> Investigate Again </button>
         </footer>
       </section>
     {/if}
@@ -509,11 +524,26 @@
     min-width: 0;
   }
 
+  /* Resume sidebar — parchment exhibit appendix, echoing the witness card. */
   .sealed-resume {
-    background: rgba(20, 20, 23, 0.7);
-    border: 1px solid rgba(233, 228, 216, 0.1);
-    padding: 1.5rem;
-    backdrop-filter: blur(8px);
+    position: relative;
+    background: var(--color-bone);
+    color: var(--color-paper-ink);
+    padding: 1.75rem 1.75rem 2rem;
+    box-shadow:
+      0 20px 50px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .sealed-resume::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: var(--color-ember);
+    pointer-events: none;
   }
 
   .sealed-resume-eyebrow {
@@ -521,43 +551,76 @@
     font-size: 0.55rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-bottom: 1rem;
+    color: rgba(20, 20, 26, 0.55);
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid rgba(20, 20, 26, 0.15);
   }
 
   .sealed-actions {
     display: flex;
     justify-content: center;
-    gap: 1rem;
-    margin-top: 3rem;
+    gap: 14px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(196, 162, 78, 0.3);
   }
 
+  /* Ghost button — quiet, brass border, brightens on hover. */
   .link-btn {
-    font-family: var(--font-readout);
-    font-size: 0.65rem;
-    letter-spacing: 0.18em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    padding: 0.7rem 1.4rem;
-    border: 1px solid rgba(233, 228, 216, 0.35);
+    padding: 0.85rem 1.4rem;
+    border: 1px solid rgba(196, 162, 78, 0.3);
     background: transparent;
     color: var(--color-bone);
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.3s;
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      color 0.3s ease;
   }
 
   .link-btn:hover {
-    background: rgba(233, 228, 216, 0.06);
     border-color: var(--color-bone);
+    box-shadow: 0 0 16px rgba(196, 162, 78, 0.25);
   }
 
+  /* Primary — same lever chrome as the Summons CTA, with a wax-seal icon. */
   .link-btn-primary {
-    border-color: var(--color-ember);
-    color: var(--color-ember);
+    background: linear-gradient(180deg, #2a2417 0%, #14110a 100%);
+    border-color: var(--color-bone-dim);
+    color: var(--color-bone);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 170, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 6px 20px rgba(0, 0, 0, 0.6);
+  }
+
+  .link-btn-seal {
+    flex-shrink: 0;
+    color: rgba(240, 194, 77, 0.8);
+    transition: color 0.3s ease;
   }
 
   .link-btn-primary:hover {
-    background: rgba(210, 58, 42, 0.12);
+    border-color: rgba(240, 194, 77, 0.7);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 170, 0.32),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 6px 20px rgba(0, 0, 0, 0.6),
+      0 0 24px rgba(240, 194, 77, 0.25);
+  }
+
+  .link-btn-primary:hover .link-btn-seal {
+    color: rgb(240, 194, 77);
   }
 
   @media (max-width: 1024px) {
