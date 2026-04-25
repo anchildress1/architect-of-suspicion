@@ -9,7 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { resolve as pathResolve } from 'node:path';
 import type { CardRow } from './types';
 
@@ -53,6 +53,46 @@ export async function saveCheckpoint<T>(
   // Constant format string; dynamic pieces are passed as separate args so
   // util.format can't be tricked by injected format specifiers.
   console.log('[checkpoint] saved %s (signature=%s)', pass, signature);
+}
+
+/** Delete all `.json` files in the cache dir whose signature doesn't match
+ *  `currentSig`, plus any unreadable or corrupt files. Should be called once
+ *  at pipeline start, after the corpus signature is computed, so stale files
+ *  from previous runs don't accumulate indefinitely. */
+export async function pruneStaleCheckpoints(currentSig: string): Promise<void> {
+  if (!isCheckpointingEnabled()) return;
+
+  let entries: string[];
+  try {
+    entries = await readdir(CACHE_DIR);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw err;
+  }
+
+  for (const file of entries.filter((f) => f.endsWith('.json'))) {
+    const filePath = pathResolve(CACHE_DIR, file);
+    let shouldDelete: boolean;
+
+    try {
+      const raw = await readFile(filePath, 'utf8');
+      const envelope = JSON.parse(raw) as Envelope<unknown>;
+      shouldDelete = envelope.signature !== currentSig;
+    } catch {
+      shouldDelete = true;
+    }
+
+    if (shouldDelete) {
+      try {
+        await unlink(filePath);
+        console.log('[checkpoint] pruned stale %s', file);
+      } catch (deleteErr) {
+        if ((deleteErr as NodeJS.ErrnoException).code !== 'ENOENT') {
+          console.warn('[checkpoint] failed to prune %s:', file, deleteErr);
+        }
+      }
+    }
+  }
 }
 
 export async function loadCheckpoint<T>(pass: string, signature: string): Promise<T | undefined> {
