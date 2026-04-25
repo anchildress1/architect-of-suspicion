@@ -232,7 +232,9 @@
     filter: grayscale(1);
   }
 
-  /* Lever strip — interim treatment on bone; full slate-switch pass lands in gap #03 */
+  /* Lever strip — embossed slate switches with warm-brass borders.
+     The only place warm gold lives in the chamber: the levers are the
+     physical mechanism the player throws to render a verdict. */
   .wc-levers {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -243,19 +245,21 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.2rem;
-    padding: 0.85rem 0.9rem;
+    gap: 0.3rem;
+    padding: 14px 12px;
     background: linear-gradient(180deg, #22262f 0%, #14171f 100%);
-    border: 1px solid rgba(122, 118, 104, 0.55);
+    border: 1px solid rgba(196, 162, 78, 0.35);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 170, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 4px 14px rgba(0, 0, 0, 0.45);
     color: var(--color-paper-dim);
     cursor: pointer;
     text-align: left;
-    transition: all 0.25s ease;
-  }
-
-  .lv:hover:not(:disabled) {
-    border-color: var(--color-bone);
-    background: linear-gradient(180deg, #2a2e38 0%, #181b25 100%);
+    transition:
+      box-shadow 0.2s ease,
+      border-color 0.2s ease,
+      background 0.2s ease;
   }
 
   .lv:disabled {
@@ -265,7 +269,7 @@
 
   .lv-key {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 9px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -279,19 +283,31 @@
   }
 
   .lv-hint {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
+    font-family: var(--font-body);
+    font-size: 11px;
+    color: var(--color-paper-dim);
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.3;
   }
 
+  /* Per-verdict hover: 1px ring inside, glow outside, hint colors match. */
   .lv-proof:hover:not(:disabled) {
     border-color: var(--color-bone);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 170, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 0 0 1px var(--color-bone),
+      0 8px 24px rgba(233, 228, 216, 0.18);
   }
 
   .lv-objection:hover:not(:disabled) {
     border-color: var(--color-ember);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 170, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 0 0 1px var(--color-ember),
+      0 8px 24px rgba(210, 58, 42, 0.32);
   }
 
   .lv-objection:hover:not(:disabled) .lv-name {
@@ -300,5 +316,10 @@
 
   .lv-dismiss:hover:not(:disabled) {
     border-color: var(--color-brass-dim);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 230, 170, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 0 0 1px var(--color-brass-dim),
+      0 8px 24px rgba(122, 118, 104, 0.25);
   }
 </style>
