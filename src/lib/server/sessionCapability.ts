@@ -88,7 +88,7 @@ export async function loadSessionCapability(cookies: Cookies): Promise<SessionCa
     console.error('[session-capability] sessions read failed:', sessErr.message);
     error(500, 'Failed to read session');
   }
-  if (!data || !data.claim_id) {
+  if (!data?.claim_id) {
     error(401, 'Invalid session capability');
   }
 
