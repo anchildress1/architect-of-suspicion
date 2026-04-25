@@ -128,7 +128,26 @@
 
     <div class="dossier-cta">
       <button class="lever-btn" disabled={entering || !data.claim} onclick={enterMansion}>
-        {entering ? 'Bolting the doors&hellip;' : 'Enter the Mansion'}
+        <svg
+          class="lever-btn-key"
+          width="22"
+          height="22"
+          viewBox="0 0 22 22"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+        >
+          <circle cx="6" cy="11" r="4" />
+          <circle cx="6" cy="11" r="1.4" fill="currentColor" stroke="none" />
+          <line x1="10" y1="11" x2="19" y2="11" />
+          <line x1="15" y1="11" x2="15" y2="13.5" />
+          <line x1="18" y1="11" x2="18" y2="14" />
+        </svg>
+        <span class="lever-btn-label">
+          {entering ? 'Bolting the doors…' : 'Enter the Mansion'}
+        </span>
       </button>
       <p class="dossier-meta-text">
         9 chambers &middot; verdict required <br />
@@ -219,17 +238,20 @@
 
   .summons-headline {
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: clamp(2.5rem, 6vw, 4.25rem);
+    font-style: normal;
+    font-size: clamp(48px, 5.2vw, 64px);
     color: var(--color-bone);
     line-height: 1;
-    text-shadow: 0 4px 40px rgba(210, 58, 42, 0.18);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    text-shadow:
+      0 0 30px rgba(210, 58, 42, 0.18),
+      0 2px 0 rgba(0, 0, 0, 0.8);
   }
 
   .summons-amp {
     font-style: italic;
-    font-size: 0.75em;
-    color: var(--color-brass-dim);
+    color: var(--color-ember);
     padding: 0 0.2em;
   }
 
@@ -402,26 +424,50 @@
   }
 
   .lever-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.1rem;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
     color: var(--color-bone);
-    background: linear-gradient(180deg, rgba(210, 58, 42, 0.18), rgba(138, 31, 20, 0.18));
-    border: 1px solid rgba(210, 58, 42, 0.55);
-    padding: 0.7rem 1.6rem;
+    background: linear-gradient(180deg, #2a2417 0%, #14110a 100%);
+    border: 1px solid var(--color-bone-dim);
+    padding: 0.85rem 1.4rem;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition:
+      box-shadow 0.3s ease,
+      border-color 0.3s ease,
+      color 0.3s ease;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 8px 24px rgba(210, 58, 42, 0.18);
+      inset 0 1px 0 rgba(255, 230, 170, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 6px 20px rgba(0, 0, 0, 0.6);
+  }
+
+  .lever-btn-key {
+    flex-shrink: 0;
+    color: rgba(240, 194, 77, 0.8);
+    transition: color 0.3s ease;
+  }
+
+  .lever-btn-label {
+    display: inline-block;
   }
 
   .lever-btn:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(210, 58, 42, 0.32), rgba(138, 31, 20, 0.28));
-    border-color: var(--color-ember);
+    border-color: rgba(240, 194, 77, 0.7);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 12px 32px rgba(210, 58, 42, 0.32);
+      inset 0 1px 0 rgba(255, 230, 170, 0.32),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 6px 20px rgba(0, 0, 0, 0.6),
+      0 0 24px rgba(240, 194, 77, 0.25);
+  }
+
+  .lever-btn:hover:not(:disabled) .lever-btn-key {
+    color: rgb(240, 194, 77);
   }
 
   .lever-btn:disabled {
