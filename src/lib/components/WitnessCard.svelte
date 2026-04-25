@@ -8,15 +8,14 @@
     total: number;
     onDecide: (card: ClaimCardEntry, classification: Classification) => void;
     disabled?: boolean;
-    peek?: boolean;
   }
 
-  let { card, index, total, onDecide, disabled = false, peek = false }: Props = $props();
+  let { card, index, total, onDecide, disabled = false }: Props = $props();
   let chosen = $state<Classification | null>(null);
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   function decide(c: Classification) {
-    if (peek || chosen || disabled) return;
+    if (chosen || disabled) return;
     chosen = c;
     // Let the stamp animation read before swapping the witness.
     timer = setTimeout(() => onDecide(card, c), 360);
@@ -29,12 +28,10 @@
 
 <article
   class="witness-card reveal"
-  class:peek
-  class:exit-proof={!peek && chosen === 'proof'}
-  class:exit-objection={!peek && chosen === 'objection'}
-  class:exit-dismiss={!peek && chosen === 'dismiss'}
-  aria-label={peek ? undefined : `Exhibit ${index + 1} of ${total}: ${card.title}`}
-  aria-hidden={peek}
+  class:exit-proof={chosen === 'proof'}
+  class:exit-objection={chosen === 'objection'}
+  class:exit-dismiss={chosen === 'dismiss'}
+  aria-label="Exhibit {index + 1} of {total}: {card.title}"
 >
   <div class="wc-edge" aria-hidden="true"></div>
 
@@ -55,7 +52,7 @@
   <div class="wc-stamp wc-stamp-objection" aria-hidden={chosen !== 'objection'}>Objection</div>
   <div class="wc-stamp wc-stamp-dismiss" aria-hidden={chosen !== 'dismiss'}>Struck</div>
 
-  {#if !peek && !chosen}
+  {#if !chosen}
     <div class="wc-levers">
       <button class="lv lv-dismiss" onclick={() => decide('dismiss')} {disabled}>
         <span class="lv-key">&larr; &#x232B;</span>
@@ -94,22 +91,6 @@
       transform 360ms cubic-bezier(0.4, 0, 0.2, 1),
       opacity 360ms ease,
       filter 360ms ease;
-  }
-
-  /* On-deck peek — next witness, behind the active card. */
-  .witness-card.peek {
-    transform: translate(32px, 36px) scale(0.94);
-    opacity: 0.55;
-    filter: grayscale(0.35) brightness(0.85);
-    pointer-events: none;
-    user-select: none;
-  }
-
-  .witness-card.peek .wc-body,
-  .witness-card.peek .wc-foot,
-  .witness-card.peek .wc-stamp,
-  .witness-card.peek .wc-levers {
-    display: none;
   }
 
   /* 3px ember left rule — accent against the dark panel. */

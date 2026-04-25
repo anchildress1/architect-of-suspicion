@@ -10,48 +10,56 @@
 
   let { deck, rulings, currentIndex, onJump }: Props = $props();
 
-  const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
+  // Up to six remaining witnesses, starting at the current pointer and
+  // walking forward (then wrapping) until we have a full picker.
+  const upcoming = $derived.by(() => {
+    const items: { card: ClaimCardEntry; originalIndex: number }[] = [];
+    for (let step = 0; step < deck.length && items.length < 6; step++) {
+      const i = (currentIndex + step) % deck.length;
+      if (!rulings[deck[i].objectID]) {
+        items.push({ card: deck[i], originalIndex: i });
+      }
+    }
+    return items;
+  });
 
-  function markFor(card: ClaimCardEntry, idx: number): string {
-    const ruling = rulings[card.objectID];
-    if (ruling === 'proof') return '●';
-    if (ruling === 'objection') return '◆';
-    if (ruling === 'dismiss') return '—';
-    if (idx === currentIndex) return '▶';
-    return '○';
-  }
+  const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
 </script>
 
-<aside class="witness-queue" aria-label="The witness queue">
-  <header class="queue-head">
-    <span class="queue-title">The Queue</span>
-    <span class="queue-count">{remaining} remaining</span>
+<aside class="next-up" aria-label="Next up — pick a witness">
+  <header class="nu-head">
+    <span class="nu-title">Next Up</span>
+    <span class="nu-count">{upcoming.length} of {remaining}</span>
   </header>
 
-  <ol class="queue-list">
-    {#each deck as card, i (card.objectID)}
-      {@const ruling = rulings[card.objectID]}
-      <li
-        class="queue-item"
-        class:queue-item-current={i === currentIndex && !ruling}
-        class:queue-item-done={ruling}
-        data-ruling={ruling ?? 'pending'}
-      >
-        <button
-          class="queue-jump"
-          onclick={() => onJump(i)}
-          aria-label="Call exhibit {i + 1}: {card.title}"
-        >
-          <span class="queue-mark" aria-hidden="true">{markFor(card, i)}</span>
-          <span class="queue-text">{card.title}</span>
-        </button>
-      </li>
-    {/each}
-  </ol>
+  {#if upcoming.length === 0}
+    <p class="nu-empty">All witnesses called.</p>
+  {:else}
+    <ol class="nu-list">
+      {#each upcoming as { card, originalIndex }, i (card.objectID)}
+        <li class="nu-item" class:nu-item-current={originalIndex === currentIndex}>
+          <button
+            class="nu-pick"
+            onclick={() => onJump(originalIndex)}
+            aria-label={originalIndex === currentIndex
+              ? `Currently called: ${card.title}`
+              : `Call witness: ${card.title}`}
+            aria-current={originalIndex === currentIndex ? 'true' : undefined}
+          >
+            <span class="nu-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <span class="nu-meta">
+              <span class="nu-cat">{card.category}</span>
+              <span class="nu-text">{card.title}</span>
+            </span>
+          </button>
+        </li>
+      {/each}
+    </ol>
+  {/if}
 </aside>
 
 <style>
-  .witness-queue {
+  .next-up {
     width: 280px;
     flex-shrink: 0;
     display: flex;
@@ -61,9 +69,10 @@
     backdrop-filter: blur(12px);
   }
 
-  .queue-head {
+  .nu-head {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
     padding: 1rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
     font-family: var(--font-readout);
@@ -72,15 +81,24 @@
     text-transform: uppercase;
   }
 
-  .queue-title {
+  .nu-title {
     color: var(--color-bone);
   }
 
-  .queue-count {
-    color: var(--color-brass-dim);
+  .nu-count {
+    color: var(--color-brass);
   }
 
-  .queue-list {
+  .nu-empty {
+    padding: 1.5rem 1rem;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--color-paper-dim);
+    text-align: center;
+  }
+
+  .nu-list {
     flex: 1;
     overflow-y: auto;
     list-style: none;
@@ -90,78 +108,90 @@
     scrollbar-color: rgba(233, 228, 216, 0.18) transparent;
   }
 
-  .queue-item {
-    border-bottom: 1px solid rgba(233, 228, 216, 0.04);
+  .nu-item + .nu-item {
+    border-top: 1px solid rgba(233, 228, 216, 0.06);
   }
 
-  .queue-jump {
+  .nu-pick {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 0.55rem;
-    align-items: center;
+    column-gap: 0.75rem;
+    align-items: start;
     width: 100%;
-    padding: 0.55rem 1rem;
+    padding: 0.85rem 1rem;
     background: none;
     border: none;
+    border-left: 2px solid transparent;
     text-align: left;
     cursor: pointer;
-    color: var(--color-paper-dim);
-    transition: all 0.2s ease;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease;
   }
 
-  .queue-jump:hover {
+  .nu-pick:hover {
     background: rgba(233, 228, 216, 0.05);
-    color: var(--color-bone);
+    border-left-color: var(--color-cyan-ink);
   }
 
-  .queue-mark {
-    font-family: var(--font-readout);
-    font-size: 0.65rem;
-    color: var(--color-brass-dim);
-    width: 1ch;
-    text-align: center;
+  .nu-pick:focus-visible {
+    outline: 2px solid var(--color-bone);
+    outline-offset: -2px;
   }
 
-  .queue-text {
+  .nu-item-current .nu-pick {
+    background: rgba(210, 58, 42, 0.06);
+    border-left-color: var(--color-ember);
+    cursor: default;
+  }
+
+  .nu-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--color-brass);
+    padding-top: 0.15rem;
+  }
+
+  .nu-item-current .nu-num {
+    color: var(--color-ember);
+  }
+
+  .nu-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .nu-cat {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brass);
+  }
+
+  .nu-text {
     font-family: var(--font-body);
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     line-height: 1.35;
+    color: var(--color-bone);
     text-wrap: balance;
   }
 
-  .queue-item-current .queue-jump {
-    background: rgba(233, 228, 216, 0.08);
-    color: var(--color-bone);
-  }
-
-  .queue-item-current .queue-mark {
-    color: var(--color-bone);
-  }
-
-  .queue-item-done .queue-jump {
-    color: var(--color-brass-dim);
-  }
-
-  .queue-item[data-ruling='proof'] .queue-mark {
-    color: var(--color-bone);
-  }
-
-  .queue-item[data-ruling='objection'] .queue-mark {
-    color: var(--color-cyan-ink);
-  }
-
-  .queue-item[data-ruling='dismiss'] .queue-mark {
-    color: var(--color-brass-dim);
+  .nu-item-current .nu-text {
+    color: var(--color-paper);
   }
 
   @media (max-width: 1100px) {
-    .witness-queue {
-      width: 220px;
+    .next-up {
+      width: 240px;
     }
   }
 
   @media (max-width: 900px) {
-    .witness-queue {
+    .next-up {
       display: none;
     }
   }
