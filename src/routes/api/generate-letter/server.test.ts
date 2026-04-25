@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFrom = vi.fn();
 const mockSchemaFrom = vi.fn();
 const mockCreate = vi.fn();
+const mockLoadSessionCapability = vi.fn();
+const mockRateLimitGuard = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
@@ -19,6 +21,13 @@ vi.mock('$lib/server/claude', () => ({
   }),
 }));
 
+vi.mock('$lib/server/sessionCapability', () => ({
+  loadSessionCapability: (...args: unknown[]) => mockLoadSessionCapability(...args),
+}));
+vi.mock('$lib/server/rateLimit', () => ({
+  rateLimitGuard: (...args: unknown[]) => mockRateLimitGuard(...args),
+}));
+
 vi.mock('@sveltejs/kit', () => ({
   json: (body: unknown) =>
     new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }),
@@ -33,6 +42,7 @@ import { POST } from './+server';
 
 function makeRequest(body: unknown): Parameters<typeof POST>[0] {
   return {
+    cookies: {} as Parameters<typeof POST>[0]['cookies'],
     getClientAddress: () => '127.0.0.1',
     request: new Request('http://localhost/api/generate-letter', {
       method: 'POST',
@@ -43,7 +53,6 @@ function makeRequest(body: unknown): Parameters<typeof POST>[0] {
 }
 
 const validBody = {
-  session_id: 'sess-1',
   verdict: 'accuse',
 };
 
@@ -76,8 +85,6 @@ const sessionUpdates: Array<Record<string, unknown>> = [];
 const lastCardsInCall: { ids: string[] } = { ids: [] };
 
 interface MockOptions {
-  sessionClaim?: string | null;
-  sessionError?: unknown;
   picks?: unknown[];
   picksError?: unknown;
   cards?: unknown[];
@@ -91,9 +98,6 @@ function setupMocks(options: MockOptions = {}) {
   lastCardsInCall.ids = [];
   const picks = options.picks ?? mockPicks;
   const cards = options.cards ?? mockCards;
-  const sessionClaim =
-    options.sessionClaim === undefined ? 'Ashley depends on AI too much' : options.sessionClaim;
-  const sessionRow = sessionClaim === null ? null : { claim_text: sessionClaim };
 
   mockFrom.mockImplementation((table: string) => {
     if (table !== 'cards') return {};
@@ -122,13 +126,6 @@ function setupMocks(options: MockOptions = {}) {
     }
     if (table === 'sessions') {
       return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi
-              .fn()
-              .mockResolvedValue({ data: sessionRow, error: options.sessionError ?? null }),
-          }),
-        }),
         update: vi.fn().mockImplementation((row: Record<string, unknown>) => {
           sessionUpdates.push(row);
           sessionUpdateCallCount++;
@@ -149,12 +146,13 @@ function setupMocks(options: MockOptions = {}) {
 describe('POST /api/generate-letter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('rejects missing session_id', async () => {
-    await expect(POST(makeRequest({ ...validBody, session_id: undefined }))).rejects.toThrow(
-      'Missing or invalid session_id',
-    );
+    mockRateLimitGuard.mockReturnValue(null);
+    mockLoadSessionCapability.mockResolvedValue({
+      sessionId: 'sess-1',
+      claimId: 'claim-1',
+      claimText: 'Server-authoritative claim',
+      attention: 50,
+    });
   });
 
   it('rejects unknown verdict', async () => {
@@ -165,6 +163,7 @@ describe('POST /api/generate-letter', () => {
 
   it('rejects invalid JSON', async () => {
     const req = {
+      cookies: {} as Parameters<typeof POST>[0]['cookies'],
       getClientAddress: () => '127.0.0.1',
       request: new Request('http://localhost/api/generate-letter', {
         method: 'POST',
@@ -175,14 +174,36 @@ describe('POST /api/generate-letter', () => {
     await expect(POST(req)).rejects.toThrow('Invalid JSON body');
   });
 
-  it('404s when the session row is missing (cannot be spoofed via client claim text)', async () => {
-    setupMocks({ sessionClaim: null });
-    await expect(POST(makeRequest(validBody))).rejects.toThrow('Session not found');
+  it('rejects invalid Content-Length header', async () => {
+    const req = {
+      cookies: {} as Parameters<typeof POST>[0]['cookies'],
+      getClientAddress: () => '127.0.0.1',
+      request: new Request('http://localhost/api/generate-letter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': 'oops' },
+        body: JSON.stringify(validBody),
+      }),
+    } as Parameters<typeof POST>[0];
+    await expect(POST(req)).rejects.toThrow('Invalid Content-Length header');
   });
 
-  it('500s when the session read fails', async () => {
-    setupMocks({ sessionError: { message: 'pg-down' } });
-    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to read session');
+  it('rejects oversized request bodies', async () => {
+    const req = {
+      cookies: {} as Parameters<typeof POST>[0]['cookies'],
+      getClientAddress: () => '127.0.0.1',
+      request: new Request('http://localhost/api/generate-letter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': '5000' },
+        body: JSON.stringify(validBody),
+      }),
+    } as Parameters<typeof POST>[0];
+    await expect(POST(req)).rejects.toThrow('Request body too large (max 1024 bytes)');
+  });
+
+  it('requires a valid session capability', async () => {
+    mockLoadSessionCapability.mockRejectedValue(new Error('Invalid session capability'));
+    setupMocks();
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Invalid session capability');
   });
 
   it('filters dismissed picks before fetching cards', async () => {
@@ -194,12 +215,10 @@ describe('POST /api/generate-letter', () => {
     expect(lastCardsInCall.ids).toEqual(['card-1', 'card-2']);
   });
 
-  it('passes the session-fetched claim text (not any client input) to the prompt', async () => {
-    setupMocks({ sessionClaim: 'Server-authoritative claim' });
+  it('passes session claim text and ignores client-injected claim fields', async () => {
+    setupMocks();
     mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 
-    // Even if a malicious client were to add a prompt-injection `claim` field,
-    // the server never reads it.
     await POST(
       makeRequest({
         ...validBody,
@@ -245,6 +264,17 @@ describe('POST /api/generate-letter', () => {
     expect(body.letter_fallback).toBe(true);
   });
 
+  it('falls back to canned text when Claude throws a non-Error value', async () => {
+    setupMocks();
+    mockCreate.mockRejectedValue('network-down');
+
+    const res = await POST(makeRequest(validBody));
+    const body = await res.json();
+
+    expect(typeof body.cover_letter).toBe('string');
+    expect(body.letter_fallback).toBe(true);
+  });
+
   it('flags letter_fallback when Claude returns empty text', async () => {
     setupMocks();
     mockCreate.mockResolvedValue({ content: [{ type: 'text', text: '' }] });
@@ -267,6 +297,26 @@ describe('POST /api/generate-letter', () => {
 
     expect(typeof body.cover_letter).toBe('string');
     expect(lastCardsInCall.ids).toEqual([]);
+  });
+
+  it('logs an error when a ruled pick has no matching card in the map', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupMocks({
+      picks: [
+        { card_id: 'card-1', classification: 'proof' },
+        { card_id: 'orphan-card', classification: 'objection' },
+      ],
+      cards: [mockCards[0]],
+    });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    await POST(makeRequest(validBody));
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[generate-letter]'),
+      expect.arrayContaining(['orphan-card']),
+    );
+    errorSpy.mockRestore();
   });
 
   it('500s when picks fetch fails', async () => {
@@ -300,5 +350,15 @@ describe('POST /api/generate-letter', () => {
     const body = await res.json();
 
     expect(typeof body.cover_letter).toBe('string');
+  });
+
+  it('returns rate-limit response when blocked', async () => {
+    mockRateLimitGuard.mockReturnValue(new Response('blocked', { status: 429 }));
+    setupMocks();
+
+    const res = await POST(makeRequest(validBody));
+
+    expect(res.status).toBe(429);
+    expect(mockLoadSessionCapability).not.toHaveBeenCalled();
   });
 });

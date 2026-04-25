@@ -1,7 +1,6 @@
 import { getSupabase } from '$lib/server/supabase';
 import type { ClaimCardEntry } from '$lib/types';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from '$lib/server/validation';
 
 type ClaimCardRow = {
   card_id: string;
@@ -29,10 +28,10 @@ export async function fetchClaimDeck(
   category: string,
   exclude: string[] = [],
 ): Promise<{ cards: ClaimCardEntry[]; error: string | null }> {
-  if (!UUID_RE.test(claimId)) {
+  if (!isUuid(claimId)) {
     return { cards: [], error: 'Invalid claim_id' };
   }
-  const safeExclude = exclude.filter((id) => UUID_RE.test(id));
+  const safeExclude = exclude.filter((id) => isUuid(id));
   const db = getSupabase();
 
   let claimQuery = db
@@ -96,7 +95,7 @@ export async function fetchClaimDeck(
 export async function fetchClaimDeckSize(
   claimId: string,
 ): Promise<{ count: number; error: string | null }> {
-  if (!UUID_RE.test(claimId)) return { count: 0, error: 'Invalid claim_id' };
+  if (!isUuid(claimId)) return { count: 0, error: 'Invalid claim_id' };
   const { count, error } = await getSupabase()
     .schema('suspicion')
     .from('claim_cards')

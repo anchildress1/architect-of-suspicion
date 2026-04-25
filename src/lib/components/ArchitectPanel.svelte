@@ -37,11 +37,7 @@
   <EvidenceTally />
 
   {#if showVerdictLink && gameState.current.sessionId}
-    <a
-      class="panel-render"
-      href={'/verdict?session=' + gameState.current.sessionId}
-      data-active={gameState.ruledCount > 0}
-    >
+    <a class="panel-render" href="/verdict" data-active={gameState.ruledCount > 0}>
       <span class="pr-mark">&sect;</span>
       <span class="pr-text">Render your verdict</span>
       <span class="pr-arrow">&rarr;</span>

@@ -1,9 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { getRoomBySlug } from '$lib/rooms';
 import { fetchClaimDeck } from '$lib/server/cards';
+import { isUuid } from '$lib/server/validation';
 import { error } from '@sveltejs/kit';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const load: PageServerLoad = async ({ params, url }) => {
   const room = getRoomBySlug(params.slug);
@@ -12,7 +11,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
   }
 
   const claimId = url.searchParams.get('claim_id');
-  if (!claimId || !UUID_RE.test(claimId)) {
+  if (!claimId || !isUuid(claimId)) {
     error(400, 'Missing or invalid claim_id');
   }
 

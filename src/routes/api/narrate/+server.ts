@@ -4,55 +4,99 @@ import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildNarrationPrompt, type NarrationAction } from '$lib/server/prompts/narrate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
+import { loadSessionCapability } from '$lib/server/sessionCapability';
+import {
+  parseJsonBodyWithLimit,
+  requireBoundedString,
+  requireNonNegativeInteger,
+} from '$lib/server/validation';
+import { rooms } from '$lib/rooms';
 
-const VALID_ACTIONS: NarrationAction[] = ['enter_room', 'idle', 'wander'];
+const VALID_ACTIONS = new Set<NarrationAction>(['enter_room', 'idle', 'wander']);
+const VALID_ROOMS = new Set([...rooms.map((room) => room.slug), 'mansion']);
 
 const FALLBACK_DIALOGUE =
   'Go on, then. I was going to comment, but I suppose you can draw your own conclusions.';
 
+const MAX_NARRATE_REQUEST_BYTES = 4_096;
+const MAX_ROOM_LENGTH = 40;
+const MAX_ROOMS_VISITED = 12;
+const MAX_EVIDENCE_COUNT = 1_000;
+
 interface NarrateRequest {
-  claim?: string;
   action?: string;
   room?: string;
-  evidence_count?: { proof: number; objection: number };
-  rooms_visited?: string[];
+  evidence_count?: { proof?: number; objection?: number };
+  rooms_visited?: unknown;
 }
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
-  const blocked = rateLimitGuard(getClientAddress());
-  if (blocked) return blocked;
+interface ValidatedNarrationInput {
+  action: NarrationAction;
+  room: string;
+  evidenceCount: { proof: number; objection: number };
+  roomsVisited: string[];
+}
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    error(400, 'Invalid JSON body');
-  }
-
-  const { claim, action, room, evidence_count, rooms_visited } = body as NarrateRequest;
-
-  if (!claim || typeof claim !== 'string') {
-    error(400, 'Missing or invalid claim');
-  }
-  if (!action || !VALID_ACTIONS.includes(action as NarrationAction)) {
+function validateInput(body: NarrateRequest): ValidatedNarrationInput {
+  if (!body.action || !VALID_ACTIONS.has(body.action as NarrationAction)) {
     error(400, 'action must be "enter_room", "idle", or "wander"');
   }
-  if (!room || typeof room !== 'string') {
+
+  const room = requireBoundedString(body.room, 'room', MAX_ROOM_LENGTH);
+  if (!VALID_ROOMS.has(room)) {
     error(400, 'Missing or invalid room');
   }
 
-  const evidenceCount = evidence_count ?? { proof: 0, objection: 0 };
-  const roomsVisited = rooms_visited ?? [];
+  const proof = requireNonNegativeInteger(
+    body.evidence_count?.proof ?? 0,
+    'evidence_count.proof',
+    MAX_EVIDENCE_COUNT,
+  );
+  const objection = requireNonNegativeInteger(
+    body.evidence_count?.objection ?? 0,
+    'evidence_count.objection',
+    MAX_EVIDENCE_COUNT,
+  );
+
+  const roomsVisitedRaw = body.rooms_visited ?? [];
+  if (!Array.isArray(roomsVisitedRaw) || roomsVisitedRaw.length > MAX_ROOMS_VISITED) {
+    error(400, 'Missing or invalid rooms_visited');
+  }
+
+  const roomsVisited = roomsVisitedRaw.map((entry) => {
+    const slug = requireBoundedString(entry, 'rooms_visited', MAX_ROOM_LENGTH);
+    if (!VALID_ROOMS.has(slug)) {
+      error(400, 'Missing or invalid rooms_visited');
+    }
+    return slug;
+  });
+
+  return {
+    action: body.action as NarrationAction,
+    room,
+    evidenceCount: { proof, objection },
+    roomsVisited,
+  };
+}
+
+export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
+  const blocked = rateLimitGuard(getClientAddress());
+  if (blocked) return blocked;
+
+  const session = await loadSessionCapability(cookies);
+  const body = await parseJsonBodyWithLimit<NarrateRequest>(request, MAX_NARRATE_REQUEST_BYTES);
+  const input = validateInput(body);
 
   const prompt = buildNarrationPrompt({
-    claim,
-    action: action as NarrationAction,
-    room,
-    evidenceCount,
-    roomsVisited,
+    claim: session.claimText,
+    action: input.action,
+    room: input.room,
+    evidenceCount: input.evidenceCount,
+    roomsVisited: input.roomsVisited,
   });
 
   let dialogue = FALLBACK_DIALOGUE;
+  let narrationFallback = false;
 
   try {
     const client = getClaudeClient();
@@ -67,10 +111,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
     if (text.trim()) {
       dialogue = text.trim();
+    } else {
+      narrationFallback = true;
     }
   } catch (err) {
     console.error('[narrate] Claude API failure:', err instanceof Error ? err.message : err);
+    narrationFallback = true;
   }
 
-  return json({ dialogue });
+  return json({ dialogue, narration_fallback: narrationFallback });
 };

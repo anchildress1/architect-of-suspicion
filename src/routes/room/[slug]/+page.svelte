@@ -53,8 +53,6 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: gameState.current.sessionId,
-          claim_id: gameState.current.claimId,
           card_id: card.objectID,
           classification,
         }),
@@ -162,12 +160,7 @@
           <div class="chamber-empty-actions">
             <a class="link-btn" href="/mansion">Return to Mansion</a>
             {#if gameState.current.sessionId}
-              <a
-                class="link-btn link-btn-primary"
-                href={'/verdict?session=' + gameState.current.sessionId}
-              >
-                Render Verdict &rarr;
-              </a>
+              <a class="link-btn link-btn-primary" href="/verdict"> Render Verdict &rarr; </a>
             {/if}
           </div>
         </div>

@@ -1,0 +1,35 @@
+-- Session capability hardening:
+-- Persist a server-verified SHA-256 token hash per session so state-changing
+-- endpoints require possession proof beyond session_id.
+
+ALTER TABLE suspicion.sessions
+  ADD COLUMN IF NOT EXISTS session_token_hash text;
+
+-- Pre-existing sessions have no token hash and cannot authenticate under the
+-- new capability scheme. Per the no-backwards-compatibility rule, delete them
+-- rather than backfilling unmatchable fake hashes that would just block auth.
+DELETE FROM suspicion.picks p
+USING suspicion.sessions s
+WHERE p.session_id = s.session_id
+  AND s.session_token_hash IS NULL;
+
+DELETE FROM suspicion.sessions
+WHERE session_token_hash IS NULL;
+
+ALTER TABLE suspicion.sessions
+  ALTER COLUMN session_token_hash SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'sessions_session_token_hash_sha256_check'
+      AND conrelid = 'suspicion.sessions'::regclass
+  ) THEN
+    ALTER TABLE suspicion.sessions
+      ADD CONSTRAINT sessions_session_token_hash_sha256_check
+      CHECK (session_token_hash ~ '^[0-9a-f]{64}$');
+  END IF;
+END
+$$;

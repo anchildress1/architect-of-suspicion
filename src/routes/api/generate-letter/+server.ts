@@ -6,6 +6,8 @@ import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prompts/coverLetter';
 import { rateLimitGuard } from '$lib/server/rateLimit';
 import type { Classification, FullCard, Verdict } from '$lib/types';
+import { loadSessionCapability } from '$lib/server/sessionCapability';
+import { parseJsonBodyWithLimit } from '$lib/server/validation';
 
 const FALLBACK_LETTER =
   'The record could not be composed. The verdict stands, but the letter will have to be written by hand.';
@@ -13,50 +15,25 @@ const FALLBACK_LETTER =
 const FALLBACK_CLOSING = 'The investigation is concluded. The record speaks for itself.';
 
 interface GenerateLetterRequest {
-  session_id?: string;
   verdict?: string;
-}
-
-interface SessionRow {
-  claim_text: string;
 }
 
 type RuledPick = { card_id: string; classification: Exclude<Classification, 'dismiss'> };
 
-async function parseRequest(request: Request): Promise<{ sessionId: string; verdict: Verdict }> {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    error(400, 'Invalid JSON body');
-  }
+const MAX_GENERATE_REQUEST_BYTES = 1_024;
 
-  const { session_id, verdict } = body as GenerateLetterRequest;
+async function parseRequest(request: Request): Promise<{ verdict: Verdict }> {
+  const body = await parseJsonBodyWithLimit<GenerateLetterRequest>(
+    request,
+    MAX_GENERATE_REQUEST_BYTES,
+  );
+  const { verdict } = body;
 
-  if (!session_id || typeof session_id !== 'string') {
-    error(400, 'Missing or invalid session_id');
-  }
   if (verdict !== 'accuse' && verdict !== 'pardon') {
     error(400, 'verdict must be "accuse" or "pardon"');
   }
 
-  return { sessionId: session_id, verdict };
-}
-
-async function loadSessionClaim(sessionId: string): Promise<string> {
-  const { data, error: sessErr } = await getSupabase()
-    .schema('suspicion')
-    .from('sessions')
-    .select('claim_text')
-    .eq('session_id', sessionId)
-    .maybeSingle<SessionRow>();
-
-  if (sessErr) {
-    console.error('[generate-letter] sessions read failed:', sessErr.message);
-    error(500, 'Failed to read session');
-  }
-  if (!data) error(404, 'Session not found');
-  return data.claim_text;
+  return { verdict };
 }
 
 async function loadRuledPicks(sessionId: string): Promise<RuledPick[]> {
@@ -137,16 +114,23 @@ async function generateLetter(
   }
 }
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
   const blocked = rateLimitGuard(getClientAddress());
   if (blocked) return blocked;
 
-  const { sessionId, verdict } = await parseRequest(request);
+  const { verdict } = await parseRequest(request);
+  const session = await loadSessionCapability(cookies);
 
-  const claimText = await loadSessionClaim(sessionId);
-  const ruledPicks = await loadRuledPicks(sessionId);
+  const ruledPicks = await loadRuledPicks(session.sessionId);
   const cards = await loadCardsById(ruledPicks.map((p) => p.card_id));
 
+  const missingCards = ruledPicks.filter((p) => !cards[p.card_id]);
+  if (missingCards.length > 0) {
+    console.error(
+      '[generate-letter] ruled picks missing from cards map — cover letter will be incomplete:',
+      missingCards.map((p) => p.card_id),
+    );
+  }
   const evidence = ruledPicks
     .filter((p) => cards[p.card_id])
     .map((p) => ({ card: cards[p.card_id], classification: p.classification }));
@@ -156,14 +140,18 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const { error: verdictError } = await suspicion
     .from('sessions')
     .update({ verdict, updated_at: new Date().toISOString() })
-    .eq('session_id', sessionId);
+    .eq('session_id', session.sessionId);
 
   if (verdictError) {
     console.error('[generate-letter] session verdict update failed:', verdictError.message);
     error(500, 'Failed to update session');
   }
 
-  const { coverLetter, architectClosing, ok } = await generateLetter(claimText, verdict, evidence);
+  const { coverLetter, architectClosing, ok } = await generateLetter(
+    session.claimText,
+    verdict,
+    evidence,
+  );
 
   const { error: letterError } = await suspicion
     .from('sessions')
@@ -172,7 +160,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
       architect_closing: architectClosing,
       updated_at: new Date().toISOString(),
     })
-    .eq('session_id', sessionId);
+    .eq('session_id', session.sessionId);
 
   if (letterError) {
     console.error('[generate-letter] session letter update failed:', letterError.message);

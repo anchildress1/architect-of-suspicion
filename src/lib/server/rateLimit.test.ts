@@ -9,10 +9,13 @@ vi.mock('$env/dynamic/private', () => ({
 }));
 
 import { checkRateLimit, rateLimitGuard, _resetStore } from './rateLimit';
+import { env } from '$env/dynamic/private';
 
 describe('rateLimit', () => {
   beforeEach(() => {
     _resetStore();
+    env.API_RATE_LIMIT_MAX_REQUESTS = '5';
+    env.API_RATE_LIMIT_WINDOW_MS = '1000';
   });
 
   it('allows requests within the limit', () => {
@@ -30,8 +33,9 @@ describe('rateLimit', () => {
     const result = checkRateLimit('127.0.0.1');
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
-    expect(result.retryAfterMs).toBeDefined();
-    expect(result.retryAfterMs!).toBeGreaterThanOrEqual(0);
+    if (!result.allowed) {
+      expect(result.retryAfterMs).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it('tracks different IPs independently', () => {
@@ -61,11 +65,49 @@ describe('rateLimit', () => {
 
     vi.useRealTimers();
   });
+
+  it('runs periodic cleanup and prunes stale timestamps', () => {
+    vi.useFakeTimers();
+    env.API_RATE_LIMIT_MAX_REQUESTS = '2';
+    env.API_RATE_LIMIT_WINDOW_MS = '1000';
+
+    checkRateLimit('198.51.100.10');
+    checkRateLimit('198.51.100.10');
+    expect(checkRateLimit('198.51.100.10').allowed).toBe(false);
+
+    vi.advanceTimersByTime(60_001);
+
+    expect(checkRateLimit('198.51.100.10').allowed).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it('falls back to secure defaults when env config is invalid', () => {
+    env.API_RATE_LIMIT_MAX_REQUESTS = 'not-a-number';
+    env.API_RATE_LIMIT_WINDOW_MS = '-1';
+
+    for (let i = 0; i < 30; i++) {
+      expect(checkRateLimit('203.0.113.1').allowed).toBe(true);
+    }
+    expect(checkRateLimit('203.0.113.1').allowed).toBe(false);
+  });
+
+  it('falls back to secure defaults when env config is out of bounds', () => {
+    env.API_RATE_LIMIT_MAX_REQUESTS = '0';
+    env.API_RATE_LIMIT_WINDOW_MS = '999999999999';
+
+    for (let i = 0; i < 30; i++) {
+      expect(checkRateLimit('203.0.113.2').allowed).toBe(true);
+    }
+    expect(checkRateLimit('203.0.113.2').allowed).toBe(false);
+  });
 });
 
 describe('rateLimitGuard', () => {
   beforeEach(() => {
     _resetStore();
+    env.API_RATE_LIMIT_MAX_REQUESTS = '5';
+    env.API_RATE_LIMIT_WINDOW_MS = '1000';
   });
 
   it('returns null when within limits', () => {
@@ -86,7 +128,13 @@ describe('rateLimitGuard', () => {
     expect(body.message).toContain('Too many requests');
   });
 
-  it('falls back to unknown for empty address', () => {
-    expect(rateLimitGuard('')).toBeNull();
+  it('falls back to unknown bucket and logs when address is empty', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = rateLimitGuard('');
+
+    expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[rate-limit]'));
+    errorSpy.mockRestore();
   });
 });

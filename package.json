@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "svelte-check --threshold error",
-    "prepare": "svelte-kit sync",
+    "prepare": "svelte-kit sync && lefthook install",
     "seed-claims": "tsx --env-file=.env scripts/seed-claims/index.ts"
   },
   "packageManager": "pnpm@10.30.3",

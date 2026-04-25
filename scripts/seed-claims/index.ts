@@ -9,7 +9,12 @@
  */
 
 import { loadEligibleCards } from './cards';
-import { corpusSignature, loadCheckpoint, saveCheckpoint } from './checkpoint';
+import {
+  corpusSignature,
+  loadCheckpoint,
+  pruneStaleCheckpoints,
+  saveCheckpoint,
+} from './checkpoint';
 import { config, type Config } from './config';
 import { runPass1 } from './pass1-tensions';
 import { runPass2 } from './pass2-claims';
@@ -65,6 +70,7 @@ export async function main(): Promise<void> {
   if (cards.length === 0) throw new Error('No eligible cards found');
 
   const sig = corpusSignature(cards);
+  await pruneStaleCheckpoints(sig);
 
   // Each pass consults its checkpoint first; if present and the corpus
   // signature matches, we resume without a paid re-run. Maps serialize via
