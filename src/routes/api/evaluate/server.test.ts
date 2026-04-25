@@ -325,6 +325,9 @@ describe('POST /api/evaluate', () => {
     expect(body.reaction_fallback).toBe(false);
     expect(body).not.toHaveProperty('ai_score');
     expect(body).not.toHaveProperty('attention_delta');
+    // INVARIANT #1: the card's fact field must never reach the client.
+    expect(body).not.toHaveProperty('fact');
+    expect(JSON.stringify(body)).not.toContain(mockCard.fact);
   });
 
   it('drives attention down on Objection of a supporting card', async () => {

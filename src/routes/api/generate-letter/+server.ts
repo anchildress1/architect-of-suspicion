@@ -124,6 +124,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
   const ruledPicks = await loadRuledPicks(session.sessionId);
   const cards = await loadCardsById(ruledPicks.map((p) => p.card_id));
 
+  const missingCards = ruledPicks.filter((p) => !cards[p.card_id]);
+  if (missingCards.length > 0) {
+    console.error(
+      '[generate-letter] ruled picks missing from cards map — cover letter will be incomplete:',
+      missingCards.map((p) => p.card_id),
+    );
+  }
   const evidence = ruledPicks
     .filter((p) => cards[p.card_id])
     .map((p) => ({ card: cards[p.card_id], classification: p.classification }));

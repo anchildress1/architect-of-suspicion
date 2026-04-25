@@ -299,6 +299,26 @@ describe('POST /api/generate-letter', () => {
     expect(lastCardsInCall.ids).toEqual([]);
   });
 
+  it('logs an error when a ruled pick has no matching card in the map', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupMocks({
+      picks: [
+        { card_id: 'card-1', classification: 'proof' },
+        { card_id: 'orphan-card', classification: 'objection' },
+      ],
+      cards: [mockCards[0]],
+    });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    await POST(makeRequest(validBody));
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[generate-letter]'),
+      expect.arrayContaining(['orphan-card']),
+    );
+    errorSpy.mockRestore();
+  });
+
   it('500s when picks fetch fails', async () => {
     setupMocks({ picksError: { message: 'pg-down' } });
     await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch picks');
