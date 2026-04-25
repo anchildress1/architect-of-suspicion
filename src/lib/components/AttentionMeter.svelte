@@ -94,12 +94,13 @@
     <text x="130" y="36" class="meter-arc-label" text-anchor="middle">ENGAGED</text>
     <text x="236" y="146" class="meter-arc-label" text-anchor="end">FURY</text>
 
-    <!-- Needle: tip lands at the arc inner edge (radius 100); base
-         widens into the hub so the triangle reads as a connected
-         needle, not a stranded tip. -->
-    <g transform="translate(130,130) rotate({angle})" class="needle-g">
-      <polygon points="0,-100 -5,4 5,4" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.6" />
-      <polygon points="0,-100 -2,-40 0,-48 2,-40" fill="#ffd2cc" opacity="0.7" />
+    <!-- Needle: polygon points sit at absolute viewBox coords. CSS rotates
+         the group around the hub center (130, 130). Combining translate
+         and rotate in the SVG attribute caused matrix interpolation to
+         translate the pivot during transitions. -->
+    <g class="needle-g" style="transform: rotate({angle}deg);">
+      <polygon points="130,30 125,134 135,134" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.6" />
+      <polygon points="130,30 128,90 130,82 132,90" fill="#ffd2cc" opacity="0.7" />
     </g>
 
     <!-- Hub -->
