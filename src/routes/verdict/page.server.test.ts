@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { error as kitError, isHttpError } from '@sveltejs/kit';
 
 const mockSelect = vi.fn();
 const mockEq = vi.fn();
@@ -49,8 +50,10 @@ describe('verdict/+page.server load', () => {
     });
   });
 
-  it('returns null session when capability validation fails', async () => {
-    mockLoadSessionCapability.mockRejectedValue(new Error('Missing session capability'));
+  it('returns null session when capability validation fails with 401', async () => {
+    let capabilityErr: unknown;
+    try { kitError(401, 'Invalid session capability'); } catch (e) { capabilityErr = e; }
+    mockLoadSessionCapability.mockRejectedValue(capabilityErr);
 
     const result = await load(makeEvent());
 
@@ -58,11 +61,31 @@ describe('verdict/+page.server load', () => {
     expect(mockSchema).not.toHaveBeenCalled();
   });
 
-  it('returns null session when DB returns an error', async () => {
+  it('re-throws when capability check fails with infrastructure error', async () => {
+    let infraErr: unknown;
+    try { kitError(500, 'Failed to read session'); } catch (e) { infraErr = e; }
+    mockLoadSessionCapability.mockRejectedValue(infraErr);
+
+    await expect(load(makeEvent())).rejects.toSatisfy(
+      (err: unknown) => isHttpError(err) && (err as { status: number }).status === 500,
+    );
+    expect(mockSchema).not.toHaveBeenCalled();
+  });
+
+  it('re-throws unexpected non-HTTP errors from capability check', async () => {
+    mockLoadSessionCapability.mockRejectedValue(new TypeError('network failure'));
+
+    await expect(load(makeEvent())).rejects.toThrow('network failure');
+    expect(mockSchema).not.toHaveBeenCalled();
+  });
+
+  it('throws 500 when DB returns an error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setupMocks({ data: null, error: { message: 'connection refused' } });
-    const result = await load(makeEvent());
-    expect(result).toEqual({ session: null });
+
+    await expect(load(makeEvent())).rejects.toSatisfy(
+      (err: unknown) => isHttpError(err) && (err as { status: number }).status === 500,
+    );
     expect(errorSpy).toHaveBeenCalledWith('[verdict] session lookup failed:', 'connection refused');
     errorSpy.mockRestore();
   });
@@ -124,5 +147,26 @@ describe('verdict/+page.server load', () => {
     expect(mockSchema).toHaveBeenCalledWith('suspicion');
     expect(mockFrom).toHaveBeenCalledWith('sessions');
     expect(mockEq).toHaveBeenCalledWith('session_id', 'target-id');
+  });
+
+  it('returns session with null architect_closing when cover_letter is present but closing is absent', async () => {
+    setupMocks({
+      data: {
+        claim_text: 'Ashley avoids accountability',
+        verdict: 'guilty',
+        cover_letter: 'The evidence was damning.',
+        architect_closing: null,
+      },
+      error: null,
+    });
+    const result = await load(makeEvent());
+    expect(result).toEqual({
+      session: {
+        cover_letter: 'The evidence was damning.',
+        architect_closing: null,
+        claim: 'Ashley avoids accountability',
+        verdict: 'guilty',
+      },
+    });
   });
 });
