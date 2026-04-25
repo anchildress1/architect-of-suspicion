@@ -9,7 +9,12 @@
  */
 
 import { loadEligibleCards } from './cards';
-import { corpusSignature, loadCheckpoint, pruneStaleCheckpoints, saveCheckpoint } from './checkpoint';
+import {
+  corpusSignature,
+  loadCheckpoint,
+  pruneStaleCheckpoints,
+  saveCheckpoint,
+} from './checkpoint';
 import { config, type Config } from './config';
 import { runPass1 } from './pass1-tensions';
 import { runPass2 } from './pass2-claims';

@@ -52,7 +52,11 @@ describe('verdict/+page.server load', () => {
 
   it('returns null session when capability validation fails with 401', async () => {
     let capabilityErr: unknown;
-    try { kitError(401, 'Invalid session capability'); } catch (e) { capabilityErr = e; }
+    try {
+      kitError(401, 'Invalid session capability');
+    } catch (e) {
+      capabilityErr = e;
+    }
     mockLoadSessionCapability.mockRejectedValue(capabilityErr);
 
     const result = await load(makeEvent());
@@ -63,7 +67,11 @@ describe('verdict/+page.server load', () => {
 
   it('re-throws when capability check fails with infrastructure error', async () => {
     let infraErr: unknown;
-    try { kitError(500, 'Failed to read session'); } catch (e) { infraErr = e; }
+    try {
+      kitError(500, 'Failed to read session');
+    } catch (e) {
+      infraErr = e;
+    }
     mockLoadSessionCapability.mockRejectedValue(infraErr);
 
     await expect(load(makeEvent())).rejects.toSatisfy(

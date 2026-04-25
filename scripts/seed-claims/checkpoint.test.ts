@@ -326,11 +326,7 @@ describe('pruneStaleCheckpoints', () => {
     mockUnlink.mockRejectedValue(err);
 
     await expect(pruneStaleCheckpoints('sig-current')).resolves.toBeUndefined();
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[checkpoint] failed to prune %s:',
-      'locked.json',
-      err,
-    );
+    expect(warnSpy).toHaveBeenCalledWith('[checkpoint] failed to prune %s:', 'locked.json', err);
     warnSpy.mockRestore();
   });
 
@@ -343,7 +339,7 @@ describe('pruneStaleCheckpoints', () => {
     ]);
     mockReadFile
       .mockResolvedValueOnce(makeEnvelope('sig-current', {})) // pass1 — keep
-      .mockResolvedValueOnce(makeEnvelope('old-sig', {}))     // pass2 — prune
+      .mockResolvedValueOnce(makeEnvelope('old-sig', {})) // pass2 — prune
       .mockResolvedValueOnce(makeEnvelope('sig-current', {})) // pass3 — keep
       .mockResolvedValueOnce(makeEnvelope('ancient-sig', {})); // old-run — prune
     mockUnlink.mockResolvedValue(undefined);
