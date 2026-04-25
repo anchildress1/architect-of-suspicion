@@ -77,16 +77,18 @@
 </article>
 
 <style>
-  /* Parchment witness card — bone broadsheet on dark stage. */
+  /* Mechanical witness card — dark instrument panel on a darker stage.
+     The 3px ember left rule is the only chromatic event at rest. */
   .witness-card {
     position: relative;
     width: min(100%, 36rem);
-    background: var(--color-bone);
-    color: var(--color-paper-ink);
+    background: linear-gradient(180deg, rgba(20, 20, 23, 0.92) 0%, rgba(11, 11, 13, 0.96) 100%);
+    border: 1px solid rgba(233, 228, 216, 0.18);
+    color: var(--color-paper);
     box-shadow:
       0 30px 60px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    padding: 2.75rem 3.5rem 2.25rem;
+      inset 0 1px 0 rgba(233, 228, 216, 0.04);
+    padding: 2rem 2.25rem 1.4rem;
     overflow: hidden;
     transition:
       transform 360ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -110,7 +112,7 @@
     display: none;
   }
 
-  /* 3px ember left rule — the only chromatic event on the parchment */
+  /* 3px ember left rule — accent against the dark panel. */
   .wc-edge {
     position: absolute;
     top: 0;
@@ -126,31 +128,30 @@
     justify-content: space-between;
     margin-bottom: 1.4rem;
     padding-bottom: 0.7rem;
-    border-bottom: 1px solid rgba(20, 20, 26, 0.15);
+    border-bottom: 1px solid rgba(233, 228, 216, 0.12);
     font-family: var(--font-readout);
     font-size: 0.6rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.55);
+    color: var(--color-brass-dim);
   }
 
   .wc-title {
     font-family: var(--font-display);
-    font-style: normal;
+    font-style: italic;
     font-weight: 400;
-    font-size: clamp(2rem, 4vw, 3.25rem);
-    color: var(--color-paper-ink);
-    line-height: 1.05;
-    letter-spacing: -0.005em;
+    font-size: clamp(1.4rem, 2.2vw, 1.95rem);
+    color: var(--color-bone);
+    line-height: 1.25;
     text-wrap: balance;
-    margin-bottom: 1.2rem;
+    margin-bottom: 1rem;
   }
 
   .wc-body {
     font-family: var(--font-body);
-    font-size: 1.0625rem;
-    color: rgba(20, 20, 26, 0.78);
-    line-height: 1.55;
+    font-size: 0.95rem;
+    color: var(--color-paper-dim);
+    line-height: 1.65;
     max-width: 56ch;
     margin-bottom: 1.8rem;
     text-wrap: pretty;
@@ -164,17 +165,17 @@
     font-size: 0.55rem;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.55);
+    color: var(--color-brass-dim);
     margin-bottom: 1.2rem;
   }
 
   .wc-line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(20, 20, 26, 0.18), transparent);
+    background: linear-gradient(90deg, rgba(233, 228, 216, 0.18), transparent);
   }
 
-  /* Stamps — top-right, hand-pressed onto parchment */
+  /* Stamps — top-right, blue/red/neutral verdict colors on dark. */
   .wc-stamp {
     position: absolute;
     top: 36px;
@@ -188,6 +189,7 @@
     text-transform: uppercase;
     border: 3px solid currentColor;
     padding: 0.4rem 0.9rem;
+    background: rgba(11, 11, 13, 0.55);
     opacity: 0;
     pointer-events: none;
     transition:
@@ -196,23 +198,23 @@
   }
 
   .wc-stamp-proof {
-    color: #0a6a4a;
+    color: var(--color-cyan-ink);
   }
   .wc-stamp-objection {
     color: var(--color-ember);
   }
   .wc-stamp-dismiss {
-    color: #5a5a5a;
+    color: var(--color-brass-dim);
   }
 
   .exit-proof .wc-stamp-proof,
   .exit-objection .wc-stamp-objection,
   .exit-dismiss .wc-stamp-dismiss {
-    opacity: 0.92;
+    opacity: 0.95;
     transform: rotate(-8deg) scale(1);
   }
 
-  /* Card exits — tuned per verdict (proof rises, objection falls right, dismiss drains) */
+  /* Card exits — proof rises, objection falls right, dismiss drains. */
   .exit-proof,
   .exit-objection,
   .exit-dismiss {
@@ -232,9 +234,7 @@
     filter: grayscale(1);
   }
 
-  /* Lever strip — embossed slate switches with warm-brass borders.
-     The only place warm gold lives in the chamber: the levers are the
-     physical mechanism the player throws to render a verdict. */
+  /* Levers — neutral instrument switches; verdict color appears on hover. */
   .wc-levers {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -247,19 +247,16 @@
     align-items: flex-start;
     gap: 0.3rem;
     padding: 14px 12px;
-    background: linear-gradient(180deg, #22262f 0%, #14171f 100%);
-    border: 1px solid rgba(196, 162, 78, 0.35);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 230, 170, 0.08),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-      0 4px 14px rgba(0, 0, 0, 0.45);
+    background: rgba(11, 11, 13, 0.7);
+    border: 1px solid rgba(233, 228, 216, 0.18);
     color: var(--color-paper-dim);
     cursor: pointer;
     text-align: left;
     transition:
       box-shadow 0.2s ease,
       border-color 0.2s ease,
-      background 0.2s ease;
+      background 0.2s ease,
+      color 0.2s ease;
   }
 
   .lv:disabled {
@@ -291,21 +288,23 @@
     line-height: 1.3;
   }
 
-  /* Per-verdict hover: 1px ring inside, glow outside, hint colors match. */
+  /* Per-verdict hover: ring + glow in the verdict color (blue/red/neutral). */
   .lv-proof:hover:not(:disabled) {
-    border-color: var(--color-bone);
+    border-color: var(--color-cyan-ink);
+    color: var(--color-paper);
     box-shadow:
-      inset 0 1px 0 rgba(255, 230, 170, 0.12),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-      0 0 0 1px var(--color-bone),
-      0 8px 24px rgba(233, 228, 216, 0.18);
+      0 0 0 1px var(--color-cyan-ink),
+      0 8px 24px rgba(107, 143, 176, 0.28);
+  }
+
+  .lv-proof:hover:not(:disabled) .lv-name {
+    color: var(--color-cyan-ink);
   }
 
   .lv-objection:hover:not(:disabled) {
     border-color: var(--color-ember);
+    color: var(--color-paper);
     box-shadow:
-      inset 0 1px 0 rgba(255, 230, 170, 0.12),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
       0 0 0 1px var(--color-ember),
       0 8px 24px rgba(210, 58, 42, 0.32);
   }
@@ -316,10 +315,9 @@
 
   .lv-dismiss:hover:not(:disabled) {
     border-color: var(--color-brass-dim);
+    color: var(--color-paper);
     box-shadow:
-      inset 0 1px 0 rgba(255, 230, 170, 0.1),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
       0 0 0 1px var(--color-brass-dim),
-      0 8px 24px rgba(122, 118, 104, 0.25);
+      0 8px 24px rgba(122, 118, 104, 0.22);
   }
 </style>
