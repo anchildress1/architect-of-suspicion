@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { moodFor, ATTENTION_MIN, ATTENTION_MAX } from '$lib/attention';
 
   interface Props {
@@ -9,9 +10,28 @@
   let { value }: Props = $props();
 
   // Half-circle gauge from -90° (left/Drifting) to +90° (right/Riveted).
-  // Smooth easing applied via CSS transition; per-pick deltas stay illegible.
   const angle = $derived(-90 + ((value - ATTENTION_MIN) / (ATTENTION_MAX - ATTENTION_MIN)) * 180);
   const mood = $derived(moodFor(value));
+
+  // Per-pick delta callout: mono pill that fades in on attention change.
+  // We capture the initial value intentionally so the first frame doesn't
+  // flash a delta of `value - undefined`.
+  let previous = $state(untrack(() => value));
+  let delta = $state<number | null>(null);
+  let deltaSeq = $state(0);
+
+  $effect(() => {
+    const v = value;
+    if (v !== previous) {
+      delta = v - previous;
+      previous = v;
+      deltaSeq += 1;
+      const t = setTimeout(() => {
+        delta = null;
+      }, 1850);
+      return () => clearTimeout(t);
+    }
+  });
 </script>
 
 <div class="meter" role="img" aria-label="The Architect's attention: {mood}">
@@ -19,8 +39,8 @@
     <defs>
       <linearGradient id="meter-arc" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stop-color="#3a3a42" />
-        <stop offset="50%" stop-color="#a5a090" />
-        <stop offset="100%" stop-color="#e9e4d8" />
+        <stop offset="50%" stop-color="#c9c4b4" />
+        <stop offset="100%" stop-color="#d23a2a" />
       </linearGradient>
       <radialGradient id="meter-hub" cx="0.35" cy="0.3">
         <stop offset="0%" stop-color="#e9e4d8" />
@@ -40,7 +60,7 @@
       fill="none"
       stroke="url(#meter-arc)"
       stroke-width="6"
-      opacity="0.5"
+      opacity="0.65"
     />
 
     <!-- Tick marks -->
@@ -63,6 +83,11 @@
       />
     {/each}
 
+    <!-- Mood labels — geographic on the arc, no separate track. -->
+    <text x="24" y="146" class="meter-arc-label" text-anchor="start">COOL</text>
+    <text x="130" y="36" class="meter-arc-label" text-anchor="middle">ENGAGED</text>
+    <text x="236" y="146" class="meter-arc-label" text-anchor="end">FURY</text>
+
     <!-- Needle -->
     <g transform="translate(130,130) rotate({angle})" class="needle-g">
       <polygon points="0,-96 -3,6 3,6" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.6" />
@@ -74,20 +99,30 @@
     <circle cx="130" cy="130" r="3" fill="#0b0b0d" />
   </svg>
 
-  <div class="meter-track" aria-hidden="true">
-    {#each ['Drifting', 'Watching', 'Interested', 'Riveted'] as label (label)}
-      <span class="meter-tick" class:meter-tick-active={mood === label}>{label}</span>
-    {/each}
+  <div class="meter-readout">
+    <span class="meter-mood">{mood}</span>
+    <span class="meter-sep">&middot;</span>
+    <span class="meter-value">{value}<small>/100</small></span>
   </div>
 
-  <div class="meter-caption">
-    <span class="meter-eyebrow">The Architect</span>
-    <span class="meter-mood">{mood}</span>
-  </div>
+  {#if delta !== null}
+    {#key deltaSeq}
+      <span
+        class="meter-delta"
+        class:delta-up={delta > 0}
+        class:delta-down={delta < 0}
+        class:delta-flat={delta === 0}
+        aria-hidden="true"
+      >
+        {delta > 0 ? `+${delta}` : delta}
+      </span>
+    {/key}
+  {/if}
 </div>
 
 <style>
   .meter {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -106,60 +141,91 @@
     transform-box: view-box;
   }
 
-  .meter-track {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.25rem;
-    margin-top: 0.5rem;
+  .meter-arc-label {
+    font-family: var(--font-readout, monospace);
+    font-size: 8.5px;
+    letter-spacing: 0.22em;
+    fill: var(--color-brass-dim);
   }
 
-  .meter-tick {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    text-align: center;
-    transition: color 600ms ease;
-  }
-
-  .meter-tick:nth-child(1) {
-    text-align: left;
-  }
-  .meter-tick:last-child {
-    text-align: right;
-  }
-
-  .meter-tick-active {
-    color: var(--color-bone);
-  }
-
-  .meter-caption {
+  .meter-readout {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    margin-top: 0.6rem;
-  }
-
-  .meter-eyebrow {
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: var(--color-ember);
   }
 
   .meter-mood {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.05rem;
-    color: var(--color-bone);
-    transition: color 600ms ease;
+    font-weight: 500;
+  }
+
+  .meter-sep {
+    color: var(--color-brass-dim);
+  }
+
+  .meter-value small {
+    font-size: 0.75em;
+    color: var(--color-brass-dim);
+  }
+
+  .meter-delta {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    padding: 2px 8px;
+    border: 1px solid currentColor;
+    background: rgba(11, 11, 13, 0.8);
+    pointer-events: none;
+    animation: deltaPop 1850ms ease forwards;
+  }
+
+  .delta-up {
+    color: var(--color-ember);
+  }
+
+  .delta-down {
+    color: var(--color-cyan-ink);
+  }
+
+  .delta-flat {
+    color: var(--color-brass-dim);
+  }
+
+  @keyframes deltaPop {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 6px);
+    }
+    20% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -4px);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .needle-g {
       transition: none;
+    }
+    .meter-delta {
+      animation: none;
+      opacity: 1;
     }
   }
 </style>

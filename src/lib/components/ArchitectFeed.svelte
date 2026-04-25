@@ -8,6 +8,14 @@
       feedContainer.scrollTop = feedContainer.scrollHeight;
     }
   });
+
+  function formatTime(ts: number): string {
+    return new Date(ts).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+  }
 </script>
 
 <div
@@ -26,6 +34,7 @@
   {:else}
     {#each gameState.current.feed as entry (entry.id)}
       <div class="feed-entry feed-{entry.type}">
+        <p class="feed-time">{formatTime(entry.timestamp)}</p>
         <p class="feed-text">{entry.text}</p>
       </div>
     {/each}
@@ -69,7 +78,8 @@
   }
 
   .feed-entry {
-    padding: 0.5rem 0;
+    position: relative;
+    padding: 0.5rem 0 0.6rem 0.85rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.06);
     animation: feedIn 0.45s cubic-bezier(0.2, 0, 0, 1) both;
   }
@@ -78,39 +88,72 @@
     border-bottom: none;
   }
 
+  /* Diamond marker — the visual mode-switch between voices. */
+  .feed-entry::before {
+    content: '';
+    position: absolute;
+    top: 0.7rem;
+    left: -4px;
+    width: 8px;
+    height: 8px;
+    background: currentColor;
+    transform: rotate(45deg);
+  }
+
+  .feed-time {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 0.2rem;
+  }
+
   .feed-text {
     font-family: var(--font-display);
-    font-size: 0.95rem;
+    font-size: 15.5px;
     font-style: italic;
-    color: var(--color-bone);
+    color: #e8d8b8;
     line-height: 1.55;
     text-wrap: pretty;
   }
 
-  /* Action lines = machine voice (mono, terse) */
-  .feed-action .feed-text {
-    font-family: var(--font-readout);
-    font-style: normal;
-    font-size: 0.62rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-paper-dim);
+  /* Action = the player's hand on the record (cyan-ink, Geist, terse). */
+  .feed-action {
+    border-left: 2px solid var(--color-cyan-ink);
+    color: var(--color-cyan-ink);
   }
 
-  .feed-action .feed-text::before {
-    content: '→ ';
+  .feed-action .feed-text {
+    font-family: var(--font-body);
+    font-style: normal;
+    font-size: 14px;
+    color: var(--color-paper-dim);
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* Reaction = the Architect speaking (ember, italic serif, glowing diamond). */
+  .feed-reaction {
+    border-left: 2px solid var(--color-ember);
+    color: var(--color-ember);
+  }
+
+  .feed-reaction::before {
+    box-shadow: 0 0 8px var(--color-ember);
+  }
+
+  /* Narration = atmospheric prompts; quiet brass-dim rule. */
+  .feed-narration {
+    border-left: 2px solid rgba(122, 118, 104, 0.4);
     color: var(--color-brass-dim);
   }
 
-  /* Reaction lines = the Architect speaking */
-  .feed-reaction .feed-text {
-    color: var(--color-bone);
-  }
-
-  /* Narration = atmospheric prompts */
   .feed-narration .feed-text {
-    color: rgba(233, 228, 216, 0.74);
-    font-size: 0.85rem;
+    color: rgba(233, 228, 216, 0.6);
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   @keyframes feedIn {
