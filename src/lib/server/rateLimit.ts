@@ -8,9 +8,39 @@ const store = new Map<string, RequestRecord>();
 
 let cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
+const DEFAULT_MAX_REQUESTS = 30;
+const DEFAULT_WINDOW_MS = 60_000;
+const MIN_MAX_REQUESTS = 1;
+const MAX_MAX_REQUESTS = 5_000;
+const MIN_WINDOW_MS = 1_000;
+const MAX_WINDOW_MS = 60 * 60 * 1_000;
+
+function parseBoundedInt(
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+    return fallback;
+  }
+  return parsed;
+}
+
 function getConfig() {
-  const maxRequests = parseInt(env.API_RATE_LIMIT_MAX_REQUESTS ?? '30', 10);
-  const windowMs = parseInt(env.API_RATE_LIMIT_WINDOW_MS ?? '60000', 10);
+  const maxRequests = parseBoundedInt(
+    env.API_RATE_LIMIT_MAX_REQUESTS,
+    DEFAULT_MAX_REQUESTS,
+    MIN_MAX_REQUESTS,
+    MAX_MAX_REQUESTS,
+  );
+  const windowMs = parseBoundedInt(
+    env.API_RATE_LIMIT_WINDOW_MS,
+    DEFAULT_WINDOW_MS,
+    MIN_WINDOW_MS,
+    MAX_WINDOW_MS,
+  );
   return { maxRequests, windowMs };
 }
 

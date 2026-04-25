@@ -9,10 +9,13 @@ vi.mock('$env/dynamic/private', () => ({
 }));
 
 import { checkRateLimit, rateLimitGuard, _resetStore } from './rateLimit';
+import { env } from '$env/dynamic/private';
 
 describe('rateLimit', () => {
   beforeEach(() => {
     _resetStore();
+    env.API_RATE_LIMIT_MAX_REQUESTS = '5';
+    env.API_RATE_LIMIT_WINDOW_MS = '1000';
   });
 
   it('allows requests within the limit', () => {
@@ -61,11 +64,52 @@ describe('rateLimit', () => {
 
     vi.useRealTimers();
   });
+
+  it('runs periodic cleanup and prunes stale timestamps', () => {
+    vi.useFakeTimers();
+    env.API_RATE_LIMIT_MAX_REQUESTS = '2';
+    env.API_RATE_LIMIT_WINDOW_MS = '1000';
+
+    checkRateLimit('198.51.100.10');
+    checkRateLimit('198.51.100.10');
+    expect(checkRateLimit('198.51.100.10').allowed).toBe(false);
+
+    // Trigger the 60s cleanup interval callback.
+    vi.advanceTimersByTime(60_001);
+
+    // After cleanup, the stale timestamps should be gone.
+    expect(checkRateLimit('198.51.100.10').allowed).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it('falls back to secure defaults when env config is invalid', () => {
+    env.API_RATE_LIMIT_MAX_REQUESTS = 'not-a-number';
+    env.API_RATE_LIMIT_WINDOW_MS = '-1';
+
+    // Default max is 30 requests; the 31st should be blocked.
+    for (let i = 0; i < 30; i++) {
+      expect(checkRateLimit('203.0.113.1').allowed).toBe(true);
+    }
+    expect(checkRateLimit('203.0.113.1').allowed).toBe(false);
+  });
+
+  it('falls back to secure defaults when env config is out of bounds', () => {
+    env.API_RATE_LIMIT_MAX_REQUESTS = '0';
+    env.API_RATE_LIMIT_WINDOW_MS = '999999999999';
+
+    for (let i = 0; i < 30; i++) {
+      expect(checkRateLimit('203.0.113.2').allowed).toBe(true);
+    }
+    expect(checkRateLimit('203.0.113.2').allowed).toBe(false);
+  });
 });
 
 describe('rateLimitGuard', () => {
   beforeEach(() => {
     _resetStore();
+    env.API_RATE_LIMIT_MAX_REQUESTS = '5';
+    env.API_RATE_LIMIT_WINDOW_MS = '1000';
   });
 
   it('returns null when within limits', () => {
