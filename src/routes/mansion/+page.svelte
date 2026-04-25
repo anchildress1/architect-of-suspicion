@@ -100,7 +100,7 @@
               </a>
             {:else}
               <a
-                href={resolve('/room/[slug]', { slug: room.slug })}
+                href={`${resolve('/room/[slug]', { slug: room.slug })}?claim_id=${gameState.current.claimId}`}
                 class="pin-tag"
                 aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
               >
