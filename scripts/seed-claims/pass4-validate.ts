@@ -28,7 +28,9 @@ import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
 const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
 
-Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields. Always write in third person — use "Ashley" by name, never pronouns as a substitute.
+Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields.
+
+Source blurbs are written in first person ("I built…", "My approach was…", "I decided…"). Always convert to third person in rewritten_blurb. Use "Ashley" by name; never use pronouns (he/she/they) as a substitute. First-person phrasing in the output is always wrong.
 
 Tags and projects carry the work/play + deadline context:
 - "DEV Challenge > …" tag → strict external deadline, stack often unfamiliar at start. Surface the pressure where it sharpens the claim.

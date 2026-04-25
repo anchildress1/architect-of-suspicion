@@ -12,11 +12,11 @@ import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, TensionMap } from './types';
 
-const SYSTEM_PROMPT = `You analyze a corpus of career-evidence cards for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports contradictory readings, or where themes across categories conflict.
+const SYSTEM_PROMPT = `You analyze a corpus of Ashley's career facts for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports contradictory readings, or where themes across categories conflict.
 
 Produce raw material only — tensions that a later pass will use to generate claims. Do not write claims yourself.
 
-A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of the subject's behavior. A weak tension is generic (e.g. "ambition vs humility"), single-card, or unfalsifiable.`;
+A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of Ashley's behavior. A weak tension is generic (e.g. "ambition vs humility"), single-card, or unfalsifiable.`;
 
 const SCHEMA = {
   type: 'object',

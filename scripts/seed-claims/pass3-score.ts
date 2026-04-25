@@ -31,8 +31,8 @@ import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS } from './types';
 // output spec. Keep the system prompt compact — GPT-5.5 follows explicit
 // rules more reliably than long rationales.
 const SYSTEM_PROMPT = `<context>
-You are scoring career-evidence cards against a single accusation-style claim
-about the subject, Ashley. Scores feed a ranking pipeline that selects which
+You are scoring Ashley's career facts against a single accusation-style claim
+about Ashley. Scores feed a ranking pipeline that selects which
 claims go to final validation; scoring integrity is load-bearing.
 </context>
 

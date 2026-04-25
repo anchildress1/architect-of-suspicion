@@ -18,7 +18,7 @@ interface ParsedClaim {
   tensions_targeted: string[];
 }
 
-const SYSTEM_PROMPT = `You write claims for Architect of Suspicion — a game where players sort career-evidence cards as "proof" or "objection" against a single claim about the subject, Ashley.
+const SYSTEM_PROMPT = `You write claims for Architect of Suspicion — a game where players sort Ashley's career facts as "proof" or "objection" against a single claim about Ashley.
 
 A good claim is a blunt, provocative accusation that a reasonable person could argue either way using the available evidence. Claims are framed from an outsider's perspective — the player has no insider knowledge.
 
