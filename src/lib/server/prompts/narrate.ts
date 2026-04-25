@@ -28,8 +28,7 @@ export function buildNarrationPrompt(context: NarrationContext): string {
   const { claim, action, room, evidenceCount, roomsVisited } = context;
 
   const totalEvidence = evidenceCount.proof + evidenceCount.objection;
-  const visitedList =
-    roomsVisited.length > 0 ? roomsVisited.join(', ') : 'none yet';
+  const visitedList = roomsVisited.length > 0 ? roomsVisited.join(', ') : 'none yet';
   const actionDescription = ACTION_DESCRIPTIONS[action](room);
   const roomContent = ROOM_CONTENT[room] ?? 'evidence';
 

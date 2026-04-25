@@ -12,11 +12,11 @@ import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, TensionMap } from './types';
 
-const SYSTEM_PROMPT = `You analyze a corpus of career-evidence cards for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports contradictory readings, or where themes across categories conflict.
+const SYSTEM_PROMPT = `You analyze a corpus of Ashley's career facts for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports contradictory readings, or where themes across categories conflict.
 
 Produce raw material only — tensions that a later pass will use to generate claims. Do not write claims yourself.
 
-A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of the subject's behavior. A weak tension is generic (e.g. "ambition vs humility"), single-card, or unfalsifiable.`;
+A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of Ashley's behavior. A weak tension is generic (e.g. "ambition vs humility"), single-card, or unfalsifiable.`;
 
 const SCHEMA = {
   type: 'object',
@@ -63,19 +63,27 @@ export async function runPass1(cards: CardRow[]): Promise<TensionMap> {
 
   const raw = await client.complete(buildPrompt(cards), {
     system: SYSTEM_PROMPT,
-    maxTokens: 6000,
+    // Sonnet 4.6 caps synchronous output at 64k — 32k leaves a wide margin
+    // for the adaptive-thinking block + the tensions JSON on ~250 cards.
+    maxTokens: 32000,
     schema: SCHEMA,
-    reasoning: 'high',
+    // 'medium' over 'high': with ~250 cards in context, high-effort adaptive
+    // thinking burns 15-25k output tokens in reasoning alone before emitting
+    // the structured tensions. Medium still produces coherent four-tension
+    // analyses in our tests without starving the output budget.
+    reasoning: 'medium',
+    // Even at medium, 32k tokens + thinking blocks can run past the default
+    // 2-min client timeout — override for this pass only.
+    timeoutMs: 300_000,
   });
 
   let parsed: TensionMap;
   try {
     parsed = JSON.parse(raw) as TensionMap;
   } catch (err) {
-    throw new Error(
-      `[pass1] JSON.parse failed.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
-      { cause: err },
-    );
+    throw new Error(`[pass1] JSON.parse failed.\nRaw (first 500 chars): ${raw.slice(0, 500)}`, {
+      cause: err,
+    });
   }
   if (!Array.isArray(parsed.tensions) || parsed.tensions.length === 0) {
     throw new TypeError('Pass 1 produced no tensions');

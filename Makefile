@@ -53,6 +53,14 @@ install: ## Install dependencies
 prepare: ## Run SvelteKit sync
 	pnpm run prepare
 
+# ─── Lighthouse ───────────────────────────────────────────────────────
+
+lhci-desktop: build ## Run Lighthouse CI desktop preset locally (perf>=90, a11y/bp/seo=100)
+	pnpm dlx @lhci/cli@0.15.x autorun --config=lighthouserc.json
+
+lhci-mobile: build ## Run Lighthouse CI mobile preset locally (perf>=75)
+	pnpm dlx @lhci/cli@0.15.x autorun --config=lighthouserc.mobile.json
+
 # ─── Claim Engine ─────────────────────────────────────────────────────
 
 seed-claims: ## Run the claim engine pipeline (writes to Supabase)

@@ -51,10 +51,7 @@ describe('verdict/+page.server load', () => {
     setupMocks({ data: null, error: { message: 'connection refused' } });
     const result = await load(makeEvent({ session: 'some-id' }));
     expect(result).toEqual({ session: null });
-    expect(errorSpy).toHaveBeenCalledWith(
-      '[verdict] session lookup failed:',
-      'connection refused',
-    );
+    expect(errorSpy).toHaveBeenCalledWith('[verdict] session lookup failed:', 'connection refused');
     errorSpy.mockRestore();
   });
 

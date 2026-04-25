@@ -12,10 +12,22 @@ export interface CompletionOptions {
   /** JSON Schema for structured output. Required — all passes must use it. */
   schema: Record<string, unknown>;
   /** Anthropic: adaptive thinking + effort level (default 'high').
-   *  OpenAI: reasoning_effort ('none'|'low'|'medium'|'high'|'xhigh').
+   *  OpenAI: reasoning_effort — model-dependent set. GPT-5.5 accepts
+   *    'none'|'low'|'medium'|'high'|'xhigh' (no 'minimal' — was dropped in
+   *    the 5.5 retrain). GPT-5.0/5.1 still accept 'minimal'.
    *  Gemini: thinkingConfig.thinkingLevel ('minimal'|'low'|'medium'|'high'). */
   reasoning?: string;
+  /** OpenAI-only: `verbosity` param (GPT-5+). Controls output length/depth
+   *  independent of correctness. 'low' = terse structured, 'medium' = default,
+   *  'high' = verbose. Silently ignored by Anthropic and Gemini clients. */
+  verbosity?: 'low' | 'medium' | 'high';
+  /** Per-call request timeout (ms). Overrides the client-construction default
+   *  of 120_000. Anthropic + OpenAI only — Gemini's SDK takes its timeout at
+   *  construction, so use a larger constructor timeout if Gemini needs more. */
+  timeoutMs?: number;
 }
+
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 export interface AIClient {
   complete(prompt: string, opts: CompletionOptions): Promise<string>;
@@ -30,31 +42,42 @@ export function clientFor(model: string): AIClient {
 }
 
 export function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing ${name} environment variable`);
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(
+      `Missing ${name} environment variable. Set it in .env (or your shell) before running the seed pipeline.`,
+    );
+  }
   return value;
 }
-
 
 class AnthropicClient implements AIClient {
   private readonly client: Anthropic;
   constructor(public readonly model: string) {
-    this.client = new Anthropic({ apiKey: requireEnv('ANTHROPIC_API_KEY'), timeout: 120_000 });
+    // The constructor timeout is a fallback — each `complete()` call can
+    // override it per-pass via `opts.timeoutMs` (see CompletionOptions).
+    this.client = new Anthropic({
+      apiKey: requireEnv('ANTHROPIC_API_KEY'),
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
     const effort = (opts.reasoning as 'low' | 'medium' | 'high' | 'max') ?? 'high';
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: opts.maxTokens ?? 4000,
-      system: opts.system,
-      thinking: { type: 'adaptive' },
-      messages: [{ role: 'user', content: prompt }],
-      output_config: {
-        effort,
-        format: { type: 'json_schema', schema: opts.schema },
+    const response = await this.client.messages.create(
+      {
+        model: this.model,
+        max_tokens: opts.maxTokens ?? 4000,
+        system: opts.system,
+        thinking: { type: 'adaptive' },
+        messages: [{ role: 'user', content: prompt }],
+        output_config: {
+          effort,
+          format: { type: 'json_schema', schema: opts.schema },
+        },
       },
-    });
+      opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
+    );
     if (response.stop_reason === 'max_tokens') {
       throw new Error(
         `Anthropic response truncated (stop_reason=max_tokens, model=${this.model}). Increase maxTokens (current: ${opts.maxTokens ?? 4000}).`,
@@ -73,24 +96,35 @@ class AnthropicClient implements AIClient {
 class OpenAIClient implements AIClient {
   private readonly client: OpenAI;
   constructor(public readonly model: string) {
-    this.client = new OpenAI({ apiKey: requireEnv('OPENAI_API_KEY'), timeout: 120_000 });
+    this.client = new OpenAI({
+      apiKey: requireEnv('OPENAI_API_KEY'),
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
+    // GPT-5.5 accepts: none | low | medium | high | xhigh. 'minimal' was
+    // valid on GPT-5.0 but removed in the 5.5 retrain — API 400s if passed.
     const reasoning = (opts.reasoning as 'none' | 'low' | 'medium' | 'high' | 'xhigh') ?? 'none';
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      max_completion_tokens: opts.maxTokens ?? 4000,
-      reasoning_effort: reasoning,
-      messages: [
-        ...(opts.system ? [{ role: 'system' as const, content: opts.system }] : []),
-        { role: 'user' as const, content: prompt },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'response', strict: true, schema: opts.schema },
+    const response = await this.client.chat.completions.create(
+      {
+        model: this.model,
+        max_completion_tokens: opts.maxTokens ?? 4000,
+        reasoning_effort: reasoning,
+        // GPT-5+ verbosity knob — orthogonal to reasoning_effort. 'low' is
+        // the right pick for structured-only outputs (no narrative padding).
+        ...(opts.verbosity ? { verbosity: opts.verbosity } : {}),
+        messages: [
+          ...(opts.system ? [{ role: 'system' as const, content: opts.system }] : []),
+          { role: 'user' as const, content: prompt },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: { name: 'response', strict: true, schema: opts.schema },
+        },
       },
-    });
+      opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined,
+    );
     const choice = response.choices[0];
     if (choice?.finish_reason === 'length') {
       throw new Error(
@@ -104,11 +138,22 @@ class OpenAIClient implements AIClient {
 class GeminiClient implements AIClient {
   private readonly client: GoogleGenAI;
   constructor(public readonly model: string) {
-    this.client = new GoogleGenAI({ apiKey: requireEnv('GEMINI_API_KEY'), httpOptions: { timeout: 120_000 } });
+    this.client = new GoogleGenAI({
+      apiKey: requireEnv('GEMINI_API_KEY'),
+      httpOptions: { timeout: DEFAULT_TIMEOUT_MS },
+    });
   }
 
   async complete(prompt: string, opts: CompletionOptions): Promise<string> {
-    const thinkingLevel = (opts.reasoning as 'minimal' | 'low' | 'medium' | 'high') ?? 'low';
+    if (opts.timeoutMs && opts.timeoutMs !== DEFAULT_TIMEOUT_MS) {
+      console.warn(
+        `[gemini] per-call timeoutMs=${opts.timeoutMs} ignored — Gemini SDK only honors the constructor-time timeout (${DEFAULT_TIMEOUT_MS}ms).`,
+      );
+    }
+    // No `thinkingConfig` — gemini-3.1-pro-preview has a documented bug
+    // where passing thinking levels returns 400 INVALID_ARGUMENT. Model's
+    // default thinking is fine for creative rewriting tasks; we drop `opts.reasoning`
+    // on the Gemini path. Revisit when the preview moves to GA.
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: prompt,
@@ -117,7 +162,6 @@ class GeminiClient implements AIClient {
         maxOutputTokens: opts.maxTokens ?? 4000,
         responseMimeType: 'application/json',
         responseJsonSchema: opts.schema,
-        thinkingConfig: { thinkingLevel },
       },
     });
     const candidate = response.candidates?.[0];

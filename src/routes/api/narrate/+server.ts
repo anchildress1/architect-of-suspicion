@@ -63,8 +63,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const text =
-      response.content[0]?.type === 'text' ? response.content[0].text : '';
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : '';
 
     if (text.trim()) {
       dialogue = text.trim();

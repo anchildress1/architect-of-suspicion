@@ -9,12 +9,14 @@
  */
 
 import { loadEligibleCards } from './cards';
+import { corpusSignature, loadCheckpoint, saveCheckpoint } from './checkpoint';
 import { config, type Config } from './config';
 import { runPass1 } from './pass1-tensions';
 import { runPass2 } from './pass2-claims';
 import { runPass3 } from './pass3-score';
 import { runPass4 } from './pass4-validate';
 import { persistSeed, type PersistInput } from './persist';
+import type { CardClaimScore, GeneratedClaim, TensionMap } from './types';
 import { pathToFileURL } from 'node:url';
 
 type Provider = 'anthropic' | 'openai' | 'gemini';
@@ -62,10 +64,47 @@ export async function main(): Promise<void> {
   console.log(`[seed-claims] loaded ${cards.length} eligible cards`);
   if (cards.length === 0) throw new Error('No eligible cards found');
 
-  const tensions = await runPass1(cards);
-  const candidates = await runPass2(cards, tensions);
-  const { scored, selected } = await runPass3(cards, candidates);
-  const { validations, rewrites } = await runPass4(selected, scored, cards);
+  const sig = corpusSignature(cards);
+
+  // Each pass consults its checkpoint first; if present and the corpus
+  // signature matches, we resume without a paid re-run. Maps serialize via
+  // Object.fromEntries and are rehydrated on load.
+
+  const tensions =
+    (await loadCheckpoint<TensionMap>('pass1-tensions', sig)) ??
+    (await (async () => {
+      const result = await runPass1(cards);
+      await saveCheckpoint('pass1-tensions', sig, result);
+      return result;
+    })());
+
+  const candidates =
+    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims', sig)) ??
+    (await (async () => {
+      const result = await runPass2(cards, tensions);
+      await saveCheckpoint('pass2-claims', sig, result);
+      return result;
+    })());
+
+  const pass3Cache = await loadCheckpoint<{
+    scored: Array<[string, CardClaimScore[]]>;
+    selected: GeneratedClaim[];
+  }>('pass3-score', sig);
+  const { scored, selected } = pass3Cache
+    ? { scored: new Map(pass3Cache.scored), selected: pass3Cache.selected }
+    : await (async () => {
+        const result = await runPass3(cards, candidates);
+        await saveCheckpoint('pass3-score', sig, {
+          scored: Array.from(result.scored.entries()),
+          selected: result.selected,
+        });
+        return result;
+      })();
+
+  // Pass 4 is intentionally NOT cached — its output includes claim-specific
+  // rewrites that should regenerate cleanly on any retry. Pass 1-3 cache is
+  // the big cost saver.
+  const { validations, arguments: claimArguments } = await runPass4(selected, scored, cards);
 
   const inputs: PersistInput[] = selected.map((claim) => {
     const validation = validations.find((v) => v.claim_id === claim.id);
@@ -78,14 +117,14 @@ export async function main(): Promise<void> {
       );
     }
 
-    const claimRewrites = rewrites.get(claim.id);
-    if (!claimRewrites) {
+    const args = claimArguments.get(claim.id);
+    if (!args) {
       throw new Error(
-        `No rewrites for claim "${claim.claim_text}" (claim_id=${claim.id}) — pipeline bug`,
+        `No arguments for claim "${claim.claim_text}" (claim_id=${claim.id}) — pipeline bug`,
       );
     }
 
-    return { claim, validation, scores: claimScores, rewrites: claimRewrites };
+    return { claim, validation, scores: claimScores, arguments: args };
   });
 
   const survivors = inputs.filter((i) => i.validation.survived);

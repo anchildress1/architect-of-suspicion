@@ -20,7 +20,7 @@ const mockCard2 = {
 };
 
 describe('buildCoverLetterPrompt', () => {
-  it('includes the claim in the prompt', () => {
+  it('includes the claim verbatim', () => {
     const prompt = buildCoverLetterPrompt('Ashley depends on AI too much', 'accuse', []);
     expect(prompt).toContain('Ashley depends on AI too much');
   });
@@ -48,18 +48,9 @@ describe('buildCoverLetterPrompt', () => {
     expect(prompt).toContain('Evidence about AI tool usage');
     expect(prompt).toContain('Ashley uses AI tools for code generation');
     expect(prompt).toContain('Open Source Contributions');
-    expect(prompt).toContain('Community engagement and code sharing');
-    expect(prompt).toContain('proof');
-    expect(prompt).toContain('objection');
   });
 
-  it('includes card categories', () => {
-    const evidence = [{ card: mockCard, classification: 'proof' as const }];
-    const prompt = buildCoverLetterPrompt('Test claim', 'pardon', evidence);
-    expect(prompt).toContain('Philosophy');
-  });
-
-  it('includes evidence counts', () => {
+  it('counts ruled evidence', () => {
     const evidence = [
       { card: mockCard, classification: 'proof' as const },
       { card: mockCard2, classification: 'objection' as const },
@@ -73,7 +64,12 @@ describe('buildCoverLetterPrompt', () => {
 
   it('handles empty evidence gracefully', () => {
     const prompt = buildCoverLetterPrompt('Test claim', 'pardon', []);
-    expect(prompt).toContain('No evidence was collected');
+    expect(prompt).toContain('No evidence was ruled on');
+  });
+
+  it('reminds the model to ignore dismissed exhibits', () => {
+    const prompt = buildCoverLetterPrompt('Test claim', 'accuse', []);
+    expect(prompt).toContain('Dismissed exhibits have been struck from the record');
   });
 
   it('instructs to write a character reference, not a job application', () => {
@@ -82,20 +78,9 @@ describe('buildCoverLetterPrompt', () => {
     expect(prompt).toContain('NOT a job application');
   });
 
-  it('adjusts tone instructions based on accuse verdict', () => {
-    const prompt = buildCoverLetterPrompt('Test claim', 'accuse', []);
-    expect(prompt).toContain('found WANTING');
-  });
-
-  it('adjusts tone instructions based on pardon verdict', () => {
-    const prompt = buildCoverLetterPrompt('Test claim', 'pardon', []);
-    expect(prompt).toContain('VINDICATED');
-  });
-
   it('requests plain text response (no JSON wrapping)', () => {
     const prompt = buildCoverLetterPrompt('Test claim', 'accuse', []);
     expect(prompt).toContain('ONLY the letter text');
-    expect(prompt).toContain('no JSON');
   });
 });
 

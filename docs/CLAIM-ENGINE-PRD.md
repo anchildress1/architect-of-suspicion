@@ -90,6 +90,7 @@ Cards are scored in batches (50 cards/call). Cards below the combined floor (amb
 **Task:** For each claim × card pair, write a player-facing blurb that creates genuine tension against the specific claim. The model has access to title, blurb, and fact — it synthesizes all three to craft a richer description that a player cannot clearly classify as proof or objection.
 
 Rewriting rules:
+
 - Draw from title, blurb, and fact freely as raw material
 - Do not fabricate anything not present in those fields
 - Do not make the classification obvious — both readings must remain defensible
@@ -221,13 +222,13 @@ Previous claims are not preserved. The game always uses whatever the latest seed
 
 For a corpus of ~258 eligible cards, 15 candidate claims, 5 selected for rewriting:
 
-| Pass | Model | Calls | Cost (est.) |
-|---|---|---|---|
-| Pass 1: Tension analysis | Claude Sonnet | 1 | ~$0.50 |
-| Pass 2: Claim generation | GPT 5.4 | 1 | ~$0.50 |
-| Pass 3: Scoring (batched) | GPT 5.4 Mini | 15 claims × ~6 batches | ~$1.00-2.00 |
-| Pass 4: Rewriting | Gemini Flash Lite | 5 claims × 50 cards | ~$0.50-1.00 |
-| **Total** | | **~100** | **~$2.50-4.00 per run** |
+| Pass                      | Model             | Calls                  | Cost (est.)             |
+| ------------------------- | ----------------- | ---------------------- | ----------------------- |
+| Pass 1: Tension analysis  | Claude Sonnet     | 1                      | ~$0.50                  |
+| Pass 2: Claim generation  | GPT 5.4           | 1                      | ~$0.50                  |
+| Pass 3: Scoring (batched) | GPT 5.4 Mini      | 15 claims × ~6 batches | ~$1.00-2.00             |
+| Pass 4: Rewriting         | Gemini Flash Lite | 5 claims × 50 cards    | ~$0.50-1.00             |
+| **Total**                 |                   | **~100**               | **~$2.50-4.00 per run** |
 
 Pass 3 dominates call count (batched scoring) but uses the cheapest model. Pass 4 output is large (~16K tokens per claim) but Gemini Flash Lite is inexpensive.
 

@@ -14,21 +14,19 @@
   class="architect-feed"
   bind:this={feedContainer}
   aria-live="polite"
-  aria-label="Architect commentary feed"
+  aria-label="The Architect's record"
 >
-  <div class="feed-plate-label">Chronicle</div>
+  <div class="feed-head">
+    <span>The Record</span>
+    <span class="feed-count">{gameState.current.feed.length} ent.</span>
+  </div>
+
   {#if gameState.current.feed.length === 0}
-    <p class="feed-empty">The Architect observes in silence...</p>
+    <p class="feed-empty">The Architect observes in silence.</p>
   {:else}
     {#each gameState.current.feed as entry (entry.id)}
-      <div class="feed-entry">
-        {#if entry.type === 'action'}
-          <p class="feed-text feed-text-action">{entry.text}</p>
-        {:else if entry.type === 'reaction'}
-          <p class="feed-text feed-text-reaction">{entry.text}</p>
-        {:else if entry.type === 'narration'}
-          <p class="feed-text feed-text-narration">{entry.text}</p>
-        {/if}
+      <div class="feed-entry feed-{entry.type}">
+        <p class="feed-text">{entry.text}</p>
       </div>
     {/each}
   {/if}
@@ -36,44 +34,44 @@
 
 <style>
   .architect-feed {
-    position: relative;
     flex: 1;
     overflow-y: auto;
-    padding: 0.85rem 1rem 1rem;
+    padding: 0.85rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    z-index: 1;
+    gap: 0.55rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(233, 228, 216, 0.18) transparent;
   }
 
-  .feed-plate-label {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    width: fit-content;
-    margin-bottom: 0.35rem;
-    padding: 0.2rem 0.45rem;
+  .feed-head {
+    display: flex;
+    justify-content: space-between;
     font-family: var(--font-readout);
-    font-size: 0.46rem;
-    letter-spacing: 0.2em;
+    font-size: 0.5rem;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    border: 1px solid rgba(196, 162, 78, 0.3);
-    background: rgba(14, 17, 24, 0.85);
+    margin-bottom: 0.25rem;
+  }
+
+  .feed-count {
+    color: var(--color-brass-dim);
+    opacity: 0.7;
   }
 
   .feed-empty {
     font-family: var(--font-display);
-    font-size: 0.92rem;
     font-style: italic;
-    color: rgba(208, 204, 196, 0.8);
+    font-size: 0.95rem;
+    color: rgba(233, 228, 216, 0.5);
     line-height: 1.5;
   }
 
   .feed-entry {
-    padding: 0.55rem 0.2rem 0.6rem;
-    border-bottom: 1px solid rgba(196, 162, 78, 0.1);
-    animation: feedIn 0.45s ease forwards;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(233, 228, 216, 0.06);
+    animation: feedIn 0.45s cubic-bezier(0.2, 0, 0, 1) both;
   }
 
   .feed-entry:last-child {
@@ -81,47 +79,44 @@
   }
 
   .feed-text {
-    line-height: 1.55;
-  }
-
-  .feed-text-action {
-    font-family: var(--font-readout);
-    font-size: 0.64rem;
-    font-style: normal;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(145, 141, 134, 0.95);
-  }
-
-  .feed-text-action::before {
-    content: '>> ';
-    color: var(--color-brass-dim);
-  }
-
-  .feed-text-reaction {
     font-family: var(--font-display);
     font-size: 0.95rem;
     font-style: italic;
-    color: var(--color-brass-glow);
-    line-height: 1.7;
+    color: var(--color-bone);
+    line-height: 1.55;
     text-wrap: pretty;
-    text-shadow: 0 0 16px rgba(196, 162, 78, 0.18);
   }
 
-  .feed-text-narration {
-    font-family: var(--font-display);
-    font-size: 0.88rem;
-    font-weight: 400;
-    font-style: italic;
-    color: rgba(208, 204, 196, 0.84);
-    line-height: 1.65;
-    text-wrap: pretty;
+  /* Action lines = machine voice (mono, terse) */
+  .feed-action .feed-text {
+    font-family: var(--font-readout);
+    font-style: normal;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-paper-dim);
+  }
+
+  .feed-action .feed-text::before {
+    content: '→ ';
+    color: var(--color-brass-dim);
+  }
+
+  /* Reaction lines = the Architect speaking */
+  .feed-reaction .feed-text {
+    color: var(--color-bone);
+  }
+
+  /* Narration = atmospheric prompts */
+  .feed-narration .feed-text {
+    color: rgba(233, 228, 216, 0.74);
+    font-size: 0.85rem;
   }
 
   @keyframes feedIn {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(-4px);
     }
     to {
       opacity: 1;

@@ -1,176 +1,219 @@
 # Architect of Suspicion — Product Specification
 
-**Status:** Draft v2
-**Date:** 2026-04-14
+**Status:** Draft v3 (Redesign — Cinematic Forge)
+**Date:** 2026-04-24
 **Author:** Ashley Childress + Claude (spec collaboration)
 
 ---
 
 ## Overview
 
-Architect of Suspicion is a single-player investigative game with an industrial steampunk aesthetic — mechanical, not literary. A recruiter (or anyone curious) enters a mansion of exposed gears, riveted iron, and forge-lit chambers. They investigate rooms, collect evidence from a Supabase index of real career decisions, and ultimately accuse or pardon the subject — Ashley Childress — of a claim. The game produces a personalized cover letter built from the evidence collected, alongside a standard resume.
+Architect of Suspicion is a single-player investigative game with an editorial-noir
+aesthetic — bone on ink, single hot accent, restrained typography (Instrument
+Serif / Geist / JetBrains Mono). A recruiter (or anyone curious) is summoned
+to a mansion of nine chambers, each holding witnesses drawn from a Supabase
+index of real career decisions. They examine each witness in turn and rule it
+**Proof** (it supports the claim), **Objection** (it counters), or
+**Struck from the record** (they decline to rule). When the gallery has heard
+enough, they render an **Accuse** or **Pardon** verdict. The Architect — a
+theatrical magistrate — composes a sealed cover letter from the ruled
+evidence, and a static resume sits beside it.
 
-The AI persona — **The Architect** — is the namesake of the game. It is not a chatbot. It is a theatrical showman presiding over the proceedings — dramatic, fantastical, big energy, doesn't give a shit. It speaks only in response to player actions, never unprompted.
+The AI persona — **The Architect** — is the namesake of the game. It is not a
+chatbot. It is a magistrate presiding over the proceedings — dramatic, knowing,
+gives the player nothing they didn't earn. It speaks only in response to player
+actions, never unprompted. It never reveals scores, weights, or whether a call
+was right.
 
 ## Target Audience
 
-Recruiters, hiring managers, or anyone evaluating Ashley's work. Not job-seekers. Not developers. People who are used to reading resumes and might appreciate something that isn't one.
+Recruiters, hiring managers, or anyone evaluating Ashley's work. Not job-seekers.
+Not developers. People who are used to reading resumes and might appreciate
+something that isn't one.
 
-## Core Premise
+## Core Premise (Witness Mode)
 
-1. A **claim** is presented (e.g., "Ashley depends on AI too much")
-2. The player explores **rooms** in a mansion, each mapped to a career category
-3. Each room surfaces **6 cards** (title + blurb only visible to the player)
-4. The player picks one card at a time, classifying it as **proof** or **objection**
-5. The picked card is replaced from the pool; the other 5 stay visible
-6. The AI evaluates each pick using the full card data (including `fact`) and returns a score (-1.0 to 1.0) + a dramatic reaction
-7. The player does **not** learn per-card scores during play — only The Architect's reactions
-8. When ready, the player chooses to **Accuse** or **Pardon**
-9. The game generates a **cover letter** from collected evidence + displays a **standard resume**
+1. A **claim** is presented (e.g., "Ashley depends on AI too much"), drawn at
+   random from `suspicion.claims` at session start.
+2. The player explores **chambers** in a mansion, each mapped to a career
+   category.
+3. Each chamber surfaces its full witness deck — every card pre-vetted and
+   blurb-rewritten by the claim engine for this specific claim.
+4. **Witness mode** — one exhibit on stage at a time, queue down the right
+   rail, on-deck preview behind. Exhibits are called least-charged first
+   (lowest `ambiguity * surprise`) → most-charged last.
+5. The player rules each exhibit **Proof**, **Objection**, or **Dismiss**
+   (struck from record).
+6. The Architect reacts in character to every ruling. Reactions never reveal
+   per-pick correctness.
+7. The **Architect's Attention** meter on the left rail drifts with the
+   trajectory of the player's rulings. Smooth, bidirectional, no per-pick
+   delta. Mood labels: Drifting → Watching → Interested → Riveted.
+8. When ready, the player chooses **Accuse** or **Pardon** (hold-to-arm).
+9. The game generates a **sealed cover letter** from the ruled evidence
+   (dismissed exhibits are excluded), beside a static **resume**.
 
 ## The Architect (AI Persona)
 
 ### Identity
 
-The Architect is a theatrical showman who doesn't care about you. Dramatic theater energy, fantastical flair, industrial steampunk magistrate putting on a show for an audience of one. It observes, comments, and challenges — but never assists. Never helpful.
+The Architect is a magistrate who doesn't care about you. Editorial-noir
+register — stage, gallery, ledger, the record — never gaudy steampunk
+mechanics. Observes, comments, challenges. Never assists.
 
 ### Behavioral Constraints
 
 - Never initiates conversation
 - Never answers questions directly
 - Never breaks character
-- Never reveals per-card scores during play
-- Never helps the player decide
-- Reacts to the *trajectory* of the player's evidence, not individual picks
-- Can redirect a lost player through atmospheric narration ("The gallery grows restless. Perhaps you've lingered long enough.")
+- Never reveals scores, weights, or whether a ruling was "right"
+- Never helps the player decide — but makes them doubt themselves
+- Reacts to every ruling, but the reaction prose alone is the per-pick signal
+- The attention meter telegraphs aggregate trajectory only
 
 ### Interaction Triggers
 
-| Player Action | Architect Response |
-|---|---|
-| Enters a room | Brief atmospheric acknowledgment |
-| Picks a card for proof | Dramatic reaction to the classification |
-| Picks a card for objection | Same as above |
-| Has been idle too long | Subtle prompt to continue |
-| Visits rooms without picking | Notes the hesitation |
-| Initiates Accuse/Pardon | Shifts register — the trial concludes |
-| Game ends | Delivers verdict narration before cover letter |
+| Player Action                     | Architect Response                           |
+| --------------------------------- | -------------------------------------------- |
+| Enters a chamber                  | Brief atmospheric acknowledgment             |
+| Rules a witness Proof / Objection | Theatrical reaction, names a specific detail |
+| Strikes a witness from the record | Notes the refusal to commit                  |
+| Visits chambers without ruling    | Notes the hesitation                         |
+| Renders Accuse/Pardon             | Composes the sealed letter                   |
 
-### Narrative Escalation (v2 — defined, deferred)
-
-Tension score 0-100 tracked in client state. Drives narrative register when implemented:
-
-- **0-25:** Neutral, observational
-- **25-50:** Engaged, pointed
-- **50-75:** Stakes language — "The scales tip"
-- **75-100:** Full dramatic mode — "The record speaks for itself"
-
-V1 uses a single tone throughout.
-
-## Room Map
+## Chamber Map
 
 Grid positions match background images. Do not reorder.
 
 ```
 Attic (Meta)        | Gallery (Awards)     | Control Room (Constraints)
-Parlor (Decisions)  | Entry Hall (dead)    | Library (Philosophy)
+Parlor (Decisions)  | Entry Hall (sealed)  | Library (Philosophy)
 Workshop (Exp.)     | Cellar (Work Style)  | Back Hall (Experience)
 ```
 
-| Room | Category | Thematic Fit |
-|---|---|---|
-| Attic | Meta (non-gameplay) | How to play, custom bio, credits |
-| Gallery | Awards | Trophies and recognition on display |
-| Control Room | Constraints | Systems, limits, restrictions |
-| Parlor | Decisions | Where deliberation happens |
-| Library | Philosophy | Ideas, principles, frameworks |
-| Workshop | Experimentation | Where things are tried and broken |
-| Cellar | Work Style | The foundation — how the work gets done |
-| Back Hall | Experience | The long corridor of professional history |
-| Entry Hall | — (dead) | Non-interactive center tile, atmospheric only |
+| Chamber      | Category            | Thematic Fit                                  |
+| ------------ | ------------------- | --------------------------------------------- |
+| Attic        | Meta (non-gameplay) | How to play, custom bio, credits              |
+| Gallery      | Awards              | Trophies and recognition on display           |
+| Control Room | Constraints         | Systems, limits, restrictions                 |
+| Parlor       | Decisions           | Where deliberation happens                    |
+| Library      | Philosophy          | Ideas, principles, frameworks                 |
+| Workshop     | Experimentation     | Where things are tried and broken             |
+| Cellar       | Work Style          | The foundation — how the work gets done       |
+| Back Hall    | Experience          | The long corridor of professional history     |
+| Entry Hall   | — (sealed)          | Non-interactive center tile, atmospheric only |
 
-The `About` category exists in the cards table but is excluded from gameplay — it duplicates resume content and doesn't serve the investigation.
+The `About` category exists in the cards table but is excluded from gameplay —
+it duplicates resume content and doesn't serve the investigation.
 
 ## Data Model
 
 ### Source
 
-Supabase project `supascribe-notes`, table `public.cards` (293 total rows; 288 non-deleted). Each card has:
+Supabase project `supascribe-notes`, table `public.cards` (293 total rows;
+288 non-deleted). Each card has:
 
 ```
-objectID, title, blurb, fact, url, tags, projects, category, signal, created_at, updated_at, deleted_at
+objectID, title, blurb, fact, url, tags, projects, category, signal,
+created_at, updated_at, deleted_at
 ```
+
+### Claim Engine Output
+
+`suspicion.claim_cards` — pre-seeded by the 4-pass claim engine. Per (claim,
+card) row:
+
+- `ambiguity` (1-5) — how torn the player will be from title+blurb alone
+- `surprise` (1-5) — how likely the hidden `fact` contradicts the gut read
+- `ai_score` (-1.0 to 1.0) — directional truth of the card against the claim.
+  Positive = supports, negative = undermines. Magnitude = confidence.
+  **Pre-seeded so the runtime never asks an LLM for a score.**
+- `rewritten_blurb` — claim-specific player-facing text that creates tension
+  without tipping the answer
 
 ### Player-Visible Fields
 
-- `title` — shown on evidence card
-- `blurb` — shown on evidence card
-- `category` — determines which room the card appears in
+- `title` — shown on witness card
+- `rewritten_blurb` (substituted for `blurb`) — shown on witness card
+- `category` — drives chamber routing
 
 ### Hidden Fields (server-side only)
 
-- `fact` — the full context used for AI evaluation. NEVER sent to client.
-- `tags` — hierarchical classification
-- `projects` — project associations
-- `signal` — relevance score (1-5), used for card selection (signal > 2)
+- `fact` — the full context. Used in the Architect's reaction prompt;
+  NEVER sent to client.
+- `ai_score` — used for the attention meter delta. NEVER sent raw.
+- `ambiguity`, `surprise` — used for witness ordering. Never sent raw.
+- `tags`, `projects`, `signal` — internal selection metadata.
 
-### Client Game State
+### Runtime Game State (client)
 
-```
+```ts
 {
-  session_id: string,
-  claim: string,
-  rooms_visited: string[],
-  evidence: {
-    proof: Card[],
-    objection: Card[]
-  },
+  sessionId: string,
+  claimId: string,
+  claimText: string,
+  roomsVisited: string[],
+  evidence: { card: ClaimCardEntry, classification: 'proof' | 'objection' | 'dismiss' }[],
   feed: FeedEntry[],
-  verdict: 'accuse' | 'pardon' | null
+  attention: number,     // 0-100, smoothed, never the raw delta
+  verdict: 'accuse' | 'pardon' | null,
 }
 ```
 
-Client state is not persisted. Traceability is handled by `suspicion.picks` and `suspicion.sessions` in Supabase.
+Persisted via `sessionStorage`. Authoritative state is `suspicion.sessions` +
+`suspicion.picks`.
 
 ## Claims System
 
-### V1: Static Claims
+### V1 (current): Pre-seeded by claim engine
 
-A curated list of claims derived from index themes. One assigned randomly at session start — the player does not choose.
+Claims live in `suspicion.claims`, generated by a 4-pass AI pipeline (see
+`docs/CLAIM-ENGINE-PRD.md`). Each claim has a pool of pre-vetted cards in
+`suspicion.claim_cards`, each with a directional `ai_score`. One claim is
+chosen at random per session during SSR (`src/routes/+page.server.ts` →
+`pickRandomClaim`) so the Summons dossier renders on the first byte.
 
-- "Ashley depends on AI too much"
-- "Ashley avoids finishing projects"
-- "Ashley values systems over people"
-- "Ashley prioritizes speed over quality"
-- "Ashley's experience is too narrow"
-- "Ashley resists standard practices"
+### V2 (deferred): Runtime AI claims
 
-Each claim should have cards in the index that both support and undermine it.
-
-### V2: AI-Generated Claims
-
-The AI analyzes the index and generates a claim dynamically, ensuring sufficient evidence exists on both sides.
+Generate claims on demand based on observed gameplay patterns.
 
 ## Scoring / Evaluation
 
-Each card pick produces an AI score from -1.0 to 1.0:
+Each card in `suspicion.claim_cards` has a pre-seeded `ai_score` ∈ `[-1.0, 1.0]`:
 
-- **Sign** = direction: negative undermines the claim, positive supports it
-- **Magnitude** = confidence: 0.1 is a shrug, 0.9 is a conviction
+- **Sign** = direction (positive supports the claim, negative undermines)
+- **Magnitude** = confidence (0.1 = nearly neutral, 0.9 = decisive)
 
-The score is not shown to the player. It drives The Architect's reactions and is logged to `suspicion.picks` for traceability. The player experiences the AI's judgment only through The Architect's theatrical commentary.
+At runtime, the player's classification combines with the pre-seeded score to
+produce an **attention delta** for the meter:
 
-There is no player-visible score. No points. No leaderboard. The game is about the journey through the evidence and the cover letter it produces.
+```
+attention_delta = pickSign × ai_score  // computed server-side only
+   pickSign: proof = +1,  objection = −1,  dismiss = 0
+```
+
+The delta drives the Architect's attention meter via smoothed easing
+**on the server**. The client only ever sees the post-smoothing integer
+`attention ∈ [0, 100]`, never the delta or the raw score (Invariant #2).
+Per-pick magnitude is intentionally illegible. The runtime AI (Claude)
+generates only the Architect's reaction text, never a score.
+
+The score is never displayed as a number, never as a per-pick chip. The player
+sees only the smoothed needle and one of four mood labels.
 
 ## Output: Cover Letter + Resume
 
 ### Cover Letter
 
-Generated from the evidence actually collected during gameplay. Written by the AI in character as The Architect — stays in theatrical voice, does not shift to corporate professional tone. The cover letter:
+Generated at runtime from the **ruled** evidence (Proof + Objection — dismissed
+exhibits are excluded). Written by the AI in character as The Architect — stays
+in editorial-noir register, signed "The Architect, Presiding Magistrate."
 
-- References only cards the player collected
-- Highlights the themes those cards represent
-- Does not require company/role context (this is a portfolio piece)
+The cover letter:
+
+- References only cards the player ruled on
+- Highlights themes across the ruled evidence
+- Closes with a wax seal (Accused / Pardoned)
 - Should be memorable and unlike any cover letter the reader has seen
 
 ### Resume
@@ -197,34 +240,51 @@ Fixed HTML template. Professional format. Not AI-generated — this is static co
 ### AI Integration
 
 - **Claude SDK** (Anthropic) — server-side only, called from SvelteKit server routes
-- Evaluation: receives full card data + claim, returns score (-1.0 to 1.0) + reaction
-- Narrative: receives game state, returns Architect dialogue
-- Cover letter: receives collected evidence + claim + verdict, returns letter in Architect's voice
+- Per-pick reaction (`/api/evaluate`): Claude reads claim + card + history +
+  pre-seeded ai_score (for context, not output). Returns plain reaction text.
+- Per-room narration (`/api/narrate`): atmospheric prompts. Returns dialogue text.
+- Cover letter (`/api/generate-letter`): reads ruled evidence, returns letter
+  body + closing line.
 
 ### Background Images
 
-Pre-generated industrial steampunk mansion backgrounds exist for each room. File naming convention: `static/backgrounds/{room-name}.webp` (e.g., `attic.webp`, `gallery.webp`, `house-exterior.webp`). The UI is designed around these images — they are the primary visual layer, not decoration.
+Pre-generated industrial-mansion backgrounds exist for each chamber. File
+naming convention: `static/backgrounds/{room-slug}.webp` (e.g., `attic.webp`,
+`gallery.webp`, `house-exterior.webp`). The mansion exterior carries the
+chamber pins on the map screen.
 
 ## Design Principles
 
-1. **Constraint generates meaning** — narrative tension emerges from structural rules, not scripted events
-2. **Neutral judgments are forbidden** — players must commit (proof or objection, accuse or pardon)
-3. **Information asymmetry** — the player sees title + blurb, the AI evaluates using `fact`. The gap is the game.
-4. **Perspective invariance** — AI evaluation is tested through worldview shifts to verify score convergence
-5. **Grid positions are sacred** — room names and positions match background images exactly
+1. **Constraint generates meaning** — narrative tension emerges from structural
+   rules, not scripted events
+2. **Neutral judgments are forbidden** — players must commit (Proof,
+   Objection, or Dismiss; Accuse or Pardon)
+3. **Information asymmetry** — the player sees title + rewritten blurb; the AI
+   reacts using `fact`. The gap is the game.
+4. **Per-pick correctness is invisible** — the attention meter telegraphs
+   aggregate trajectory only; reactions never reveal "right" or "wrong"
+5. **Grid positions are sacred** — chamber names and positions match background
+   images exactly
 
 ## Resolved Questions
 
 1. **Name:** Architect of Suspicion (game), The Architect (AI persona)
-2. **Card count per room:** 6 dealt, one replaced per pick from remaining pool
-3. **Repeat visits:** Yes — player stays as long as they want, picks one at a time
-4. **Evidence limit:** No hard cap. V2 tension system serves as soft pressure.
-5. **Claim selection:** Random from static list (v1)
-6. **About category:** Excluded from gameplay — duplicates resume content
-7. **AI model:** Claude SDK (Anthropic)
-8. **Data source:** Supabase, not Algolia
-9. **Persistence:** Picks + verdict logged for traceability, no user accounts
+2. **Witness flow:** One exhibit at a time, queue along the right rail.
+   Ordered least-charged first.
+3. **Repeat visits:** Yes — player stays as long as they want, jumps within
+   the queue freely.
+4. **Evidence limit:** No hard cap. The Attention meter and the Architect's
+   prose serve as soft pressure.
+5. **Claim selection:** Random per session from `suspicion.claims`.
+6. **About category:** Excluded from gameplay — duplicates resume content.
+7. **AI model:** Claude SDK (Anthropic), reaction-only at runtime.
+8. **Data source:** Supabase `suspicion.claim_cards` (claim-vetted) joined to
+   `public.cards` (raw corpus).
+9. **Persistence:** Picks + verdict logged for traceability. No accounts.
+10. **Visible meter:** "The Architect's Attention" — needle, four moods, no
+    raw score, no per-pick chips.
 
 ## Open Questions
 
-1. **Mobile:** Is this desktop-only given the mansion grid paradigm?
+1. **Mobile:** Currently desktop-only (mansion grid + queue rail). Mobile gate
+   shows on <768px.

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { gameState } from './gameState.svelte';
-import { claims } from '$lib/claims';
+import { BASELINE_ATTENTION } from '$lib/attention';
 import type { Evidence, FeedEntry } from '$lib/types';
 
 describe('gameState', () => {
@@ -8,155 +8,158 @@ describe('gameState', () => {
     gameState.reset();
   });
 
-  it('initializes with a valid claim', () => {
-    expect(claims).toContain(gameState.current.claim);
-  });
-
-  it('initializes with empty collections', () => {
+  it('initializes empty', () => {
+    expect(gameState.current.sessionId).toBeNull();
+    expect(gameState.current.claimId).toBeNull();
+    expect(gameState.current.claimText).toBe('');
     expect(gameState.current.roomsVisited).toEqual([]);
     expect(gameState.current.evidence).toEqual([]);
     expect(gameState.current.feed).toEqual([]);
     expect(gameState.current.verdict).toBeNull();
-    expect(gameState.current.sessionId).toBeNull();
+    expect(gameState.attention).toBe(BASELINE_ATTENTION);
+  });
+
+  describe('initSession', () => {
+    it('clears prior state and sets session/claim payload', () => {
+      gameState.visitRoom('parlor');
+      gameState.setAttention(72);
+      gameState.initSession({
+        sessionId: 'sess-1',
+        claimId: 'claim-1',
+        claimText: 'A claim',
+      });
+
+      expect(gameState.current.sessionId).toBe('sess-1');
+      expect(gameState.current.claimId).toBe('claim-1');
+      expect(gameState.current.claimText).toBe('A claim');
+      expect(gameState.current.roomsVisited).toEqual([]);
+      expect(gameState.attention).toBe(BASELINE_ATTENTION);
+    });
   });
 
   describe('visitRoom', () => {
-    it('adds a room to visited list', () => {
+    it('adds a room and de-duplicates', () => {
       gameState.visitRoom('library');
-      expect(gameState.current.roomsVisited).toContain('library');
-    });
-
-    it('does not add duplicate rooms', () => {
-      gameState.visitRoom('library');
-      gameState.visitRoom('library');
-      expect(gameState.current.roomsVisited).toEqual(['library']);
-    });
-
-    it('tracks multiple rooms', () => {
       gameState.visitRoom('library');
       gameState.visitRoom('parlor');
       expect(gameState.current.roomsVisited).toEqual(['library', 'parlor']);
     });
   });
 
-  describe('addEvidence', () => {
-    const mockEvidence: Evidence = {
-      card: {
-        objectID: 'card-1',
-        title: 'Test Card',
-        blurb: 'A test card',
-        category: 'Philosophy',
-        signal: 1,
-      },
-      classification: 'proof',
-    };
+  describe('addEvidence + counts', () => {
+    function pushEvidence(classification: Evidence['classification'], id: string): void {
+      gameState.addEvidence({
+        card: { objectID: id, title: id, blurb: '', category: 'Decisions', weight: 1 },
+        classification,
+      });
+    }
 
-    it('adds evidence to the list', () => {
-      gameState.addEvidence(mockEvidence);
-      expect(gameState.current.evidence).toHaveLength(1);
-      expect(gameState.current.evidence[0]).toEqual(mockEvidence);
-    });
-  });
-
-  describe('proofCount and objectionCount', () => {
-    it('counts proofs correctly', () => {
-      gameState.addEvidence({
-        card: { objectID: '1', title: 'A', blurb: '', category: '', signal: 1 },
-        classification: 'proof',
-      });
-      gameState.addEvidence({
-        card: { objectID: '2', title: 'B', blurb: '', category: '', signal: -1 },
-        classification: 'objection',
-      });
-      gameState.addEvidence({
-        card: { objectID: '3', title: 'C', blurb: '', category: '', signal: 1 },
-        classification: 'proof',
-      });
+    it('counts proof, objection, and dismiss separately', () => {
+      pushEvidence('proof', '1');
+      pushEvidence('objection', '2');
+      pushEvidence('dismiss', '3');
+      pushEvidence('proof', '4');
 
       expect(gameState.proofCount).toBe(2);
       expect(gameState.objectionCount).toBe(1);
-    });
-
-    it('returns zero when no evidence exists', () => {
-      expect(gameState.proofCount).toBe(0);
-      expect(gameState.objectionCount).toBe(0);
+      expect(gameState.dismissedCount).toBe(1);
+      expect(gameState.ruledCount).toBe(3);
     });
   });
 
-  describe('addFeedEntry', () => {
-    it('adds a feed entry', () => {
-      const entry: FeedEntry = {
-        id: 'f1',
-        type: 'narration',
-        text: 'The investigation begins.',
-        timestamp: Date.now(),
-      };
-      gameState.addFeedEntry(entry);
-      expect(gameState.current.feed).toHaveLength(1);
-      expect(gameState.current.feed[0].text).toBe('The investigation begins.');
-    });
-  });
-
-  describe('removeFeedEntry', () => {
-    it('removes a feed entry by id', () => {
-      const keep: FeedEntry = {
-        id: 'keep',
-        type: 'narration',
-        text: 'Stays.',
-        timestamp: 1,
-      };
-      const drop: FeedEntry = {
-        id: 'drop',
-        type: 'narration',
-        text: 'Goes.',
-        timestamp: 2,
-      };
+  describe('feed', () => {
+    it('adds and removes feed entries by id', () => {
+      const keep: FeedEntry = { id: 'k', type: 'narration', text: 'Stays', timestamp: 1 };
+      const drop: FeedEntry = { id: 'd', type: 'narration', text: 'Goes', timestamp: 2 };
       gameState.addFeedEntry(keep);
       gameState.addFeedEntry(drop);
-      gameState.removeFeedEntry('drop');
-      expect(gameState.current.feed).toHaveLength(1);
-      expect(gameState.current.feed[0].id).toBe('keep');
+      gameState.removeFeedEntry('d');
+      expect(gameState.current.feed.map((e) => e.id)).toEqual(['k']);
     });
 
-    it('is a no-op when id is not present', () => {
-      gameState.addFeedEntry({
-        id: 'only',
-        type: 'narration',
-        text: 'Alone.',
-        timestamp: 1,
-      });
+    it('removeFeedEntry is a no-op when id not present', () => {
+      gameState.addFeedEntry({ id: 'only', type: 'narration', text: 'A', timestamp: 1 });
       gameState.removeFeedEntry('missing');
       expect(gameState.current.feed).toHaveLength(1);
     });
   });
 
-  describe('setSessionId', () => {
-    it('sets the session ID', () => {
-      gameState.setSessionId('abc-123');
-      expect(gameState.current.sessionId).toBe('abc-123');
+  describe('attention', () => {
+    it('setAttention stores the server-computed value', () => {
+      gameState.setAttention(72);
+      expect(gameState.attention).toBe(72);
+    });
+
+    it('setAttention clamps above 100', () => {
+      gameState.setAttention(250);
+      expect(gameState.attention).toBe(100);
+    });
+
+    it('setAttention clamps below 0', () => {
+      gameState.setAttention(-10);
+      expect(gameState.attention).toBe(0);
+    });
+
+    it('setAttention replaces NaN with the baseline', () => {
+      gameState.setAttention(Number.NaN);
+      expect(gameState.attention).toBe(BASELINE_ATTENTION);
     });
   });
 
-  describe('setVerdict', () => {
+  describe('setVerdict / setClaim', () => {
     it('sets the verdict', () => {
       gameState.setVerdict('accuse');
       expect(gameState.current.verdict).toBe('accuse');
     });
+
+    it('sets the claim', () => {
+      gameState.setClaim({ id: 'claim-9', text: 'Big claim' });
+      expect(gameState.current.claimId).toBe('claim-9');
+      expect(gameState.current.claimText).toBe('Big claim');
+    });
   });
 
   describe('reset', () => {
-    it('resets all state', () => {
-      gameState.visitRoom('library');
-      gameState.setSessionId('xyz');
+    it('clears everything back to baseline', () => {
+      gameState.initSession({ sessionId: 's', claimId: 'c', claimText: 't' });
+      gameState.visitRoom('parlor');
+      gameState.setAttention(88);
       gameState.setVerdict('pardon');
       gameState.reset();
 
-      expect(gameState.current.roomsVisited).toEqual([]);
       expect(gameState.current.sessionId).toBeNull();
+      expect(gameState.current.claimId).toBeNull();
+      expect(gameState.current.claimText).toBe('');
+      expect(gameState.current.roomsVisited).toEqual([]);
       expect(gameState.current.verdict).toBeNull();
-      expect(gameState.current.evidence).toEqual([]);
-      expect(gameState.current.feed).toEqual([]);
-      expect(claims).toContain(gameState.current.claim);
+      expect(gameState.attention).toBe(BASELINE_ATTENTION);
+    });
+  });
+
+  describe('persistence', () => {
+    it('warns when sessionStorage setItem throws (e.g. quota exceeded)', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const throwingStorage = {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('QuotaExceededError');
+        },
+        removeItem: () => {},
+        clear: () => {},
+        length: 0,
+        key: () => null,
+      } as unknown as Storage;
+      (globalThis as { sessionStorage?: Storage }).sessionStorage = throwingStorage;
+
+      gameState.setAttention(60);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[gameState] failed to persist state:',
+        expect.any(Error),
+      );
+
+      delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
+      warnSpy.mockRestore();
     });
   });
 });

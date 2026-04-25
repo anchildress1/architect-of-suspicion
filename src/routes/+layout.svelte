@@ -5,9 +5,10 @@
 
   let { children } = $props();
 
+  // 2026: View Transitions API for cinematic page-to-page motion.
+  // Falls through silently when unsupported (Safari < 18, etc).
   onNavigate((navigation) => {
     if (!document.startViewTransition) return;
-
     return new Promise((resolve) => {
       document.startViewTransition(async () => {
         resolve();
@@ -19,4 +20,6 @@
 
 <MobileGate />
 
-{@render children()}
+<div class="vignette">
+  {@render children()}
+</div>

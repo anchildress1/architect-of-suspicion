@@ -2,8 +2,7 @@ pre-commit:
   parallel: true
   commands:
     lint:
-      run: pnpm exec eslint --max-warnings 0 {staged_files}
-      glob: "*.{ts,svelte}"
+      run: pnpm run lint
     typecheck:
       run: pnpm exec svelte-check --threshold error
     format:

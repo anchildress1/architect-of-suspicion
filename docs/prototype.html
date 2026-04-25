@@ -1,1213 +1,1315 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Architect of Suspicion — Design Prototype</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@300;400&family=Rajdhani:wght@400;500;600;700&display=swap');
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Architect of Suspicion — Design Prototype</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@300;400&family=Rajdhani:wght@400;500;600;700&display=swap');
 
-  :root {
-    /* Palette — forge & foundry */
-    --void: #08090c;
-    --deep-navy: #0d1017;
-    --chamber: #13161f;
-    --iron: #1c1f2a;
-    --brass: #c4a24e;
-    --brass-dim: #8a7235;
-    --brass-glow: #e8c95a;
-    --copper: #c47a3a;
-    --amber: #d4a043;
-    --parchment: #d0ccc4;
-    --parchment-dim: #918d86;
-    --ink: #1a1a1a;
-    --cool-blue: #4a6d8c;
-    --pale-blue: #8aaccc;
-    --rivet: #5a5d66;
-    --plate: #2a2d36;
-    --forge-orange: #d4663a;
-    --smoke: rgba(8, 9, 12, 0.88);
-    --glass: rgba(19, 22, 31, 0.8);
-    --glass-border: rgba(196, 162, 78, 0.2);
-    --glass-border-hover: rgba(196, 162, 78, 0.45);
+      :root {
+        /* Palette — forge & foundry */
+        --void: #08090c;
+        --deep-navy: #0d1017;
+        --chamber: #13161f;
+        --iron: #1c1f2a;
+        --brass: #c4a24e;
+        --brass-dim: #8a7235;
+        --brass-glow: #e8c95a;
+        --copper: #c47a3a;
+        --amber: #d4a043;
+        --parchment: #d0ccc4;
+        --parchment-dim: #918d86;
+        --ink: #1a1a1a;
+        --cool-blue: #4a6d8c;
+        --pale-blue: #8aaccc;
+        --rivet: #5a5d66;
+        --plate: #2a2d36;
+        --forge-orange: #d4663a;
+        --smoke: rgba(8, 9, 12, 0.88);
+        --glass: rgba(19, 22, 31, 0.8);
+        --glass-border: rgba(196, 162, 78, 0.2);
+        --glass-border-hover: rgba(196, 162, 78, 0.45);
 
-    /* Type — mechanical, not literary */
-    --font-display: 'Cinzel', serif;
-    --font-body: 'Rajdhani', sans-serif;
-    --font-mono: 'IBM Plex Mono', monospace;
-    --font-readout: 'Share Tech Mono', monospace;
-  }
+        /* Type — mechanical, not literary */
+        --font-display: 'Cinzel', serif;
+        --font-body: 'Rajdhani', sans-serif;
+        --font-mono: 'IBM Plex Mono', monospace;
+        --font-readout: 'Share Tech Mono', monospace;
+      }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-  body {
-    background: var(--void);
-    color: var(--parchment);
-    font-family: var(--font-body);
-    overflow-x: hidden;
-  }
+      body {
+        background: var(--void);
+        color: var(--parchment);
+        font-family: var(--font-body);
+        overflow-x: hidden;
+      }
 
-  /* ============================================
+      /* ============================================
      VIEW SYSTEM
      ============================================ */
-  .view {
-    display: none;
-    min-height: 100vh;
-    position: relative;
-  }
-  .view.active { display: flex; flex-direction: column; }
+      .view {
+        display: none;
+        min-height: 100vh;
+        position: relative;
+      }
+      .view.active {
+        display: flex;
+        flex-direction: column;
+      }
 
-  .view-bg {
-    position: fixed;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
-  }
+      .view-bg {
+        position: fixed;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        z-index: 0;
+      }
 
-  .view-content {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
+      .view-content {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
 
-  /* ============================================
+      /* ============================================
      CLAIM INTRO VIEW
      ============================================ */
-  #claim-view .view-bg {
-    background: radial-gradient(ellipse at center bottom, #1a1520 0%, var(--void) 70%);
-  }
+      #claim-view .view-bg {
+        background: radial-gradient(ellipse at center bottom, #1a1520 0%, var(--void) 70%);
+      }
 
-  .claim-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    text-align: center;
-  }
+      .claim-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+      }
 
-  .claim-prelude {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-bottom: 2rem;
-    opacity: 0;
-    animation: fadeUp 1s 0.5s forwards;
-  }
+      .claim-prelude {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-bottom: 2rem;
+        opacity: 0;
+        animation: fadeUp 1s 0.5s forwards;
+      }
 
-  .claim-text {
-    font-family: var(--font-display);
-    font-size: clamp(1.5rem, 4vw, 3rem);
-    font-weight: 700;
-    color: var(--parchment);
-    max-width: 700px;
-    line-height: 1.3;
-    opacity: 0;
-    animation: fadeUp 1.2s 1.2s forwards;
-    text-shadow: 0 0 40px rgba(196, 162, 78, 0.15);
-  }
+      .claim-text {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 4vw, 3rem);
+        font-weight: 700;
+        color: var(--parchment);
+        max-width: 700px;
+        line-height: 1.3;
+        opacity: 0;
+        animation: fadeUp 1.2s 1.2s forwards;
+        text-shadow: 0 0 40px rgba(196, 162, 78, 0.15);
+      }
 
-  .claim-text::before,
-  .claim-text::after {
-    content: '"';
-    color: var(--brass);
-    font-size: 1.2em;
-  }
-  .claim-text::after { content: '"'; }
+      .claim-text::before,
+      .claim-text::after {
+        content: '"';
+        color: var(--brass);
+        font-size: 1.2em;
+      }
+      .claim-text::after {
+        content: '"';
+      }
 
-  .claim-attribution {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-top: 1.5rem;
-    opacity: 0;
-    animation: fadeUp 1s 2s forwards;
-  }
+      .claim-attribution {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-top: 1.5rem;
+        opacity: 0;
+        animation: fadeUp 1s 2s forwards;
+      }
 
-  .claim-enter {
-    margin-top: 3rem;
-    opacity: 0;
-    animation: fadeUp 1s 2.8s forwards;
-  }
+      .claim-enter {
+        margin-top: 3rem;
+        opacity: 0;
+        animation: fadeUp 1s 2.8s forwards;
+      }
 
-  /* ============================================
+      /* ============================================
      TOP BAR
      ============================================ */
-  .top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.5rem;
-    background: linear-gradient(to bottom, rgba(10, 12, 18, 0.9), transparent);
-    position: relative;
-    z-index: 10;
-  }
+      .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        background: linear-gradient(to bottom, rgba(10, 12, 18, 0.9), transparent);
+        position: relative;
+        z-index: 10;
+      }
 
-  .top-bar-title {
-    font-family: var(--font-display);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-  }
+      .top-bar-title {
+        font-family: var(--font-display);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+      }
 
-  .top-bar-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
+      .top-bar-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
 
-  /* ============================================
+      /* ============================================
      BUTTONS
      ============================================ */
-  .btn {
-    font-family: var(--font-display);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 0.6rem 1.2rem;
-    border: 1px solid var(--glass-border);
-    background: var(--glass);
-    color: var(--parchment-dim);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
-  }
+      .btn {
+        font-family: var(--font-display);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.6rem 1.2rem;
+        border: 1px solid var(--glass-border);
+        background: var(--glass);
+        color: var(--parchment-dim);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(8px);
+      }
 
-  .btn:hover {
-    border-color: var(--glass-border-hover);
-    color: var(--parchment);
-    background: rgba(196, 162, 78, 0.08);
-  }
+      .btn:hover {
+        border-color: var(--glass-border-hover);
+        color: var(--parchment);
+        background: rgba(196, 162, 78, 0.08);
+      }
 
-  .btn-accuse {
-    border-color: rgba(180, 60, 60, 0.4);
-    color: #d4756a;
-  }
-  .btn-accuse:hover {
-    border-color: rgba(180, 60, 60, 0.7);
-    background: rgba(180, 60, 60, 0.1);
-    color: #e8988e;
-  }
+      .btn-accuse {
+        border-color: rgba(180, 60, 60, 0.4);
+        color: #d4756a;
+      }
+      .btn-accuse:hover {
+        border-color: rgba(180, 60, 60, 0.7);
+        background: rgba(180, 60, 60, 0.1);
+        color: #e8988e;
+      }
 
-  .btn-pardon {
-    border-color: rgba(78, 140, 100, 0.4);
-    color: #7ab88a;
-  }
-  .btn-pardon:hover {
-    border-color: rgba(78, 140, 100, 0.7);
-    background: rgba(78, 140, 100, 0.1);
-    color: #9ed4ab;
-  }
+      .btn-pardon {
+        border-color: rgba(78, 140, 100, 0.4);
+        color: #7ab88a;
+      }
+      .btn-pardon:hover {
+        border-color: rgba(78, 140, 100, 0.7);
+        background: rgba(78, 140, 100, 0.1);
+        color: #9ed4ab;
+      }
 
-  .btn-enter {
-    border-color: var(--brass-dim);
-    color: var(--brass);
-    padding: 0.8rem 2.5rem;
-    font-size: 0.8rem;
-  }
-  .btn-enter:hover {
-    border-color: var(--brass);
-    background: rgba(196, 162, 78, 0.12);
-    box-shadow: 0 0 20px rgba(196, 162, 78, 0.1);
-  }
+      .btn-enter {
+        border-color: var(--brass-dim);
+        color: var(--brass);
+        padding: 0.8rem 2.5rem;
+        font-size: 0.8rem;
+      }
+      .btn-enter:hover {
+        border-color: var(--brass);
+        background: rgba(196, 162, 78, 0.12);
+        box-shadow: 0 0 20px rgba(196, 162, 78, 0.1);
+      }
 
-  .btn-back {
-    background: none;
-    border: none;
-    color: var(--brass-dim);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    cursor: pointer;
-    padding: 0.5rem 0;
-    transition: color 0.3s;
-  }
-  .btn-back:hover { color: var(--brass); }
-  .btn-back::before { content: '← '; }
+      .btn-back {
+        background: none;
+        border: none;
+        color: var(--brass-dim);
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        cursor: pointer;
+        padding: 0.5rem 0;
+        transition: color 0.3s;
+      }
+      .btn-back:hover {
+        color: var(--brass);
+      }
+      .btn-back::before {
+        content: '← ';
+      }
 
-  /* ============================================
+      /* ============================================
      MANSION VIEW — ROOM GRID
      ============================================ */
-  #mansion-view .view-bg {
-    /* Mansion exterior image goes here */
-    background: radial-gradient(ellipse at center 60%, #1a1820 0%, var(--void) 60%);
-  }
+      #mansion-view .view-bg {
+        /* Mansion exterior image goes here */
+        background: radial-gradient(ellipse at center 60%, #1a1820 0%, var(--void) 60%);
+      }
 
-  .mansion-grid {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    padding: 1rem 2rem;
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-    align-content: center;
-  }
+      .mansion-grid {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        padding: 1rem 2rem;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+        align-content: center;
+      }
 
-  .room-door {
-    position: relative;
-    border: 1px solid var(--glass-border);
-    background: var(--glass);
-    backdrop-filter: blur(12px);
-    padding: 1.25rem;
-    cursor: pointer;
-    transition: all 0.4s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    aspect-ratio: 1;
-    overflow: hidden;
-  }
+      .room-door {
+        position: relative;
+        border: 1px solid var(--glass-border);
+        background: var(--glass);
+        backdrop-filter: blur(12px);
+        padding: 1.25rem;
+        cursor: pointer;
+        transition: all 0.4s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        aspect-ratio: 1;
+        overflow: hidden;
+      }
 
-  .room-door::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--brass-dim), transparent);
-    opacity: 0;
-    transition: opacity 0.4s;
-  }
+      .room-door::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--brass-dim), transparent);
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
 
-  .room-door:hover {
-    border-color: var(--glass-border-hover);
-    background: rgba(196, 162, 78, 0.06);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 1px var(--brass-dim);
-  }
+      .room-door:hover {
+        border-color: var(--glass-border-hover);
+        background: rgba(196, 162, 78, 0.06);
+        transform: translateY(-2px);
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.4),
+          0 0 1px var(--brass-dim);
+      }
 
-  .room-door:hover::before { opacity: 1; }
+      .room-door:hover::before {
+        opacity: 1;
+      }
 
-  .room-door.visited {
-    border-color: rgba(74, 109, 140, 0.3);
-  }
+      .room-door.visited {
+        border-color: rgba(74, 109, 140, 0.3);
+      }
 
-  .room-door.visited .room-name { color: var(--pale-blue); }
+      .room-door.visited .room-name {
+        color: var(--pale-blue);
+      }
 
-  .room-name {
-    font-family: var(--font-display);
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    color: var(--parchment);
-    transition: color 0.3s;
-  }
+      .room-name {
+        font-family: var(--font-display);
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: var(--parchment);
+        transition: color 0.3s;
+      }
 
-  .room-category {
-    font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-top: 0.25rem;
-  }
+      .room-category {
+        font-family: var(--font-readout);
+        font-size: 0.6rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-top: 0.25rem;
+      }
 
-  .room-hint {
-    font-family: var(--font-body);
-    font-size: 0.82rem;
-    font-weight: 500;
-    font-style: italic;
-    color: var(--parchment-dim);
-    opacity: 0.6;
-    margin-top: auto;
-    padding-top: 0.75rem;
-  }
+      .room-hint {
+        font-family: var(--font-body);
+        font-size: 0.82rem;
+        font-weight: 500;
+        font-style: italic;
+        color: var(--parchment-dim);
+        opacity: 0.6;
+        margin-top: auto;
+        padding-top: 0.75rem;
+      }
 
-  .room-status {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--brass-dim);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .room-door.visited .room-status {
-    opacity: 1;
-    background: var(--cool-blue);
-  }
+      .room-status {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--brass-dim);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .room-door.visited .room-status {
+        opacity: 1;
+        background: var(--cool-blue);
+      }
 
-  /* ============================================
+      /* ============================================
      ROOM VIEW — EVIDENCE CARDS
      ============================================ */
-  #room-view .view-bg {
-    /* Room-specific background image goes here */
-    background: radial-gradient(ellipse at center 40%, #151820 0%, var(--void) 70%);
-  }
+      #room-view .view-bg {
+        /* Room-specific background image goes here */
+        background: radial-gradient(ellipse at center 40%, #151820 0%, var(--void) 70%);
+      }
 
-  .room-header {
-    text-align: center;
-    padding: 2rem 1rem 1rem;
-  }
+      .room-header {
+        text-align: center;
+        padding: 2rem 1rem 1rem;
+      }
 
-  .room-title {
-    font-family: var(--font-display);
-    font-size: clamp(1.5rem, 3.5vw, 2.5rem);
-    font-weight: 700;
-    color: var(--parchment);
-    letter-spacing: 0.06em;
-    text-shadow: 0 2px 20px rgba(0,0,0,0.5);
-  }
+      .room-title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+        font-weight: 700;
+        color: var(--parchment);
+        letter-spacing: 0.06em;
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+      }
 
-  .room-subtitle {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-top: 0.5rem;
-  }
+      .room-subtitle {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.25em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-top: 0.5rem;
+      }
 
-  .card-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    padding: 1.5rem 2.5rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    flex: 1;
-    align-content: start;
-  }
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        padding: 1.5rem 2.5rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        flex: 1;
+        align-content: start;
+      }
 
-  /* ============================================
+      /* ============================================
      EVIDENCE CARD
      ============================================ */
-  .evidence-card {
-    position: relative;
-    border: 1px solid var(--glass-border);
-    background: var(--glass);
-    backdrop-filter: blur(16px);
-    padding: 1.5rem;
-    transition: all 0.4s ease;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+      .evidence-card {
+        position: relative;
+        border: 1px solid var(--glass-border);
+        background: var(--glass);
+        backdrop-filter: blur(16px);
+        padding: 1.5rem;
+        transition: all 0.4s ease;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
 
-  .evidence-card::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--brass-dim), transparent);
-    opacity: 0;
-    transition: opacity 0.4s;
-  }
+      .evidence-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--brass-dim), transparent);
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
 
-  .evidence-card:hover {
-    border-color: var(--glass-border-hover);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  }
+      .evidence-card:hover {
+        border-color: var(--glass-border-hover);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      }
 
-  .evidence-card:hover::after { opacity: 1; }
+      .evidence-card:hover::after {
+        opacity: 1;
+      }
 
-  .card-type-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1.5px solid var(--brass-dim);
-    margin-bottom: 1rem;
-    transition: all 0.3s;
-  }
+      .card-type-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 1.5px solid var(--brass-dim);
+        margin-bottom: 1rem;
+        transition: all 0.3s;
+      }
 
-  .evidence-card:hover .card-type-indicator {
-    border-color: var(--brass);
-    box-shadow: 0 0 6px rgba(196, 162, 78, 0.3);
-  }
+      .evidence-card:hover .card-type-indicator {
+        border-color: var(--brass);
+        box-shadow: 0 0 6px rgba(196, 162, 78, 0.3);
+      }
 
-  .card-title {
-    font-family: var(--font-display);
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--parchment);
-    line-height: 1.4;
-    margin-bottom: 0.75rem;
-  }
+      .card-title {
+        font-family: var(--font-display);
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--parchment);
+        line-height: 1.4;
+        margin-bottom: 0.75rem;
+      }
 
-  .card-blurb {
-    font-family: var(--font-body);
-    font-size: 0.92rem;
-    font-weight: 500;
-    color: var(--parchment-dim);
-    line-height: 1.5;
-    flex: 1;
-  }
+      .card-blurb {
+        font-family: var(--font-body);
+        font-size: 0.92rem;
+        font-weight: 500;
+        color: var(--parchment-dim);
+        line-height: 1.5;
+        flex: 1;
+      }
 
-  .card-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1.25rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(196, 162, 78, 0.1);
-  }
+      .card-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(196, 162, 78, 0.1);
+      }
 
-  .card-action {
-    flex: 1;
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 0.5rem;
-    border: 1px solid transparent;
-    background: none;
-    cursor: pointer;
-    transition: all 0.3s;
-    text-align: center;
-  }
+      .card-action {
+        flex: 1;
+        font-family: var(--font-mono);
+        font-size: 0.55rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        padding: 0.5rem;
+        border: 1px solid transparent;
+        background: none;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+      }
 
-  .card-action-proof {
-    color: var(--brass-dim);
-    border-color: rgba(196, 162, 78, 0.15);
-  }
-  .card-action-proof:hover {
-    color: var(--brass);
-    border-color: var(--brass-dim);
-    background: rgba(196, 162, 78, 0.06);
-  }
+      .card-action-proof {
+        color: var(--brass-dim);
+        border-color: rgba(196, 162, 78, 0.15);
+      }
+      .card-action-proof:hover {
+        color: var(--brass);
+        border-color: var(--brass-dim);
+        background: rgba(196, 162, 78, 0.06);
+      }
 
-  .card-action-object {
-    color: var(--cool-blue);
-    border-color: rgba(74, 109, 140, 0.15);
-  }
-  .card-action-object:hover {
-    color: var(--pale-blue);
-    border-color: var(--cool-blue);
-    background: rgba(74, 109, 140, 0.06);
-  }
+      .card-action-object {
+        color: var(--cool-blue);
+        border-color: rgba(74, 109, 140, 0.15);
+      }
+      .card-action-object:hover {
+        color: var(--pale-blue);
+        border-color: var(--cool-blue);
+        background: rgba(74, 109, 140, 0.06);
+      }
 
-  /* Collected state */
-  .evidence-card.collected {
-    opacity: 0.3;
-    pointer-events: none;
-    transform: scale(0.98);
-  }
+      /* Collected state */
+      .evidence-card.collected {
+        opacity: 0.3;
+        pointer-events: none;
+        transform: scale(0.98);
+      }
 
-  /* ============================================
+      /* ============================================
      THE ARCHITECT — Left-hand feed panel
      ============================================ */
-  .architect-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 50;
-    width: 300px;
-    background: rgba(10, 12, 18, 0.96);
-    border-right: 1px solid var(--glass-border);
-    backdrop-filter: blur(20px);
-    display: flex;
-    flex-direction: column;
-  }
+      .architect-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 50;
+        width: 300px;
+        background: rgba(10, 12, 18, 0.96);
+        border-right: 1px solid var(--glass-border);
+        backdrop-filter: blur(20px);
+        display: flex;
+        flex-direction: column;
+      }
 
-  /* Panel content — always visible */
-  .architect-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
+      /* Panel content — always visible */
+      .architect-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
 
-  /* Panel header */
-  .architect-header {
-    padding: 1.25rem 1.25rem 0.75rem;
-    border-bottom: 1px solid rgba(196, 162, 78, 0.1);
-  }
+      /* Panel header */
+      .architect-header {
+        padding: 1.25rem 1.25rem 0.75rem;
+        border-bottom: 1px solid rgba(196, 162, 78, 0.1);
+      }
 
-  .architect-name {
-    font-family: var(--font-display);
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--brass);
-    margin-bottom: 0.35rem;
-  }
+      .architect-name {
+        font-family: var(--font-display);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--brass);
+        margin-bottom: 0.35rem;
+      }
 
-  .architect-claim {
-    font-family: var(--font-body);
-    font-size: 0.78rem;
-    font-style: italic;
-    color: var(--parchment-dim);
-    line-height: 1.4;
-  }
+      .architect-claim {
+        font-family: var(--font-body);
+        font-size: 0.78rem;
+        font-style: italic;
+        color: var(--parchment-dim);
+        line-height: 1.4;
+      }
 
-  /* Feed — the main event */
-  .architect-feed {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.75rem 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
+      /* Feed — the main event */
+      .architect-feed {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
 
-  .feed-entry {
-    padding: 0.6rem 0;
-    border-bottom: 1px solid rgba(196, 162, 78, 0.06);
-    animation: feedIn 0.5s ease forwards;
-  }
+      .feed-entry {
+        padding: 0.6rem 0;
+        border-bottom: 1px solid rgba(196, 162, 78, 0.06);
+        animation: feedIn 0.5s ease forwards;
+      }
 
-  .feed-entry:last-child { border-bottom: none; }
+      .feed-entry:last-child {
+        border-bottom: none;
+      }
 
-  .feed-timestamp {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(196, 162, 78, 0.35);
-    margin-bottom: 0.3rem;
-  }
+      .feed-timestamp {
+        font-family: var(--font-readout);
+        font-size: 0.5rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(196, 162, 78, 0.35);
+        margin-bottom: 0.3rem;
+      }
 
-  .feed-text {
-    font-family: var(--font-body);
-    font-size: 0.92rem;
-    font-weight: 500;
-    font-style: italic;
-    color: var(--parchment);
-    line-height: 1.55;
-  }
+      .feed-text {
+        font-family: var(--font-body);
+        font-size: 0.92rem;
+        font-weight: 500;
+        font-style: italic;
+        color: var(--parchment);
+        line-height: 1.55;
+      }
 
-  /* Feed entry types */
-  .feed-entry.entry-action .feed-text {
-    font-style: normal;
-    color: var(--parchment-dim);
-    font-size: 0.78rem;
-  }
+      /* Feed entry types */
+      .feed-entry.entry-action .feed-text {
+        font-style: normal;
+        color: var(--parchment-dim);
+        font-size: 0.78rem;
+      }
 
-  .feed-entry.entry-action .feed-text::before {
-    content: '→ ';
-    color: var(--brass-dim);
-  }
+      .feed-entry.entry-action .feed-text::before {
+        content: '→ ';
+        color: var(--brass-dim);
+      }
 
-  .feed-entry.entry-tension .feed-text {
-    color: var(--copper);
-  }
+      .feed-entry.entry-tension .feed-text {
+        color: var(--copper);
+      }
 
-  /* Evidence tally — compact, at the bottom */
-  .evidence-tally {
-    padding: 0.75rem 1.25rem;
-    border-top: 1px solid rgba(196, 162, 78, 0.12);
-    background: rgba(10, 12, 18, 0.5);
-  }
+      /* Evidence tally — compact, at the bottom */
+      .evidence-tally {
+        padding: 0.75rem 1.25rem;
+        border-top: 1px solid rgba(196, 162, 78, 0.12);
+        background: rgba(10, 12, 18, 0.5);
+      }
 
-  .tally-header {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-bottom: 0.5rem;
-  }
+      .tally-header {
+        font-family: var(--font-readout);
+        font-size: 0.5rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-bottom: 0.5rem;
+      }
 
-  .tally-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.2rem 0;
-  }
+      .tally-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.2rem 0;
+      }
 
-  .tally-label {
-    font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
+      .tally-label {
+        font-family: var(--font-readout);
+        font-size: 0.6rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
 
-  .tally-proof .tally-label { color: var(--brass-dim); }
-  .tally-objection .tally-label { color: var(--cool-blue); }
+      .tally-proof .tally-label {
+        color: var(--brass-dim);
+      }
+      .tally-objection .tally-label {
+        color: var(--cool-blue);
+      }
 
-  .tally-count {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    color: var(--parchment-dim);
-  }
+      .tally-count {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        color: var(--parchment-dim);
+      }
 
-  .tally-bar {
-    flex: 1;
-    height: 2px;
-    margin: 0 0.75rem;
-    background: rgba(196, 162, 78, 0.08);
-    position: relative;
-    overflow: hidden;
-  }
+      .tally-bar {
+        flex: 1;
+        height: 2px;
+        margin: 0 0.75rem;
+        background: rgba(196, 162, 78, 0.08);
+        position: relative;
+        overflow: hidden;
+      }
 
-  .tally-bar-fill {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    transition: width 0.6s ease;
-  }
+      .tally-bar-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transition: width 0.6s ease;
+      }
 
-  .tally-proof .tally-bar-fill { background: var(--brass-dim); }
-  .tally-objection .tally-bar-fill { background: var(--cool-blue); }
+      .tally-proof .tally-bar-fill {
+        background: var(--brass-dim);
+      }
+      .tally-objection .tally-bar-fill {
+        background: var(--cool-blue);
+      }
 
-  @keyframes feedIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+      @keyframes feedIn {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-  /* ============================================
+      /* ============================================
      VERDICT VIEW
      ============================================ */
-  #verdict-view .view-bg {
-    background: radial-gradient(ellipse at center, #1a1218 0%, var(--void) 60%);
-  }
+      #verdict-view .view-bg {
+        background: radial-gradient(ellipse at center, #1a1218 0%, var(--void) 60%);
+      }
 
-  .verdict-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    text-align: center;
-    max-width: 800px;
-    margin: 0 auto;
-  }
+      .verdict-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+        max-width: 800px;
+        margin: 0 auto;
+      }
 
-  .verdict-label {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-bottom: 1.5rem;
-  }
+      .verdict-label {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-bottom: 1.5rem;
+      }
 
-  .verdict-ruling {
-    font-family: var(--font-display);
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    margin-bottom: 2rem;
-  }
+      .verdict-ruling {
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        margin-bottom: 2rem;
+      }
 
-  .verdict-ruling.pardoned { color: #7ab88a; }
-  .verdict-ruling.accused { color: #d4756a; }
+      .verdict-ruling.pardoned {
+        color: #7ab88a;
+      }
+      .verdict-ruling.accused {
+        color: #d4756a;
+      }
 
-  .verdict-architect-text {
-    font-family: var(--font-body);
-    font-size: 1.15rem;
-    font-style: italic;
-    color: var(--parchment);
-    line-height: 1.7;
-    max-width: 550px;
-    margin-bottom: 3rem;
-  }
+      .verdict-architect-text {
+        font-family: var(--font-body);
+        font-size: 1.15rem;
+        font-style: italic;
+        color: var(--parchment);
+        line-height: 1.7;
+        max-width: 550px;
+        margin-bottom: 3rem;
+      }
 
-  .verdict-divider {
-    width: 60px;
-    height: 1px;
-    background: var(--brass-dim);
-    margin: 2rem auto;
-  }
+      .verdict-divider {
+        width: 60px;
+        height: 1px;
+        background: var(--brass-dim);
+        margin: 2rem auto;
+      }
 
-  .verdict-section-label {
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--brass-dim);
-    margin-bottom: 1.5rem;
-  }
+      .verdict-section-label {
+        font-family: var(--font-mono);
+        font-size: 0.55rem;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-bottom: 1.5rem;
+      }
 
-  .cover-letter-preview {
-    font-family: var(--font-body);
-    font-size: 1rem;
-    color: var(--parchment);
-    line-height: 1.8;
-    text-align: left;
-    max-width: 600px;
-    padding: 2rem;
-    border: 1px solid var(--glass-border);
-    background: var(--glass);
-    backdrop-filter: blur(12px);
-    margin-bottom: 2rem;
-  }
+      .cover-letter-preview {
+        font-family: var(--font-body);
+        font-size: 1rem;
+        color: var(--parchment);
+        line-height: 1.8;
+        text-align: left;
+        max-width: 600px;
+        padding: 2rem;
+        border: 1px solid var(--glass-border);
+        background: var(--glass);
+        backdrop-filter: blur(12px);
+        margin-bottom: 2rem;
+      }
 
-  .cover-letter-preview p { margin-bottom: 1rem; }
-  .cover-letter-preview p:last-child { margin-bottom: 0; }
+      .cover-letter-preview p {
+        margin-bottom: 1rem;
+      }
+      .cover-letter-preview p:last-child {
+        margin-bottom: 0;
+      }
 
-  .verdict-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-  }
+      .verdict-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
 
-  /* ============================================
+      /* ============================================
      TENSION METER (subtle)
      ============================================ */
-  .tension-meter {
-    position: fixed;
-    top: 50%;
-    right: 1rem;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 120px;
-    background: rgba(196, 162, 78, 0.08);
-    z-index: 20;
-    border-radius: 2px;
-    overflow: hidden;
-  }
+      .tension-meter {
+        position: fixed;
+        top: 50%;
+        right: 1rem;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 120px;
+        background: rgba(196, 162, 78, 0.08);
+        z-index: 20;
+        border-radius: 2px;
+        overflow: hidden;
+      }
 
-  .tension-fill {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    background: linear-gradient(to top, var(--brass-dim), var(--copper));
-    border-radius: 2px;
-    transition: height 1s ease;
-  }
+      .tension-fill {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        background: linear-gradient(to top, var(--brass-dim), var(--copper));
+        border-radius: 2px;
+        transition: height 1s ease;
+      }
 
-  /* ============================================
+      /* ============================================
      ANIMATIONS
      ============================================ */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-  @keyframes dialogueIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+      @keyframes dialogueIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-  @keyframes blink {
-    50% { border-color: transparent; }
-  }
+      @keyframes blink {
+        50% {
+          border-color: transparent;
+        }
+      }
 
-  /* ============================================
+      /* ============================================
      NAV TABS (prototype only)
      ============================================ */
-  .proto-nav {
-    position: fixed;
-    top: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 0.25rem;
-    z-index: 999;
-    background: rgba(10, 12, 18, 0.95);
-    border: 1px solid var(--glass-border);
-    padding: 0.25rem;
-  }
+      .proto-nav {
+        position: fixed;
+        top: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 0.25rem;
+        z-index: 999;
+        background: rgba(10, 12, 18, 0.95);
+        border: 1px solid var(--glass-border);
+        padding: 0.25rem;
+      }
 
-  .proto-tab {
-    font-family: var(--font-mono);
-    font-size: 0.55rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 0.4rem 0.8rem;
-    background: none;
-    border: none;
-    color: var(--parchment-dim);
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  .proto-tab:hover { color: var(--parchment); }
-  .proto-tab.active {
-    background: rgba(196, 162, 78, 0.1);
-    color: var(--brass);
-  }
+      .proto-tab {
+        font-family: var(--font-mono);
+        font-size: 0.55rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.4rem 0.8rem;
+        background: none;
+        border: none;
+        color: var(--parchment-dim);
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      .proto-tab:hover {
+        color: var(--parchment);
+      }
+      .proto-tab.active {
+        background: rgba(196, 162, 78, 0.1);
+        color: var(--brass);
+      }
 
-  /* Body padding for Architect panel */
-  .view-content { padding-left: 300px; }
+      /* Body padding for Architect panel */
+      .view-content {
+        padding-left: 300px;
+      }
 
-  /* Claim and verdict views don't need panel padding */
-  #claim-view .view-content,
-  #verdict-view .view-content { padding-left: 0; }
+      /* Claim and verdict views don't need panel padding */
+      #claim-view .view-content,
+      #verdict-view .view-content {
+        padding-left: 0;
+      }
 
-  /* Hide Architect panel on claim and verdict views */
-  .architect-panel { display: none; }
-  .architect-panel.visible { display: flex; }
-</style>
-</head>
-<body>
+      /* Hide Architect panel on claim and verdict views */
+      .architect-panel {
+        display: none;
+      }
+      .architect-panel.visible {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- PROTOTYPE NAVIGATION -->
+    <nav class="proto-nav">
+      <button class="proto-tab active" onclick="showView('claim')">Claim</button>
+      <button class="proto-tab" onclick="showView('mansion')">Mansion</button>
+      <button class="proto-tab" onclick="showView('room')">Room</button>
+      <button class="proto-tab" onclick="showView('verdict')">Verdict</button>
+    </nav>
 
-<!-- PROTOTYPE NAVIGATION -->
-<nav class="proto-nav">
-  <button class="proto-tab active" onclick="showView('claim')">Claim</button>
-  <button class="proto-tab" onclick="showView('mansion')">Mansion</button>
-  <button class="proto-tab" onclick="showView('room')">Room</button>
-  <button class="proto-tab" onclick="showView('verdict')">Verdict</button>
-</nav>
-
-<!-- ================================
+    <!-- ================================
      VIEW 1: CLAIM INTRODUCTION
      ================================ -->
-<div id="claim-view" class="view active">
-  <div class="view-bg"></div>
-  <div class="view-content">
-    <div class="claim-container">
-      <div class="claim-prelude">A claim has been filed against the accused</div>
-      <div class="claim-text">Ashley depends on AI too much</div>
-      <div class="claim-attribution">— Filed in the Architect of Suspicion</div>
-      <div class="claim-enter">
-        <button class="btn btn-enter" onclick="showView('mansion')">Enter the House</button>
+    <div id="claim-view" class="view active">
+      <div class="view-bg"></div>
+      <div class="view-content">
+        <div class="claim-container">
+          <div class="claim-prelude">A claim has been filed against the accused</div>
+          <div class="claim-text">Ashley depends on AI too much</div>
+          <div class="claim-attribution">— Filed in the Architect of Suspicion</div>
+          <div class="claim-enter">
+            <button class="btn btn-enter" onclick="showView('mansion')">Enter the House</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ================================
+    <!-- ================================
      VIEW 2: MANSION (Room Selection)
      ================================ -->
-<div id="mansion-view" class="view">
-  <div class="view-bg"></div>
-  <div class="view-content">
-    <div class="top-bar">
-      <div class="top-bar-title">Architect of Suspicion</div>
-      <div class="top-bar-actions">
-        <button class="btn btn-accuse">Accuse</button>
-        <button class="btn btn-pardon">Pardon</button>
+    <div id="mansion-view" class="view">
+      <div class="view-bg"></div>
+      <div class="view-content">
+        <div class="top-bar">
+          <div class="top-bar-title">Architect of Suspicion</div>
+          <div class="top-bar-actions">
+            <button class="btn btn-accuse">Accuse</button>
+            <button class="btn btn-pardon">Pardon</button>
+          </div>
+        </div>
+
+        <div class="mansion-grid">
+          <!-- Row 1 -->
+          <div
+            class="room-door"
+            style="border-color: rgba(196, 162, 78, 0.12); opacity: 0.55"
+            onclick="alert('Attic: How to Play, Bio, Credits')"
+          >
+            <div>
+              <div class="room-name" style="color: var(--brass-dim); font-size: 0.75rem">Attic</div>
+              <div class="room-category" style="opacity: 0.6">How to Play · Bio · Credits</div>
+            </div>
+          </div>
+
+          <div class="room-door" onclick="showView('room')">
+            <div>
+              <div class="room-name">Gallery</div>
+              <div class="room-category">Awards</div>
+            </div>
+            <div class="room-hint">Recognition on display</div>
+            <div class="room-status"></div>
+          </div>
+
+          <div class="room-door visited">
+            <div>
+              <div class="room-name">Control Room</div>
+              <div class="room-category">Constraints</div>
+            </div>
+            <div class="room-hint">Systems and limits</div>
+            <div class="room-status"></div>
+          </div>
+
+          <!-- Row 2 -->
+          <div class="room-door">
+            <div>
+              <div class="room-name">Parlor</div>
+              <div class="room-category">Decisions</div>
+            </div>
+            <div class="room-hint">Where deliberation happens</div>
+            <div class="room-status"></div>
+          </div>
+
+          <div
+            class="room-door"
+            style="border-color: rgba(196, 162, 78, 0.08); opacity: 0.25; pointer-events: none"
+          >
+            <div>
+              <div class="room-name" style="color: var(--brass-dim); font-size: 0.75rem">
+                Entry Hall
+              </div>
+            </div>
+          </div>
+
+          <div class="room-door visited">
+            <div>
+              <div class="room-name">Library</div>
+              <div class="room-category">Philosophy</div>
+            </div>
+            <div class="room-hint">Ideas and frameworks</div>
+            <div class="room-status"></div>
+          </div>
+
+          <!-- Row 3 -->
+          <div class="room-door">
+            <div>
+              <div class="room-name">Workshop</div>
+              <div class="room-category">Experimentation</div>
+            </div>
+            <div class="room-hint">Where things break</div>
+            <div class="room-status"></div>
+          </div>
+
+          <div class="room-door">
+            <div>
+              <div class="room-name">Cellar</div>
+              <div class="room-category">Work Style</div>
+            </div>
+            <div class="room-hint">The foundation</div>
+            <div class="room-status"></div>
+          </div>
+
+          <div class="room-door">
+            <div>
+              <div class="room-name">Back Hall</div>
+              <div class="room-category">Experience</div>
+            </div>
+            <div class="room-hint">The long corridor</div>
+            <div class="room-status"></div>
+          </div>
+        </div>
+
+        <!-- Tension Meter -->
+        <div class="tension-meter">
+          <div class="tension-fill" style="height: 35%"></div>
+        </div>
       </div>
     </div>
 
-    <div class="mansion-grid">
-      <!-- Row 1 -->
-      <div class="room-door" style="border-color: rgba(196, 162, 78, 0.12); opacity: 0.55;" onclick="alert('Attic: How to Play, Bio, Credits')">
-        <div>
-          <div class="room-name" style="color: var(--brass-dim); font-size: 0.75rem;">Attic</div>
-          <div class="room-category" style="opacity: 0.6;">How to Play · Bio · Credits</div>
-        </div>
-      </div>
-
-      <div class="room-door" onclick="showView('room')">
-        <div>
-          <div class="room-name">Gallery</div>
-          <div class="room-category">Awards</div>
-        </div>
-        <div class="room-hint">Recognition on display</div>
-        <div class="room-status"></div>
-      </div>
-
-      <div class="room-door visited">
-        <div>
-          <div class="room-name">Control Room</div>
-          <div class="room-category">Constraints</div>
-        </div>
-        <div class="room-hint">Systems and limits</div>
-        <div class="room-status"></div>
-      </div>
-
-      <!-- Row 2 -->
-      <div class="room-door">
-        <div>
-          <div class="room-name">Parlor</div>
-          <div class="room-category">Decisions</div>
-        </div>
-        <div class="room-hint">Where deliberation happens</div>
-        <div class="room-status"></div>
-      </div>
-
-      <div class="room-door" style="border-color: rgba(196, 162, 78, 0.08); opacity: 0.25; pointer-events: none;">
-        <div>
-          <div class="room-name" style="color: var(--brass-dim); font-size: 0.75rem;">Entry Hall</div>
-        </div>
-      </div>
-
-      <div class="room-door visited">
-        <div>
-          <div class="room-name">Library</div>
-          <div class="room-category">Philosophy</div>
-        </div>
-        <div class="room-hint">Ideas and frameworks</div>
-        <div class="room-status"></div>
-      </div>
-
-      <!-- Row 3 -->
-      <div class="room-door">
-        <div>
-          <div class="room-name">Workshop</div>
-          <div class="room-category">Experimentation</div>
-        </div>
-        <div class="room-hint">Where things break</div>
-        <div class="room-status"></div>
-      </div>
-
-      <div class="room-door">
-        <div>
-          <div class="room-name">Cellar</div>
-          <div class="room-category">Work Style</div>
-        </div>
-        <div class="room-hint">The foundation</div>
-        <div class="room-status"></div>
-      </div>
-
-      <div class="room-door">
-        <div>
-          <div class="room-name">Back Hall</div>
-          <div class="room-category">Experience</div>
-        </div>
-        <div class="room-hint">The long corridor</div>
-        <div class="room-status"></div>
-      </div>
-    </div>
-
-    <!-- Tension Meter -->
-    <div class="tension-meter">
-      <div class="tension-fill" style="height: 35%;"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ================================
+    <!-- ================================
      VIEW 3: ROOM (Evidence Cards)
      ================================ -->
-<div id="room-view" class="view">
-  <div class="view-bg"></div>
-  <div class="view-content">
-    <div class="top-bar">
-      <button class="btn-back" onclick="showView('mansion')">Mansion</button>
-      <div class="top-bar-actions">
-        <button class="btn btn-accuse">Accuse</button>
-        <button class="btn btn-pardon">Pardon</button>
+    <div id="room-view" class="view">
+      <div class="view-bg"></div>
+      <div class="view-content">
+        <div class="top-bar">
+          <button class="btn-back" onclick="showView('mansion')">Mansion</button>
+          <div class="top-bar-actions">
+            <button class="btn btn-accuse">Accuse</button>
+            <button class="btn btn-pardon">Pardon</button>
+          </div>
+        </div>
+
+        <div class="room-header">
+          <div class="room-title">Gallery</div>
+          <div class="room-subtitle">Awards · Recognition on display</div>
+        </div>
+
+        <div class="card-grid">
+          <div class="evidence-card">
+            <div class="card-type-indicator"></div>
+            <div class="card-title">BiT nomination for AI-assisted execution workflows</div>
+            <div class="card-blurb">AI tooling streamlined operational delivery.</div>
+            <div class="card-actions">
+              <button class="card-action card-action-proof">Proof</button>
+              <button class="card-action card-action-object">Objection</button>
+            </div>
+          </div>
+
+          <div class="evidence-card">
+            <div class="card-type-indicator"></div>
+            <div class="card-title">Legacy platform retirement and vendor onboarding milestone</div>
+            <div class="card-blurb">Modernization effort enabled large-scale vendor migration.</div>
+            <div class="card-actions">
+              <button class="card-action card-action-proof">Proof</button>
+              <button class="card-action card-action-object">Objection</button>
+            </div>
+          </div>
+
+          <div class="evidence-card collected">
+            <div class="card-type-indicator" style="background: var(--brass-dim)"></div>
+            <div class="card-title">A Gold Homer Award was earned</div>
+            <div class="card-blurb">Recognition exceeded the standard Homer tier.</div>
+            <div class="card-actions">
+              <button class="card-action card-action-proof">Collected</button>
+            </div>
+          </div>
+
+          <div class="evidence-card">
+            <div class="card-type-indicator"></div>
+            <div class="card-title">Mentored intern project with applied AI guidance</div>
+            <div class="card-blurb">Technical mentorship accelerated delivery outcomes.</div>
+            <div class="card-actions">
+              <button class="card-action card-action-proof">Proof</button>
+              <button class="card-action card-action-object">Objection</button>
+            </div>
+          </div>
+
+          <div class="evidence-card">
+            <div class="card-type-indicator"></div>
+            <div class="card-title">Resolved inventory allocation discrepancies</div>
+            <div class="card-blurb">Rapid investigation restored allocation accuracy.</div>
+            <div class="card-actions">
+              <button class="card-action card-action-proof">Proof</button>
+              <button class="card-action card-action-object">Objection</button>
+            </div>
+          </div>
+
+          <div class="evidence-card">
+            <div class="card-type-indicator"></div>
+            <div class="card-title">Improved automated deployment governance process</div>
+            <div class="card-blurb">Proactive refinement strengthened oversight.</div>
+            <div class="card-actions">
+              <button class="card-action card-action-proof">Proof</button>
+              <button class="card-action card-action-object">Objection</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tension Meter -->
+        <div class="tension-meter">
+          <div class="tension-fill" style="height: 35%"></div>
+        </div>
       </div>
     </div>
 
-    <div class="room-header">
-      <div class="room-title">Gallery</div>
-      <div class="room-subtitle">Awards · Recognition on display</div>
-    </div>
-
-    <div class="card-grid">
-      <div class="evidence-card">
-        <div class="card-type-indicator"></div>
-        <div class="card-title">BiT nomination for AI-assisted execution workflows</div>
-        <div class="card-blurb">AI tooling streamlined operational delivery.</div>
-        <div class="card-actions">
-          <button class="card-action card-action-proof">Proof</button>
-          <button class="card-action card-action-object">Objection</button>
-        </div>
-      </div>
-
-      <div class="evidence-card">
-        <div class="card-type-indicator"></div>
-        <div class="card-title">Legacy platform retirement and vendor onboarding milestone</div>
-        <div class="card-blurb">Modernization effort enabled large-scale vendor migration.</div>
-        <div class="card-actions">
-          <button class="card-action card-action-proof">Proof</button>
-          <button class="card-action card-action-object">Objection</button>
-        </div>
-      </div>
-
-      <div class="evidence-card collected">
-        <div class="card-type-indicator" style="background: var(--brass-dim);"></div>
-        <div class="card-title">A Gold Homer Award was earned</div>
-        <div class="card-blurb">Recognition exceeded the standard Homer tier.</div>
-        <div class="card-actions">
-          <button class="card-action card-action-proof">Collected</button>
-        </div>
-      </div>
-
-      <div class="evidence-card">
-        <div class="card-type-indicator"></div>
-        <div class="card-title">Mentored intern project with applied AI guidance</div>
-        <div class="card-blurb">Technical mentorship accelerated delivery outcomes.</div>
-        <div class="card-actions">
-          <button class="card-action card-action-proof">Proof</button>
-          <button class="card-action card-action-object">Objection</button>
-        </div>
-      </div>
-
-      <div class="evidence-card">
-        <div class="card-type-indicator"></div>
-        <div class="card-title">Resolved inventory allocation discrepancies</div>
-        <div class="card-blurb">Rapid investigation restored allocation accuracy.</div>
-        <div class="card-actions">
-          <button class="card-action card-action-proof">Proof</button>
-          <button class="card-action card-action-object">Objection</button>
-        </div>
-      </div>
-
-      <div class="evidence-card">
-        <div class="card-type-indicator"></div>
-        <div class="card-title">Improved automated deployment governance process</div>
-        <div class="card-blurb">Proactive refinement strengthened oversight.</div>
-        <div class="card-actions">
-          <button class="card-action card-action-proof">Proof</button>
-          <button class="card-action card-action-object">Objection</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tension Meter -->
-    <div class="tension-meter">
-      <div class="tension-fill" style="height: 35%;"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ================================
+    <!-- ================================
      VIEW 4: VERDICT
      ================================ -->
-<div id="verdict-view" class="view">
-  <div class="view-bg"></div>
-  <div class="view-content">
-    <div class="verdict-container">
-      <div class="verdict-label">The proceedings have concluded</div>
-      <div class="verdict-ruling pardoned">Pardoned</div>
-      <div class="verdict-architect-text">
-        You walked through eight rooms and chose to see what most would overlook.
-        The evidence you collected tells a story you may not have intended —
-        one of someone who builds constraints before building features,
-        who treats failure as a design tool, and who taught machines
-        to write code the way they once wrote it themselves.
-        The record has been sealed.
-      </div>
+    <div id="verdict-view" class="view">
+      <div class="view-bg"></div>
+      <div class="view-content">
+        <div class="verdict-container">
+          <div class="verdict-label">The proceedings have concluded</div>
+          <div class="verdict-ruling pardoned">Pardoned</div>
+          <div class="verdict-architect-text">
+            You walked through eight rooms and chose to see what most would overlook. The evidence
+            you collected tells a story you may not have intended — one of someone who builds
+            constraints before building features, who treats failure as a design tool, and who
+            taught machines to write code the way they once wrote it themselves. The record has been
+            sealed.
+          </div>
 
-      <div class="verdict-divider"></div>
+          <div class="verdict-divider"></div>
 
-      <div class="verdict-section-label">Generated from your investigation</div>
+          <div class="verdict-section-label">Generated from your investigation</div>
 
-      <div class="cover-letter-preview">
-        <p>To Whom It May Concern,</p>
-        <p>You were presented with a claim — that the accused depends on AI too heavily — and you chose to investigate. What you found, through the evidence you selected, suggests something more nuanced.</p>
-        <p>The awards you examined in the Gallery reveal a pattern of recognition rooted in operational impact: vendor migrations, production incident resolution, and deployment governance. The constraints you uncovered in the Control Room showed that when AI-generated code failed repeatedly, the response was to add tests — not to abandon the tooling, but to stabilize it.</p>
-        <p>The accused does not merely use AI. They teach it, constrain it, and hold it to the same engineering standards they hold themselves. The distinction matters.</p>
-        <p style="color: var(--brass-dim); margin-top: 1.5rem; font-style: italic;">— Generated from 7 pieces of evidence collected during your investigation</p>
-      </div>
+          <div class="cover-letter-preview">
+            <p>To Whom It May Concern,</p>
+            <p>
+              You were presented with a claim — that the accused depends on AI too heavily — and you
+              chose to investigate. What you found, through the evidence you selected, suggests
+              something more nuanced.
+            </p>
+            <p>
+              The awards you examined in the Gallery reveal a pattern of recognition rooted in
+              operational impact: vendor migrations, production incident resolution, and deployment
+              governance. The constraints you uncovered in the Control Room showed that when
+              AI-generated code failed repeatedly, the response was to add tests — not to abandon
+              the tooling, but to stabilize it.
+            </p>
+            <p>
+              The accused does not merely use AI. They teach it, constrain it, and hold it to the
+              same engineering standards they hold themselves. The distinction matters.
+            </p>
+            <p style="color: var(--brass-dim); margin-top: 1.5rem; font-style: italic">
+              — Generated from 7 pieces of evidence collected during your investigation
+            </p>
+          </div>
 
-      <div class="verdict-actions">
-        <button class="btn">View Resume</button>
-        <button class="btn btn-enter" onclick="showView('claim')">Investigate Again</button>
+          <div class="verdict-actions">
+            <button class="btn">View Resume</button>
+            <button class="btn btn-enter" onclick="showView('claim')">Investigate Again</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ================================
+    <!-- ================================
      THE ARCHITECT — Shared left panel
      ================================ -->
-<div class="architect-panel" id="architectPanel">
-  <div class="architect-content">
-    <div class="architect-header">
-      <div class="architect-name">The Architect</div>
-      <div class="architect-claim">"Ashley depends on AI too much"</div>
+    <div class="architect-panel" id="architectPanel">
+      <div class="architect-content">
+        <div class="architect-header">
+          <div class="architect-name">The Architect</div>
+          <div class="architect-claim">"Ashley depends on AI too much"</div>
+        </div>
+
+        <div class="architect-feed" id="architectFeed">
+          <!-- Architect commentary entry -->
+          <div class="feed-entry">
+            <div class="feed-timestamp">Session opened</div>
+            <div class="feed-text">
+              You've entered the mansion. Every door is an argument waiting to be made.
+            </div>
+          </div>
+
+          <!-- Player action entry -->
+          <div class="feed-entry entry-action">
+            <div class="feed-timestamp">Library visited</div>
+            <div class="feed-text">Entered the Library — Philosophy</div>
+          </div>
+
+          <!-- Architect reacts -->
+          <div class="feed-entry">
+            <div class="feed-timestamp">Library</div>
+            <div class="feed-text">
+              You chose to start with ideas rather than accomplishments. That tells me more than any
+              card will.
+            </div>
+          </div>
+
+          <!-- Card collected action -->
+          <div class="feed-entry entry-action">
+            <div class="feed-timestamp">Library — card collected</div>
+            <div class="feed-text">Collected "ADRs were used to prevent drift" as Proof</div>
+          </div>
+
+          <!-- Tension shift commentary -->
+          <div class="feed-entry entry-tension">
+            <div class="feed-timestamp">Tension shift</div>
+            <div class="feed-text">
+              Interesting. You're building a case for discipline — but discipline over what?
+            </div>
+          </div>
+
+          <!-- Another action -->
+          <div class="feed-entry entry-action">
+            <div class="feed-timestamp">Control Room visited</div>
+            <div class="feed-text">Entered the Control Room — Constraints</div>
+          </div>
+
+          <!-- Architect reacts -->
+          <div class="feed-entry">
+            <div class="feed-timestamp">Control Room</div>
+            <div class="feed-text">The Control Room remembers what you choose to overlook.</div>
+          </div>
+
+          <!-- Card collected -->
+          <div class="feed-entry entry-action">
+            <div class="feed-timestamp">Control Room — card collected</div>
+            <div class="feed-text">
+              Collected "Tests were added late after repeated AI failures" as Objection
+            </div>
+          </div>
+
+          <!-- Architect reacts to objection -->
+          <div class="feed-entry entry-tension">
+            <div class="feed-timestamp">Tension shift</div>
+            <div class="feed-text">
+              Failure as evidence. You're not afraid to use it against her.
+            </div>
+          </div>
+
+          <!-- Gallery action -->
+          <div class="feed-entry entry-action">
+            <div class="feed-timestamp">Gallery visited</div>
+            <div class="feed-text">Entered the Gallery — Awards</div>
+          </div>
+
+          <div class="feed-entry">
+            <div class="feed-timestamp">Gallery</div>
+            <div class="feed-text">The Gallery remembers what you choose to overlook.</div>
+          </div>
+
+          <div class="feed-entry entry-action">
+            <div class="feed-timestamp">Gallery — card collected</div>
+            <div class="feed-text">Collected "A Gold Homer Award was earned" as Proof</div>
+          </div>
+        </div>
+
+        <!-- Evidence tally — compact, bottom of panel -->
+        <div class="evidence-tally">
+          <div class="tally-header">Evidence collected</div>
+          <div class="tally-row tally-proof">
+            <div class="tally-label">Proof</div>
+            <div class="tally-bar"><div class="tally-bar-fill" style="width: 66%"></div></div>
+            <div class="tally-count">2</div>
+          </div>
+          <div class="tally-row tally-objection">
+            <div class="tally-label">Objection</div>
+            <div class="tally-bar"><div class="tally-bar-fill" style="width: 33%"></div></div>
+            <div class="tally-count">1</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="architect-feed" id="architectFeed">
-      <!-- Architect commentary entry -->
-      <div class="feed-entry">
-        <div class="feed-timestamp">Session opened</div>
-        <div class="feed-text">You've entered the mansion. Every door is an argument waiting to be made.</div>
-      </div>
+    <script>
+      const architectPanel = document.getElementById('architectPanel');
 
-      <!-- Player action entry -->
-      <div class="feed-entry entry-action">
-        <div class="feed-timestamp">Library visited</div>
-        <div class="feed-text">Entered the Library — Philosophy</div>
-      </div>
+      function showView(name) {
+        document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+        document.getElementById(name + '-view').classList.add('active');
+        document.querySelectorAll('.proto-tab').forEach((t) => t.classList.remove('active'));
+        document.querySelector(`[onclick="showView('${name}')"]`)?.classList.add('active');
 
-      <!-- Architect reacts -->
-      <div class="feed-entry">
-        <div class="feed-timestamp">Library</div>
-        <div class="feed-text">You chose to start with ideas rather than accomplishments. That tells me more than any card will.</div>
-      </div>
-
-      <!-- Card collected action -->
-      <div class="feed-entry entry-action">
-        <div class="feed-timestamp">Library — card collected</div>
-        <div class="feed-text">Collected "ADRs were used to prevent drift" as Proof</div>
-      </div>
-
-      <!-- Tension shift commentary -->
-      <div class="feed-entry entry-tension">
-        <div class="feed-timestamp">Tension shift</div>
-        <div class="feed-text">Interesting. You're building a case for discipline — but discipline over what?</div>
-      </div>
-
-      <!-- Another action -->
-      <div class="feed-entry entry-action">
-        <div class="feed-timestamp">Control Room visited</div>
-        <div class="feed-text">Entered the Control Room — Constraints</div>
-      </div>
-
-      <!-- Architect reacts -->
-      <div class="feed-entry">
-        <div class="feed-timestamp">Control Room</div>
-        <div class="feed-text">The Control Room remembers what you choose to overlook.</div>
-      </div>
-
-      <!-- Card collected -->
-      <div class="feed-entry entry-action">
-        <div class="feed-timestamp">Control Room — card collected</div>
-        <div class="feed-text">Collected "Tests were added late after repeated AI failures" as Objection</div>
-      </div>
-
-      <!-- Architect reacts to objection -->
-      <div class="feed-entry entry-tension">
-        <div class="feed-timestamp">Tension shift</div>
-        <div class="feed-text">Failure as evidence. You're not afraid to use it against her.</div>
-      </div>
-
-      <!-- Gallery action -->
-      <div class="feed-entry entry-action">
-        <div class="feed-timestamp">Gallery visited</div>
-        <div class="feed-text">Entered the Gallery — Awards</div>
-      </div>
-
-      <div class="feed-entry">
-        <div class="feed-timestamp">Gallery</div>
-        <div class="feed-text">The Gallery remembers what you choose to overlook.</div>
-      </div>
-
-      <div class="feed-entry entry-action">
-        <div class="feed-timestamp">Gallery — card collected</div>
-        <div class="feed-text">Collected "A Gold Homer Award was earned" as Proof</div>
-      </div>
-    </div>
-
-    <!-- Evidence tally — compact, bottom of panel -->
-    <div class="evidence-tally">
-      <div class="tally-header">Evidence collected</div>
-      <div class="tally-row tally-proof">
-        <div class="tally-label">Proof</div>
-        <div class="tally-bar"><div class="tally-bar-fill" style="width: 66%;"></div></div>
-        <div class="tally-count">2</div>
-      </div>
-      <div class="tally-row tally-objection">
-        <div class="tally-label">Objection</div>
-        <div class="tally-bar"><div class="tally-bar-fill" style="width: 33%;"></div></div>
-        <div class="tally-count">1</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  const architectPanel = document.getElementById('architectPanel');
-
-  function showView(name) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.getElementById(name + '-view').classList.add('active');
-    document.querySelectorAll('.proto-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`[onclick="showView('${name}')"]`)?.classList.add('active');
-
-    // Architect panel visible on mansion + room views only
-    architectPanel.classList.toggle('visible', name === 'mansion' || name === 'room');
-  }
-</script>
-</body>
+        // Architect panel visible on mansion + room views only
+        architectPanel.classList.toggle('visible', name === 'mansion' || name === 'room');
+      }
+    </script>
+  </body>
 </html>
