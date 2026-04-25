@@ -3,29 +3,26 @@ import type { ClaimCardEntry } from '$lib/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type JoinedCard = {
-  objectID: string;
-  title: string;
-  category: string;
-  deleted_at: string | null;
-};
-
 type ClaimCardRow = {
   card_id: string;
   ambiguity: number;
   surprise: number;
   rewritten_blurb: string;
-  card: JoinedCard | JoinedCard[] | null;
+};
+
+type PublicCardRow = {
+  objectID: string;
+  title: string;
+  category: string;
 };
 
 /**
- * Fetch the deck of cards for an active claim, joined with the player-visible
- * fields from public.cards. Cards return in Witness-mode order: least-charged
- * (lowest ambiguity * surprise) first, most-charged last.
+ * Fetch the deck of cards for an active claim. Two-step query: suspicion.claim_cards
+ * then public.cards. PostgREST cannot resolve cross-schema embedded joins when
+ * .schema('suspicion') is active — the join must be done in application code.
  *
- * Category and soft-delete filters push down into the embedded filter so the
- * DB doesn't ship rows we'll drop in JS. Excluded card IDs are UUID-validated
- * to keep the `not(in ...)` clause injection-free.
+ * Cards return in Witness-mode order: least-charged (lowest ambiguity * surprise)
+ * first. Excluded card IDs are UUID-validated before use in the query.
  */
 export async function fetchClaimDeck(
   claimId: string,
@@ -36,37 +33,54 @@ export async function fetchClaimDeck(
     return { cards: [], error: 'Invalid claim_id' };
   }
   const safeExclude = exclude.filter((id) => UUID_RE.test(id));
+  const db = getSupabase();
 
-  let query = getSupabase()
+  let claimQuery = db
     .schema('suspicion')
     .from('claim_cards')
-    .select(
-      `card_id, ambiguity, surprise, rewritten_blurb,
-       card:cards!claim_cards_card_id_fkey!inner(objectID, title, category, deleted_at)`,
-    )
-    .eq('claim_id', claimId)
-    .eq('card.category', category)
-    .is('card.deleted_at', null);
+    .select('card_id, ambiguity, surprise, rewritten_blurb')
+    .eq('claim_id', claimId);
 
   if (safeExclude.length > 0) {
-    query = query.not('card_id', 'in', `(${safeExclude.join(',')})`);
+    claimQuery = claimQuery.not('card_id', 'in', `(${safeExclude.join(',')})`);
   }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error('[cards] fetchClaimDeck failed:', error.message);
+  const { data: claimRows, error: claimError } = await claimQuery;
+  if (claimError) {
+    console.error('[cards] fetchClaimDeck failed:', claimError.message);
+    return { cards: [], error: 'Failed to fetch deck' };
+  }
+  if (!claimRows || claimRows.length === 0) {
+    return { cards: [], error: null };
+  }
+
+  const cardIds = (claimRows as ClaimCardRow[]).map((r) => r.card_id);
+
+  const { data: cardRows, error: cardError } = await db
+    .from('cards')
+    .select('objectID, title, category')
+    .in('objectID', cardIds)
+    .eq('category', category)
+    .is('deleted_at', null);
+
+  if (cardError) {
+    console.error('[cards] fetchClaimDeck card lookup failed:', cardError.message);
     return { cards: [], error: 'Failed to fetch deck' };
   }
 
+  const cardMap = new Map<string, PublicCardRow>(
+    (cardRows as PublicCardRow[]).map((c) => [c.objectID, c]),
+  );
+
   const cards: ClaimCardEntry[] = [];
-  for (const row of (data ?? []) as ClaimCardRow[]) {
-    const inner = Array.isArray(row.card) ? row.card[0] : row.card;
-    if (!inner) continue;
+  for (const row of claimRows as ClaimCardRow[]) {
+    const card = cardMap.get(row.card_id);
+    if (!card) continue;
     cards.push({
-      objectID: inner.objectID,
-      title: inner.title,
+      objectID: card.objectID,
+      title: card.title,
       blurb: row.rewritten_blurb,
-      category: inner.category,
+      category: card.category,
       weight: row.ambiguity * row.surprise,
     });
   }
