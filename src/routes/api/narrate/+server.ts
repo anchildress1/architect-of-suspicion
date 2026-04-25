@@ -19,7 +19,6 @@ const FALLBACK_DIALOGUE =
   'Go on, then. I was going to comment, but I suppose you can draw your own conclusions.';
 
 const MAX_NARRATE_REQUEST_BYTES = 4_096;
-const MAX_CLAIM_LENGTH = 300;
 const MAX_ROOM_LENGTH = 40;
 const MAX_ROOMS_VISITED = 12;
 const MAX_EVIDENCE_COUNT = 1_000;
