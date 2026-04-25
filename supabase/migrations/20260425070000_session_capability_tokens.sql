@@ -8,6 +8,11 @@ ALTER TABLE suspicion.sessions
 -- Pre-existing sessions have no token hash and cannot authenticate under the
 -- new capability scheme. Per the no-backwards-compatibility rule, delete them
 -- rather than backfilling unmatchable fake hashes that would just block auth.
+DELETE FROM suspicion.picks p
+USING suspicion.sessions s
+WHERE p.session_id = s.session_id
+  AND s.session_token_hash IS NULL;
+
 DELETE FROM suspicion.sessions
 WHERE session_token_hash IS NULL;
 
