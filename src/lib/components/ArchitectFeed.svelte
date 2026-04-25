@@ -73,7 +73,7 @@
     font-family: var(--font-display);
     font-style: italic;
     font-size: 0.95rem;
-    color: rgba(233, 228, 216, 0.5);
+    color: var(--color-paper-dim);
     line-height: 1.5;
   }
 
@@ -135,7 +135,7 @@
   }
 
   .feed-narration .feed-text {
-    color: rgba(233, 228, 216, 0.6);
+    color: var(--color-paper-dim);
     font-size: 14px;
     line-height: 1.5;
   }

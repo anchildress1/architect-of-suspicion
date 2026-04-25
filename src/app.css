@@ -27,10 +27,12 @@
   --color-paper-ink: #14141a;
 
   --color-brass: #c9c4b4;
-  /* brass-dim was #7a7668 (4.33:1 on --color-ink) — below WCAG AA for body
-     text. Bumped to #908a7e (6.35:1) so every small mono caption, eyebrow,
-     and field label clears AA on the dark surface without changing tone. */
-  --color-brass-dim: #908a7e;
+  /* brass-dim drives every small mono caption, eyebrow, field label, and
+     timestamp on dark surfaces — most text in the rail and chrome. The
+     original #7a7668 scored 4.33:1 (sub-AA); the previous bump to #908a7e
+     hit 6.35:1 but still read flat at 9-10px sizes. Pushed to #aaa498
+     (8.0:1, well into AAA) so the small text reads cleanly at any size. */
+  --color-brass-dim: #aaa498;
   --color-brass-deep: #3e3c34;
   --color-brass-glow: #e9e4d8;
 
