@@ -49,75 +49,77 @@
 
   <main class="mansion-main">
     <div class="board reveal">
-      <img
-        class="board-bg"
-        src="/backgrounds/house-exterior.webp"
-        alt="The mansion exterior at night, nine chambers visible"
-        draggable="false"
-      />
-      <div class="board-overlay" aria-hidden="true"></div>
+      <div class="board-canvas">
+        <img
+          class="board-bg"
+          src="/backgrounds/house-exterior.webp"
+          alt="The mansion exterior at night, nine chambers visible"
+          draggable="false"
+        />
+        <div class="board-overlay" aria-hidden="true"></div>
 
-      <header class="board-head">
-        <div>
-          <h1 class="board-title">The Mansion</h1>
-          <p class="board-sub">Nine chambers &middot; pick one to enter</p>
-        </div>
-        <p class="board-clock">
-          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &middot; chamber
-          clock
-        </p>
-      </header>
-
-      {#each rooms as room (room.slug)}
-        {@const pin = PINS[room.slug]}
-        {@const visited = gameState.current.roomsVisited.includes(room.slug)}
-        {@const sealed = !room.isPlayable && room.slug !== 'attic'}
-        {#if pin}
-          <div
-            class="room-pin"
-            class:room-pin-flip={pin.flip}
-            class:room-pin-visited={visited}
-            class:room-pin-sealed={sealed}
-            style="left: {pin.x}%; top: {pin.y}%"
-          >
-            <span class="pin-dot" aria-hidden="true"></span>
-            <span class="pin-leader" aria-hidden="true"></span>
-
-            {#if sealed}
-              <div class="pin-tag pin-tag-sealed" aria-hidden="true">
-                <p class="pin-row1">
-                  <span>Ch. {pin.chamber}</span>
-                  <span class="pin-tag-status">— — —</span>
-                </p>
-                <p class="pin-name">{room.name}</p>
-                <p class="pin-cat">Sealed &middot; no entry</p>
-              </div>
-            {:else if room.slug === 'attic'}
-              <a href="/attic" class="pin-tag pin-tag-meta">
-                <p class="pin-row1">
-                  <span>Ch. {pin.chamber}</span>
-                  <span class="pin-tag-status">Meta</span>
-                </p>
-                <p class="pin-name">{room.name}</p>
-                <p class="pin-cat">How to play &middot; bio &middot; credits</p>
-              </a>
-            {:else}
-              <a
-                href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
-                class="pin-tag"
-                aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
-              >
-                <p class="pin-row1">
-                  <span>Ch. {pin.chamber}</span>
-                  <span class="pin-tag-status">{visited ? 'Resume' : 'Enter'}</span>
-                </p>
-                <p class="pin-name">{room.name}</p>
-                <p class="pin-cat">{room.category}</p>
-              </a>
-            {/if}
+        <header class="board-head">
+          <div>
+            <h1 class="board-title">The Mansion</h1>
+            <p class="board-sub">Nine chambers &middot; pick one to enter</p>
           </div>
-        {/if}
-      {/each}
+          <p class="board-clock">
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &middot; chamber
+            clock
+          </p>
+        </header>
+
+        {#each rooms as room (room.slug)}
+          {@const pin = PINS[room.slug]}
+          {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+          {@const sealed = !room.isPlayable && room.slug !== 'attic'}
+          {#if pin}
+            <div
+              class="room-pin"
+              class:room-pin-flip={pin.flip}
+              class:room-pin-visited={visited}
+              class:room-pin-sealed={sealed}
+              style="left: {pin.x}%; top: {pin.y}%"
+            >
+              <span class="pin-dot" aria-hidden="true"></span>
+              <span class="pin-leader" aria-hidden="true"></span>
+
+              {#if sealed}
+                <div class="pin-tag pin-tag-sealed" aria-hidden="true">
+                  <p class="pin-row1">
+                    <span>Ch. {pin.chamber}</span>
+                    <span class="pin-tag-status">— — —</span>
+                  </p>
+                  <p class="pin-name">{room.name}</p>
+                  <p class="pin-cat">Sealed &middot; no entry</p>
+                </div>
+              {:else if room.slug === 'attic'}
+                <a href="/attic" class="pin-tag pin-tag-meta">
+                  <p class="pin-row1">
+                    <span>Ch. {pin.chamber}</span>
+                    <span class="pin-tag-status">Meta</span>
+                  </p>
+                  <p class="pin-name">{room.name}</p>
+                  <p class="pin-cat">How to play &middot; bio &middot; credits</p>
+                </a>
+              {:else}
+                <a
+                  href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
+                  class="pin-tag"
+                  aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
+                >
+                  <p class="pin-row1">
+                    <span>Ch. {pin.chamber}</span>
+                    <span class="pin-tag-status">{visited ? 'Resume' : 'Enter'}</span>
+                  </p>
+                  <p class="pin-name">{room.name}</p>
+                  <p class="pin-cat">{room.category}</p>
+                </a>
+              {/if}
+            </div>
+          {/if}
+        {/each}
+      </div>
     </div>
   </main>
 </div>
@@ -138,15 +140,25 @@
     padding: 1.5rem 2rem;
   }
 
+  /* The board: a brass-bordered frame; the photograph is set INTO it. */
   .board {
     position: relative;
     width: 100%;
     max-width: 1280px;
     aspect-ratio: 1440 / 900;
-    border: 1px solid rgba(233, 228, 216, 0.16);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
+    background: #0a0a0d;
+    border: 1px solid rgba(196, 162, 78, 0.4);
+    box-shadow:
+      inset 0 0 0 6px rgba(0, 0, 0, 0.5),
+      0 30px 80px rgba(0, 0, 0, 0.7);
     isolation: isolate;
+  }
+
+  /* Canvas sits inside the frame; pins reference its dimensions. */
+  .board-canvas {
+    position: absolute;
+    inset: 26px;
+    overflow: hidden;
   }
 
   .board-bg {
@@ -213,65 +225,89 @@
     z-index: 4;
   }
 
+  /* Pins as physical brass dots with two pinging rings. */
   .pin-dot {
+    position: relative;
     display: block;
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    background: var(--color-ember);
-    box-shadow:
-      0 0 0 3px rgba(210, 58, 42, 0.18),
-      0 0 18px rgba(210, 58, 42, 0.5);
-    animation: pinPulse 3.6s ease-in-out infinite;
+    background: radial-gradient(circle at 35% 30%, #f0c24d, #8a7235 65%, #3a2f18 100%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   }
 
-  .room-pin-visited .pin-dot {
-    background: var(--color-bone);
-    box-shadow:
-      0 0 0 3px rgba(233, 228, 216, 0.18),
-      0 0 14px rgba(233, 228, 216, 0.4);
+  .pin-dot::before,
+  .pin-dot::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1px solid rgba(240, 194, 77, 0.45);
+    animation: pinPing 2.5s ease-out infinite;
+    pointer-events: none;
   }
 
-  .room-pin-sealed .pin-dot {
-    background: var(--color-rivet);
-    box-shadow: none;
-    animation: none;
+  .pin-dot::after {
+    animation-delay: 0.7s;
   }
 
-  @keyframes pinPulse {
-    0%,
-    100% {
-      transform: scale(1);
+  @keyframes pinPing {
+    0% {
+      transform: scale(0.6);
       opacity: 1;
     }
-    50% {
-      transform: scale(1.18);
-      opacity: 0.85;
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
     }
   }
 
+  /* Visited: dot saturates to gold, ring borders brighten. */
+  .room-pin-visited .pin-dot {
+    background: radial-gradient(circle at 35% 30%, #ffd76a, #c89a3a 65%, #5a4220 100%);
+  }
+
+  .room-pin-visited .pin-dot::before,
+  .room-pin-visited .pin-dot::after {
+    border-color: rgba(255, 215, 106, 0.65);
+  }
+
+  /* Sealed: ember rim, no ping. */
+  .room-pin-sealed .pin-dot {
+    background: radial-gradient(circle at 35% 30%, #4a4248, #2a2428 65%, #1a141a 100%);
+  }
+
+  .room-pin-sealed .pin-dot::before,
+  .room-pin-sealed .pin-dot::after {
+    border-color: rgba(210, 58, 42, 0.45);
+    animation: none;
+    transform: scale(1);
+    opacity: 0.55;
+  }
+
+  /* Leader connects dot to tag in warm brass. */
   .pin-leader {
     position: absolute;
     top: 50%;
-    left: 12px;
-    width: 60px;
+    left: 14px;
+    width: 58px;
     height: 1px;
-    background: linear-gradient(90deg, rgba(210, 58, 42, 0.55), transparent);
+    background: linear-gradient(90deg, rgba(196, 162, 78, 0.55), transparent);
     transform-origin: left;
   }
 
   .room-pin-flip .pin-leader {
     left: auto;
-    right: 12px;
-    background: linear-gradient(270deg, rgba(210, 58, 42, 0.55), transparent);
+    right: 14px;
+    background: linear-gradient(270deg, rgba(196, 162, 78, 0.55), transparent);
   }
 
   .room-pin-visited .pin-leader {
-    background: linear-gradient(90deg, rgba(233, 228, 216, 0.45), transparent);
+    background: linear-gradient(90deg, rgba(255, 215, 106, 0.6), transparent);
   }
 
   .room-pin-visited.room-pin-flip .pin-leader {
-    background: linear-gradient(270deg, rgba(233, 228, 216, 0.45), transparent);
+    background: linear-gradient(270deg, rgba(255, 215, 106, 0.6), transparent);
   }
 
   .pin-tag {
@@ -280,12 +316,15 @@
     left: 72px;
     width: 200px;
     padding: 0.55rem 0.7rem;
-    background: rgba(11, 11, 13, 0.92);
-    border: 1px solid rgba(233, 228, 216, 0.18);
+    background: linear-gradient(180deg, rgba(20, 22, 30, 0.85) 0%, rgba(11, 12, 18, 0.9) 100%);
+    border: 1px solid rgba(196, 162, 78, 0.45);
     text-decoration: none;
     color: var(--color-paper);
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
+    backdrop-filter: blur(2px);
   }
 
   .room-pin-flip .pin-tag {
@@ -295,10 +334,20 @@
   }
 
   .pin-tag:hover {
-    border-color: var(--color-ember);
-    background: rgba(20, 20, 23, 0.96);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    border-color: rgba(255, 215, 106, 0.75);
+    box-shadow:
+      0 12px 32px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 215, 106, 0.35);
     transform: translateY(-2px);
+  }
+
+  /* Visited tag border glows brass; sealed gets the ember rim. */
+  .room-pin-visited .pin-tag {
+    border-color: rgba(255, 215, 106, 0.55);
+  }
+
+  .room-pin-sealed .pin-tag {
+    border-color: rgba(210, 58, 42, 0.4);
   }
 
   .pin-tag-sealed {
