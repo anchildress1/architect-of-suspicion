@@ -33,8 +33,9 @@ describe('rateLimit', () => {
     const result = checkRateLimit('127.0.0.1');
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
-    expect(result.retryAfterMs).toBeDefined();
-    expect(result.retryAfterMs!).toBeGreaterThanOrEqual(0);
+    if (!result.allowed) {
+      expect(result.retryAfterMs).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it('tracks different IPs independently', () => {
@@ -74,10 +75,8 @@ describe('rateLimit', () => {
     checkRateLimit('198.51.100.10');
     expect(checkRateLimit('198.51.100.10').allowed).toBe(false);
 
-    // Trigger the 60s cleanup interval callback.
     vi.advanceTimersByTime(60_001);
 
-    // After cleanup, the stale timestamps should be gone.
     expect(checkRateLimit('198.51.100.10').allowed).toBe(true);
 
     vi.useRealTimers();
@@ -87,7 +86,6 @@ describe('rateLimit', () => {
     env.API_RATE_LIMIT_MAX_REQUESTS = 'not-a-number';
     env.API_RATE_LIMIT_WINDOW_MS = '-1';
 
-    // Default max is 30 requests; the 31st should be blocked.
     for (let i = 0; i < 30; i++) {
       expect(checkRateLimit('203.0.113.1').allowed).toBe(true);
     }
@@ -130,7 +128,13 @@ describe('rateLimitGuard', () => {
     expect(body.message).toContain('Too many requests');
   });
 
-  it('falls back to unknown for empty address', () => {
-    expect(rateLimitGuard('')).toBeNull();
+  it('falls back to unknown bucket and logs when address is empty', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = rateLimitGuard('');
+
+    expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[rate-limit]'));
+    errorSpy.mockRestore();
   });
 });

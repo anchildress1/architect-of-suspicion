@@ -44,10 +44,6 @@ function getConfig() {
   return { maxRequests, windowMs };
 }
 
-/**
- * Clean up expired entries from the store.
- * Runs periodically to prevent memory leaks.
- */
 function cleanup() {
   const { windowMs } = getConfig();
   const now = Date.now();
@@ -61,25 +57,19 @@ function cleanup() {
 
 function ensureCleanup() {
   if (!cleanupInterval) {
-    // Clean up every 60 seconds
     cleanupInterval = setInterval(cleanup, 60_000);
-    // Allow Node process to exit even if interval is active
+    // unref() prevents this interval from keeping the Cloud Run container alive
+    // past its intended shutdown window, allowing graceful termination.
     if (typeof cleanupInterval === 'object' && 'unref' in cleanupInterval) {
       cleanupInterval.unref();
     }
   }
 }
 
-export interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  retryAfterMs?: number;
-}
+export type RateLimitResult =
+  | { allowed: true; remaining: number }
+  | { allowed: false; remaining: 0; retryAfterMs: number };
 
-/**
- * Check if a request from the given IP is within the rate limit.
- * Returns { allowed, remaining, retryAfterMs }.
- */
 export function checkRateLimit(ip: string): RateLimitResult {
   ensureCleanup();
 
@@ -92,7 +82,6 @@ export function checkRateLimit(ip: string): RateLimitResult {
     store.set(ip, record);
   }
 
-  // Remove expired timestamps
   record.timestamps = record.timestamps.filter((t) => now - t < windowMs);
 
   if (record.timestamps.length >= maxRequests) {
@@ -113,13 +102,15 @@ export function checkRateLimit(ip: string): RateLimitResult {
 }
 
 /**
- * Check rate limit for a client and return a 429 Response if exceeded.
- * Returns null when the request is within limits.
- *
  * @param clientAddress - Use `event.getClientAddress()` from SvelteKit
  *   to get the trusted client IP (set by the platform/proxy, not spoofable).
  */
 export function rateLimitGuard(clientAddress: string): Response | null {
+  if (!clientAddress) {
+    console.error(
+      '[rate-limit] getClientAddress() returned empty — falling back to shared bucket. Check platform adapter configuration.',
+    );
+  }
   const ip = clientAddress || 'unknown';
   const limit = checkRateLimit(ip);
   if (!limit.allowed) {
@@ -129,7 +120,7 @@ export function rateLimitGuard(clientAddress: string): Response | null {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
-          'Retry-After': String(Math.ceil((limit.retryAfterMs ?? 60000) / 1000)),
+          'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)),
         },
       },
     );
