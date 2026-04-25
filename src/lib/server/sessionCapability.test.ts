@@ -18,6 +18,9 @@ vi.mock('@sveltejs/kit', () => ({
   },
 }));
 
+const mockEnvironment = { dev: true };
+vi.mock('$app/environment', () => mockEnvironment);
+
 import {
   hashSessionCapability,
   loadSessionCapability,
@@ -50,11 +53,9 @@ function setupSessionLookup(result: { data: unknown; error: unknown }) {
 }
 
 describe('sessionCapability helpers', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NODE_ENV = originalNodeEnv;
+    mockEnvironment.dev = true;
   });
 
   it('hashes capability tokens deterministically', () => {
@@ -76,7 +77,8 @@ describe('sessionCapability helpers', () => {
     expect(two.tokenHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('sets both session cookies with secure=false outside production', () => {
+  it('sets both session cookies with secure=false in dev mode', () => {
+    mockEnvironment.dev = true;
     const cookies = makeCookies({});
 
     setSessionCookies(
@@ -101,7 +103,7 @@ describe('sessionCapability helpers', () => {
   });
 
   it('sets both session cookies with secure=true in production', () => {
-    process.env.NODE_ENV = 'production';
+    mockEnvironment.dev = false;
     const cookies = makeCookies({});
 
     setSessionCookies(
@@ -208,7 +210,7 @@ describe('sessionCapability helpers', () => {
     errorSpy.mockRestore();
   });
 
-  it('throws when session is missing', async () => {
+  it('throws when session is missing (collapses to 401 to prevent enumeration)', async () => {
     setupSessionLookup({ data: null, error: null });
     const cookies = makeCookies({
       [SESSION_ID_COOKIE]: '550e8400-e29b-41d4-a716-446655440000',
@@ -217,10 +219,10 @@ describe('sessionCapability helpers', () => {
 
     await expect(
       loadSessionCapability(cookies as unknown as Parameters<typeof loadSessionCapability>[0]),
-    ).rejects.toThrow('Session not found');
+    ).rejects.toThrow('Invalid session capability');
   });
 
-  it('throws when session has no claim_id', async () => {
+  it('throws when session has no claim_id (collapses to 401 to prevent enumeration)', async () => {
     setupSessionLookup({
       data: {
         session_id: '550e8400-e29b-41d4-a716-446655440000',
@@ -238,7 +240,16 @@ describe('sessionCapability helpers', () => {
 
     await expect(
       loadSessionCapability(cookies as unknown as Parameters<typeof loadSessionCapability>[0]),
-    ).rejects.toThrow('Session has no claim');
+    ).rejects.toThrow('Invalid session capability');
+  });
+
+  it('hashSessionCapability always produces a valid 64-char hex string', () => {
+    // SHA-256 always produces exactly 64 hex chars regardless of input, so
+    // compareHex's zero-length guard can never fire in practice — the regex
+    // gate before it prevents non-64-char hashes from reaching compareHex.
+    expect(hashSessionCapability('any-input')).toMatch(/^[0-9a-f]{64}$/);
+    expect(hashSessionCapability('')).toMatch(/^[0-9a-f]{64}$/);
+    expect(hashSessionCapability('a'.repeat(1000))).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('throws when DB token hash is malformed', async () => {

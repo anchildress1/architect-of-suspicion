@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { error, type Cookies } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { getSupabase } from '$lib/server/supabase';
 import { BASELINE_ATTENTION, clampAttention } from '$lib/attention';
 import { isUuid } from '$lib/server/validation';
@@ -23,6 +24,8 @@ export interface SessionCapabilityContext {
   attention: number;
 }
 
+// timingSafeEqual prevents timing attacks where an attacker could guess
+// the correct hash one byte at a time by measuring response latency.
 function compareHex(a: string, b: string): boolean {
   const aBytes = Buffer.from(a, 'hex');
   const bBytes = Buffer.from(b, 'hex');
@@ -50,7 +53,7 @@ export function mintSessionCapability(): { token: string; tokenHash: string } {
 }
 
 export function setSessionCookies(cookies: Cookies, sessionId: string, token: string): void {
-  const secure = process.env.NODE_ENV === 'production';
+  const secure = !dev;
   const baseOptions = {
     path: '/',
     httpOnly: true,
@@ -85,12 +88,8 @@ export async function loadSessionCapability(cookies: Cookies): Promise<SessionCa
     console.error('[session-capability] sessions read failed:', sessErr.message);
     error(500, 'Failed to read session');
   }
-  if (!data) {
-    error(404, 'Session not found');
-  }
-
-  if (!data.claim_id) {
-    error(400, 'Session has no claim');
+  if (!data || !data.claim_id) {
+    error(401, 'Invalid session capability');
   }
 
   const expectedHash = data.session_token_hash;
