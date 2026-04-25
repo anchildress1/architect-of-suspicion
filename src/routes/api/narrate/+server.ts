@@ -12,7 +12,7 @@ import {
 } from '$lib/server/validation';
 import { rooms } from '$lib/rooms';
 
-const VALID_ACTIONS: NarrationAction[] = ['enter_room', 'idle', 'wander'];
+const VALID_ACTIONS = new Set<NarrationAction>(['enter_room', 'idle', 'wander']);
 const VALID_ROOMS = new Set([...rooms.map((room) => room.slug), 'mansion']);
 
 const FALLBACK_DIALOGUE =
@@ -38,7 +38,7 @@ interface ValidatedNarrationInput {
 }
 
 function validateInput(body: NarrateRequest): ValidatedNarrationInput {
-  if (!body.action || !VALID_ACTIONS.includes(body.action as NarrationAction)) {
+  if (!body.action || !VALID_ACTIONS.has(body.action as NarrationAction)) {
     error(400, 'action must be "enter_room", "idle", or "wander"');
   }
 

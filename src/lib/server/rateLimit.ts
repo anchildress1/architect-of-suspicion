@@ -111,8 +111,7 @@ export function rateLimitGuard(clientAddress: string): Response | null {
       '[rate-limit] getClientAddress() returned empty — falling back to shared bucket. Check platform adapter configuration.',
     );
   }
-  const ip = clientAddress || 'unknown';
-  const limit = checkRateLimit(ip);
+  const limit = checkRateLimit(clientAddress || 'unknown');
   if (!limit.allowed) {
     return new Response(
       JSON.stringify({ message: 'Too many requests. The Architect needs a moment.' }),
