@@ -21,6 +21,16 @@
   const current = $derived(deck[pointer]);
   const exhausted = $derived(remaining === 0);
 
+  const peekData = $derived.by(() => {
+    for (let i = pointer + 1; i < deck.length; i++) {
+      if (!rulings[deck[i].objectID]) return { card: deck[i], index: i };
+    }
+    for (let i = 0; i < pointer; i++) {
+      if (!rulings[deck[i].objectID]) return { card: deck[i], index: i };
+    }
+    return null;
+  });
+
   function nextUnruledIndex(from: number): number {
     for (let i = from + 1; i < deck.length; i++) {
       if (!rulings[deck[i].objectID]) return i;
@@ -165,13 +175,25 @@
           </div>
         </div>
       {:else}
-        <WitnessCard
-          card={current}
-          index={pointer}
-          total={deck.length}
-          onDecide={decide}
-          disabled={evaluating}
-        />
+        <div class="witness-stack">
+          {#if peekData}
+            <WitnessCard
+              peek
+              card={peekData.card}
+              index={peekData.index}
+              total={deck.length}
+              onDecide={() => {}}
+              disabled
+            />
+          {/if}
+          <WitnessCard
+            card={current}
+            index={pointer}
+            total={deck.length}
+            onDecide={decide}
+            disabled={evaluating}
+          />
+        </div>
       {/if}
     </div>
 
@@ -294,6 +316,27 @@
     justify-content: center;
     padding: 1.5rem 2.5rem 2rem;
     overflow: hidden;
+  }
+
+  /* Stack: peek card sits behind active in the same grid cell. */
+  .witness-stack {
+    position: relative;
+    display: grid;
+    grid-template-columns: min(100%, 36rem);
+    justify-content: center;
+  }
+
+  .witness-stack :global(.witness-card) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .witness-stack :global(.witness-card.peek) {
+    z-index: 1;
+  }
+
+  .witness-stack :global(.witness-card:not(.peek)) {
+    z-index: 2;
   }
 
   .chamber-empty {
