@@ -74,25 +74,31 @@
 </article>
 
 <style>
+  /* Parchment witness card — bone broadsheet on dark stage. */
   .witness-card {
     position: relative;
     width: min(100%, 36rem);
-    background: linear-gradient(180deg, rgba(20, 20, 23, 0.92) 0%, rgba(11, 11, 13, 0.96) 100%);
-    border: 1px solid rgba(233, 228, 216, 0.18);
+    background: var(--color-bone);
+    color: var(--color-paper-ink);
     box-shadow:
       0 30px 60px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(233, 228, 216, 0.04);
-    padding: 2rem 2.25rem 1.4rem;
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    padding: 2.75rem 3.5rem 2.25rem;
     overflow: hidden;
     transition:
       transform 360ms cubic-bezier(0.4, 0, 0.2, 1),
-      opacity 360ms ease;
+      opacity 360ms ease,
+      filter 360ms ease;
   }
 
+  /* 3px ember left rule — the only chromatic event on the parchment */
   .wc-edge {
     position: absolute;
-    inset: 12px;
-    border: 1px solid rgba(233, 228, 216, 0.08);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: var(--color-ember);
     pointer-events: none;
   }
 
@@ -101,29 +107,32 @@
     justify-content: space-between;
     margin-bottom: 1.4rem;
     padding-bottom: 0.7rem;
-    border-bottom: 1px dashed rgba(233, 228, 216, 0.16);
+    border-bottom: 1px solid rgba(20, 20, 26, 0.15);
     font-family: var(--font-readout);
     font-size: 0.6rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: rgba(20, 20, 26, 0.55);
   }
 
   .wc-title {
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: clamp(1.4rem, 2vw, 1.85rem);
-    color: var(--color-bone);
-    line-height: 1.25;
+    font-style: normal;
+    font-weight: 400;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    color: var(--color-paper-ink);
+    line-height: 1.05;
+    letter-spacing: -0.005em;
     text-wrap: balance;
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
   }
 
   .wc-body {
     font-family: var(--font-body);
-    font-size: 0.95rem;
-    color: var(--color-paper-dim);
-    line-height: 1.65;
+    font-size: 1.0625rem;
+    color: rgba(20, 20, 26, 0.78);
+    line-height: 1.55;
+    max-width: 56ch;
     margin-bottom: 1.8rem;
     text-wrap: pretty;
   }
@@ -136,56 +145,55 @@
     font-size: 0.55rem;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: rgba(20, 20, 26, 0.55);
     margin-bottom: 1.2rem;
   }
 
   .wc-line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, var(--color-brass-deep), transparent);
+    background: linear-gradient(90deg, rgba(20, 20, 26, 0.18), transparent);
   }
 
-  /* Stamps — overlay when a verdict is rendered */
+  /* Stamps — top-right, hand-pressed onto parchment */
   .wc-stamp {
     position: absolute;
-    top: 25%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-8deg) scale(0.6);
+    top: 36px;
+    right: 44px;
+    transform-origin: top right;
+    transform: rotate(-8deg) scale(1.2);
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: 4rem;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border: 6px double currentColor;
-    padding: 0.5rem 1.5rem;
+    border: 3px solid currentColor;
+    padding: 0.4rem 0.9rem;
     opacity: 0;
     pointer-events: none;
     transition:
-      opacity 240ms ease,
-      transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      opacity 180ms ease-out,
+      transform 180ms cubic-bezier(0.3, 1.5, 0.4, 1);
   }
 
   .wc-stamp-proof {
-    color: var(--color-bone);
+    color: #0a6a4a;
   }
-
   .wc-stamp-objection {
-    color: var(--color-cyan-ink);
+    color: var(--color-ember);
   }
-
   .wc-stamp-dismiss {
-    color: var(--color-brass-dim);
+    color: #5a5a5a;
   }
 
   .exit-proof .wc-stamp-proof,
   .exit-objection .wc-stamp-objection,
   .exit-dismiss .wc-stamp-dismiss {
-    opacity: 0.85;
-    transform: translate(-50%, -50%) rotate(-8deg) scale(1);
+    opacity: 0.92;
+    transform: rotate(-8deg) scale(1);
   }
 
-  /* Card exits */
+  /* Card exits — tuned per verdict (proof rises, objection falls right, dismiss drains) */
   .exit-proof,
   .exit-objection,
   .exit-dismiss {
@@ -193,18 +201,19 @@
   }
 
   .exit-proof {
-    transform: translateX(36px) rotate(2deg);
+    transform: translateY(-24px) rotate(1deg);
   }
 
   .exit-objection {
-    transform: translateX(-36px) rotate(-2deg);
+    transform: translateX(40px) rotate(-2deg);
   }
 
   .exit-dismiss {
-    transform: translateY(28px) scale(0.97);
+    transform: translateX(-32px) scale(0.97);
+    filter: grayscale(1);
   }
 
-  /* Lever strip */
+  /* Lever strip — interim treatment on bone; full slate-switch pass lands in gap #03 */
   .wc-levers {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -217,8 +226,8 @@
     align-items: flex-start;
     gap: 0.2rem;
     padding: 0.85rem 0.9rem;
-    background: rgba(11, 11, 13, 0.7);
-    border: 1px solid rgba(233, 228, 216, 0.12);
+    background: linear-gradient(180deg, #22262f 0%, #14171f 100%);
+    border: 1px solid rgba(122, 118, 104, 0.55);
     color: var(--color-paper-dim);
     cursor: pointer;
     text-align: left;
@@ -226,8 +235,8 @@
   }
 
   .lv:hover:not(:disabled) {
-    border-color: rgba(233, 228, 216, 0.4);
-    background: rgba(20, 20, 23, 0.88);
+    border-color: var(--color-bone);
+    background: linear-gradient(180deg, #2a2e38 0%, #181b25 100%);
   }
 
   .lv:disabled {
@@ -263,11 +272,11 @@
   }
 
   .lv-objection:hover:not(:disabled) {
-    border-color: var(--color-cyan-ink);
+    border-color: var(--color-ember);
   }
 
   .lv-objection:hover:not(:disabled) .lv-name {
-    color: var(--color-cyan-ink);
+    color: var(--color-ember);
   }
 
   .lv-dismiss:hover:not(:disabled) {
