@@ -35,6 +35,12 @@
 </script>
 
 <div class="meter" role="img" aria-label="The Architect's attention: {mood}">
+  <p class="meter-mood-line" aria-hidden="true">
+    <span class="meter-mood-name">{mood}</span>
+    <span class="meter-mood-sep">·</span>
+    <span class="meter-mood-value">{value}<small>/100</small></span>
+  </p>
+
   <svg viewBox="0 0 260 150" aria-hidden="true">
     <defs>
       <linearGradient id="meter-arc" x1="0" y1="0" x2="1" y2="0">
@@ -60,7 +66,7 @@
       fill="none"
       stroke="url(#meter-arc)"
       stroke-width="6"
-      opacity="0.65"
+      opacity="0.7"
     />
 
     <!-- Tick marks -->
@@ -78,25 +84,21 @@
         {y1}
         {x2}
         {y2}
-        stroke="rgba(233,228,216,0.42)"
+        stroke="rgba(233,228,216,0.55)"
         stroke-width={i % 5 === 0 ? 1.2 : 0.6}
       />
     {/each}
 
-    <!-- Quiet readout above the arc; mood + value, never the headline. -->
-    <text x="246" y="14" class="meter-readout-label" text-anchor="end">
-      {mood} · {value}<tspan class="meter-readout-suffix">/100</tspan>
-    </text>
-
-    <!-- Mood labels — geographic on the arc, no separate track. -->
+    <!-- Mood labels — geographic on the arc. -->
     <text x="24" y="146" class="meter-arc-label" text-anchor="start">COOL</text>
     <text x="130" y="36" class="meter-arc-label" text-anchor="middle">ENGAGED</text>
     <text x="236" y="146" class="meter-arc-label" text-anchor="end">FURY</text>
 
-    <!-- Needle -->
+    <!-- Needle: tip lands at the arc inner edge (radius 100); short
+         base tucks inside the hub at any rotation. -->
     <g transform="translate(130,130) rotate({angle})" class="needle-g">
-      <polygon points="0,-96 -3,6 3,6" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.6" />
-      <polygon points="0,-96 -1.5,-50 0,-58 1.5,-50" fill="#ffd2cc" opacity="0.55" />
+      <polygon points="0,-100 -2.5,2 2.5,2" fill="#d23a2a" stroke="#5a0e07" stroke-width="0.5" />
+      <polygon points="0,-100 -1.5,-50 0,-58 1.5,-50" fill="#ffd2cc" opacity="0.6" />
     </g>
 
     <!-- Hub -->
@@ -147,22 +149,33 @@
 
   .meter-arc-label {
     font-family: var(--font-readout, monospace);
-    font-size: 8.5px;
-    letter-spacing: 0.22em;
-    fill: var(--color-brass-dim);
-  }
-
-  .meter-readout-label {
-    font-family: var(--font-readout, monospace);
     font-size: 9px;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.22em;
     fill: var(--color-bone-dim);
-    text-transform: uppercase;
   }
 
-  .meter-readout-suffix {
+  /* Mood + value above the gauge, mono and quiet. */
+  .meter-mood-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-bone);
+  }
+
+  .meter-mood-sep {
+    color: var(--color-brass);
+  }
+
+  .meter-mood-value small {
     font-size: 0.78em;
-    fill: var(--color-brass-dim);
+    color: var(--color-brass);
+    margin-left: 0.05em;
   }
 
   .meter-poles {
@@ -174,7 +187,7 @@
     font-size: 9px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--color-brass-dim);
+    color: var(--color-brass);
   }
 
   .meter-delta {
