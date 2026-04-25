@@ -1,9 +1,15 @@
 import type { PageServerLoad } from './$types';
 import { getSupabase } from '$lib/server/supabase';
+import { loadSessionCapability } from '$lib/server/sessionCapability';
 
-export const load: PageServerLoad = async ({ url }) => {
-  const sessionId = url.searchParams.get('session');
-  if (!sessionId) return { session: null };
+export const load: PageServerLoad = async ({ cookies }) => {
+  let sessionId: string;
+  try {
+    const session = await loadSessionCapability(cookies);
+    sessionId = session.sessionId;
+  } catch {
+    return { session: null };
+  }
 
   const supabase = getSupabase();
   const { data, error } = await supabase

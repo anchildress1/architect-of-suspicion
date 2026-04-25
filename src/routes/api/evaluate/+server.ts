@@ -3,25 +3,22 @@ import type { RequestHandler } from './$types';
 import type { Classification, FullCard } from '$lib/types';
 import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
-import { getClaimById } from '$lib/server/claims';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildReactionPrompt } from '$lib/server/prompts/evaluate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
-import { applyAttentionDelta, BASELINE_ATTENTION, clampAttention } from '$lib/attention';
+import { applyAttentionDelta, clampAttention } from '$lib/attention';
+import { loadSessionCapability } from '$lib/server/sessionCapability';
+import { isUuid, parseJsonBodyWithLimit } from '$lib/server/validation';
 
 const FALLBACK_REACTION =
   'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
 
 interface EvaluateRequest {
-  session_id?: string;
-  claim_id?: string;
   card_id?: string;
   classification?: string;
 }
 
 interface ValidatedInput {
-  sessionId: string;
-  claimId: string;
   cardId: string;
   classification: Classification;
 }
@@ -38,6 +35,8 @@ const CLASSIFICATION_SIGN: Record<Classification, number> = {
   dismiss: 0,
 };
 
+const MAX_EVALUATE_REQUEST_BYTES = 1_024;
+
 function clampScore(value: unknown): number {
   if (typeof value !== 'number' || Number.isNaN(value)) return 0;
   if (value < -1) return -1;
@@ -46,46 +45,21 @@ function clampScore(value: unknown): number {
 }
 
 async function parseAndValidate(request: Request): Promise<ValidatedInput> {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    error(400, 'Invalid JSON body');
+  const body = await parseJsonBodyWithLimit<EvaluateRequest>(request, MAX_EVALUATE_REQUEST_BYTES);
+
+  const { card_id, classification } = body;
+
+  if (!card_id || typeof card_id !== 'string' || !isUuid(card_id)) {
+    error(400, 'Missing or invalid card_id');
   }
-
-  const { session_id, claim_id, card_id, classification } = body as EvaluateRequest;
-
-  if (!session_id || typeof session_id !== 'string') error(400, 'Missing or invalid session_id');
-  if (!claim_id || typeof claim_id !== 'string') error(400, 'Missing or invalid claim_id');
-  if (!card_id || typeof card_id !== 'string') error(400, 'Missing or invalid card_id');
   if (!classification || !VALID_CLASSIFICATIONS.has(classification as Classification)) {
     error(400, 'classification must be "proof", "objection", or "dismiss"');
   }
 
   return {
-    sessionId: session_id,
-    claimId: claim_id,
     cardId: card_id,
     classification: classification as Classification,
   };
-}
-
-async function loadSessionAttention(sessionId: string): Promise<number> {
-  const { data, error: sessErr } = await getSupabase()
-    .schema('suspicion')
-    .from('sessions')
-    .select('attention')
-    .eq('session_id', sessionId)
-    .maybeSingle();
-
-  if (sessErr) {
-    console.error('[evaluate] sessions read failed:', sessErr.message);
-    error(500, 'Failed to read session');
-  }
-  if (!data) error(404, 'Session not found');
-
-  const value = typeof data.attention === 'number' ? data.attention : BASELINE_ATTENTION;
-  return clampAttention(value);
 }
 
 async function loadSeedScore(claimId: string, cardId: string): Promise<number> {
@@ -190,28 +164,26 @@ async function callReaction(
   }
 }
 
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
   const blocked = rateLimitGuard(getClientAddress());
   if (blocked) return blocked;
 
   const input = await parseAndValidate(request);
+  const session = await loadSessionCapability(cookies);
 
-  const { claim, error: claimErr } = await getClaimById(input.claimId);
-  if (claimErr && claimErr !== 'Claim not found') error(500, claimErr);
-  if (!claim) error(404, 'Claim not found');
-
-  const [currentAttention, aiScore, card, history] = await Promise.all([
-    loadSessionAttention(input.sessionId),
-    loadSeedScore(input.claimId, input.cardId),
+  const [aiScore, card, history] = await Promise.all([
+    loadSeedScore(session.claimId, input.cardId),
     loadFullCard(input.cardId),
-    loadPickHistory(input.sessionId),
+    loadPickHistory(session.sessionId),
   ]);
 
-  const reaction = await callReaction(claim.text, card, input.classification, history);
+  const reaction = await callReaction(session.claimText, card, input.classification, history);
 
   const persistedScore = input.classification === 'dismiss' ? 0 : aiScore;
   const rawDelta = CLASSIFICATION_SIGN[input.classification] * aiScore;
-  const nextAttention = Math.round(applyAttentionDelta(currentAttention, rawDelta));
+  const nextAttention = Math.round(
+    clampAttention(applyAttentionDelta(session.attention, rawDelta)),
+  );
 
   const supabase = getSupabase();
   const suspicion = supabase.schema('suspicion');
@@ -221,7 +193,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   // permanent within a session) at the DB level — direct API calls cannot
   // re-rule a card.
   const { error: pickError } = await suspicion.from('picks').insert({
-    session_id: input.sessionId,
+    session_id: session.sessionId,
     card_id: input.cardId,
     classification: input.classification,
     ai_score: persistedScore,
@@ -240,7 +212,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const { error: attentionError } = await suspicion
     .from('sessions')
     .update({ attention: nextAttention, updated_at: new Date().toISOString() })
-    .eq('session_id', input.sessionId);
+    .eq('session_id', session.sessionId);
 
   if (attentionError) {
     console.error('[evaluate] attention update failed:', attentionError.message);

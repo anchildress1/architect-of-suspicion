@@ -5,6 +5,7 @@ const mockEq = vi.fn();
 const mockSingle = vi.fn();
 const mockFrom = vi.fn();
 const mockSchema = vi.fn();
+const mockLoadSessionCapability = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
@@ -12,14 +13,17 @@ vi.mock('$lib/server/supabase', () => ({
   }),
 }));
 
+vi.mock('$lib/server/sessionCapability', () => ({
+  loadSessionCapability: (...args: unknown[]) => mockLoadSessionCapability(...args),
+}));
+
 import { load } from './+page.server';
 
-function makeEvent(params: Record<string, string>): Parameters<typeof load>[0] {
-  const url = new URL('http://localhost/verdict');
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
-  return { url } as Parameters<typeof load>[0];
+function makeEvent(): Parameters<typeof load>[0] {
+  return {
+    cookies: {} as Parameters<typeof load>[0]['cookies'],
+    url: new URL('http://localhost/verdict'),
+  } as Parameters<typeof load>[0];
 }
 
 function setupMocks(result: { data: unknown; error: unknown }): void {
@@ -37,19 +41,27 @@ function setupMocks(result: { data: unknown; error: unknown }): void {
 describe('verdict/+page.server load', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLoadSessionCapability.mockResolvedValue({
+      sessionId: 'target-id',
+      claimId: 'claim-id',
+      claimText: 'Claim from session',
+      attention: 50,
+    });
   });
 
-  it('returns null session when session param is missing', async () => {
-    const result = await load(makeEvent({}));
+  it('returns null session when capability validation fails', async () => {
+    mockLoadSessionCapability.mockRejectedValue(new Error('Missing session capability'));
+
+    const result = await load(makeEvent());
+
     expect(result).toEqual({ session: null });
-    // No DB call should be made
     expect(mockSchema).not.toHaveBeenCalled();
   });
 
   it('returns null session when DB returns an error', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setupMocks({ data: null, error: { message: 'connection refused' } });
-    const result = await load(makeEvent({ session: 'some-id' }));
+    const result = await load(makeEvent());
     expect(result).toEqual({ session: null });
     expect(errorSpy).toHaveBeenCalledWith('[verdict] session lookup failed:', 'connection refused');
     errorSpy.mockRestore();
@@ -57,7 +69,7 @@ describe('verdict/+page.server load', () => {
 
   it('returns null session when data is null with no error', async () => {
     setupMocks({ data: null, error: null });
-    const result = await load(makeEvent({ session: 'some-id' }));
+    const result = await load(makeEvent());
     expect(result).toEqual({ session: null });
   });
 
@@ -71,7 +83,7 @@ describe('verdict/+page.server load', () => {
       },
       error: null,
     });
-    const result = await load(makeEvent({ session: 'some-id' }));
+    const result = await load(makeEvent());
     expect(result).toEqual({ session: null });
   });
 
@@ -85,7 +97,7 @@ describe('verdict/+page.server load', () => {
       },
       error: null,
     });
-    const result = await load(makeEvent({ session: 'abc-123' }));
+    const result = await load(makeEvent());
     expect(result).toEqual({
       session: {
         cover_letter: 'The evidence was damning.',
@@ -96,7 +108,7 @@ describe('verdict/+page.server load', () => {
     });
   });
 
-  it('queries the correct schema, table, and session_id', async () => {
+  it('queries the correct schema, table, and session_id from validated capability', async () => {
     setupMocks({
       data: {
         claim_text: 'claim',
@@ -106,7 +118,9 @@ describe('verdict/+page.server load', () => {
       },
       error: null,
     });
-    await load(makeEvent({ session: 'target-id' }));
+
+    await load(makeEvent());
+
     expect(mockSchema).toHaveBeenCalledWith('suspicion');
     expect(mockFrom).toHaveBeenCalledWith('sessions');
     expect(mockEq).toHaveBeenCalledWith('session_id', 'target-id');
