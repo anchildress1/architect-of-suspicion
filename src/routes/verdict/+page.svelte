@@ -524,26 +524,12 @@
     min-width: 0;
   }
 
-  /* Resume sidebar — parchment exhibit appendix, echoing the witness card. */
+  /* Resume sidebar — dark glass panel, mirrors the architect rail material. */
   .sealed-resume {
-    position: relative;
-    background: var(--color-bone);
-    color: var(--color-paper-ink);
-    padding: 1.75rem 1.75rem 2rem;
-    box-shadow:
-      0 20px 50px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  }
-
-  .sealed-resume::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 3px;
-    background: var(--color-ember);
-    pointer-events: none;
+    background: rgba(20, 20, 23, 0.7);
+    border: 1px solid rgba(233, 228, 216, 0.1);
+    padding: 1.5rem;
+    backdrop-filter: blur(8px);
   }
 
   .sealed-resume-eyebrow {
@@ -551,10 +537,8 @@
     font-size: 0.55rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.55);
-    margin-bottom: 1.1rem;
-    padding-bottom: 0.7rem;
-    border-bottom: 1px solid rgba(20, 20, 26, 0.15);
+    color: var(--color-brass-dim);
+    margin-bottom: 1rem;
   }
 
   .sealed-actions {

@@ -45,14 +45,14 @@
 <style>
   .resume {
     user-select: text;
-    color: var(--color-paper-ink);
+    color: var(--color-paper);
   }
 
   .resume-name {
     font-family: var(--font-display);
     font-style: italic;
     font-size: 1.6rem;
-    color: var(--color-paper-ink);
+    color: var(--color-bone);
     line-height: 1;
   }
 
@@ -61,13 +61,13 @@
     font-size: 0.55rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.6);
+    color: var(--color-brass-dim);
     margin-top: 0.35rem;
   }
 
   .resume-divider {
     border: none;
-    border-top: 1px solid rgba(20, 20, 26, 0.15);
+    border-top: 1px solid rgba(233, 228, 216, 0.18);
     margin: 1.25rem 0;
   }
 
@@ -75,20 +75,13 @@
     margin-bottom: 1.4rem;
   }
 
-  /* Section labels in italic Instrument Serif with a brass underline.
-     Reads like an exhibit appendix, not a SaaS sidebar. */
   .resume-section-title {
-    display: inline-block;
-    font-family: var(--font-display);
-    font-style: italic;
-    font-weight: 400;
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    text-transform: none;
-    color: var(--color-paper-ink);
+    font-family: var(--font-readout);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-bone);
     margin-bottom: 0.65rem;
-    padding-bottom: 0.2rem;
-    border-bottom: 1px solid rgba(196, 162, 78, 0.55);
   }
 
   .resume-entry {
@@ -99,21 +92,21 @@
     font-family: var(--font-body);
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--color-paper-ink);
+    color: var(--color-bone);
   }
 
   .resume-entry-meta {
     font-family: var(--font-readout);
     font-size: 0.55rem;
     letter-spacing: 0.12em;
-    color: rgba(20, 20, 26, 0.55);
+    color: var(--color-brass-dim);
     margin-top: 0.15rem;
   }
 
   .resume-list {
     font-family: var(--font-body);
     font-size: 0.78rem;
-    color: rgba(20, 20, 26, 0.78);
+    color: var(--color-paper-dim);
     line-height: 1.7;
     margin-top: 0.4rem;
     padding-left: 1.1rem;
@@ -126,14 +119,12 @@
     gap: 0.4rem;
   }
 
-  /* Ink-on-bone tags with a hairline border — exhibit labels, not chips. */
   .resume-skill {
     font-family: var(--font-readout);
     font-size: 0.55rem;
-    letter-spacing: 0.05em;
-    color: var(--color-paper-ink);
-    background: transparent;
+    color: var(--color-paper);
+    background: rgba(58, 58, 66, 0.5);
     padding: 0.25rem 0.55rem;
-    border: 1px solid rgba(20, 20, 26, 0.25);
+    border: 1px solid rgba(233, 228, 216, 0.16);
   }
 </style>
