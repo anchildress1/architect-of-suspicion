@@ -265,6 +265,8 @@
     position: relative;
     z-index: 5;
     display: grid;
+    /* 1fr / auto / 1fr keeps the title centered with the back-link on the
+       left and an empty mirror cell on the right. */
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 1.2rem 1.6rem;

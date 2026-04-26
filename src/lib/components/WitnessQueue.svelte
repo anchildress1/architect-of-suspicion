@@ -41,10 +41,7 @@
             aria-current={originalIndex === currentIndex ? 'true' : undefined}
           >
             <span class="nu-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
-            <span class="nu-meta">
-              <span class="nu-cat">{card.category}</span>
-              <span class="nu-text">{card.title}</span>
-            </span>
+            <span class="nu-text">{card.title}</span>
           </button>
         </li>
       {/each}
@@ -155,22 +152,8 @@
     color: var(--color-ember);
   }
 
-  .nu-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-width: 0;
-  }
-
-  .nu-cat {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-brass);
-  }
-
   .nu-text {
+    min-width: 0;
     font-family: var(--font-body);
     font-size: 0.82rem;
     line-height: 1.35;

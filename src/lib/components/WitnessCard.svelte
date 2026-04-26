@@ -36,7 +36,6 @@
   <div class="wc-edge" aria-hidden="true"></div>
 
   <header class="wc-head">
-    <span class="wc-cat">{card.category}</span>
     <span class="wc-id">Exhibit {index + 1} / {total}</span>
   </header>
 
