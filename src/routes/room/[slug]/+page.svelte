@@ -13,9 +13,28 @@
   const initialDeck = untrack(() => data.cards);
 
   let deck = $state<ClaimCardEntry[]>(initialDeck);
-  let rulings = $state<Record<string, Classification>>({});
+  // Hydrate rulings from persisted client evidence so re-entering a chamber
+  // (or hard-reloading mid-session) doesn't let the player re-rule a card the
+  // server already has on file. The unique (session_id, card_id) constraint
+  // returns 409 otherwise.
+  let rulings = $state<Record<string, Classification>>(
+    untrack(() =>
+      Object.fromEntries(
+        gameState.current.evidence
+          .filter((e) => initialDeck.some((d) => d.objectID === e.card.objectID))
+          .map((e) => [e.card.objectID, e.classification]),
+      ),
+    ),
+  );
   let evaluating = $state(false);
-  let pointer = $state(0);
+  // Start at the first unruled card so we don't land on one we can't act on.
+  let pointer = $state(
+    untrack(() => {
+      const ruled = new Set(Object.keys(rulings));
+      const idx = initialDeck.findIndex((c) => !ruled.has(c.objectID));
+      return idx >= 0 ? idx : 0;
+    }),
+  );
 
   const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
   const current = $derived(deck[pointer]);
@@ -61,6 +80,16 @@
       gameState.removeFeedEntry(deliberatingId);
 
       if (!res.ok) {
+        // 409 = card already ruled in this session (e.g., stale client after
+        // reload). Sync the client to the server's truth and advance instead
+        // of stranding the player on an un-actionable card.
+        if (res.status === 409) {
+          rulings = { ...rulings, [card.objectID]: classification };
+          gameState.addEvidence({ card, classification });
+          const next = nextUnruledIndex(pointer);
+          if (next >= 0) pointer = next;
+          return;
+        }
         gameState.addFeedEntry({
           id: crypto.randomUUID(),
           type: 'narration',
