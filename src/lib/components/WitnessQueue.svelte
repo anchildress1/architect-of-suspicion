@@ -10,12 +10,13 @@
 
   let { deck, rulings, currentIndex, onJump }: Props = $props();
 
-  // Up to six remaining witnesses, starting at the current pointer and
-  // walking forward (then wrapping) until we have a full picker.
+  // Up to six remaining witnesses in stable deck order. The list does not
+  // rotate when the player navigates — position N stays the same card until
+  // it's ruled, at which point it drops out and later cards shift up. The
+  // currently-active card is highlighted in place.
   const upcoming = $derived.by(() => {
     const items: { card: ClaimCardEntry; originalIndex: number }[] = [];
-    for (let step = 0; step < deck.length && items.length < 6; step++) {
-      const i = (currentIndex + step) % deck.length;
+    for (let i = 0; i < deck.length && items.length < 6; i++) {
       if (!rulings[deck[i].objectID]) {
         items.push({ card: deck[i], originalIndex: i });
       }
