@@ -174,9 +174,6 @@
         <p class="chamber-eyebrow">{room.category}</p>
         <h1 class="chamber-title">The <span class="flourish">{room.name}</span></h1>
       </div>
-      <p class="chamber-clock">
-        {remaining} / {deck.length} remaining
-      </p>
     </header>
 
     <div class="chamber-stage">
@@ -312,15 +309,6 @@
 
   .flourish {
     color: var(--color-ember);
-  }
-
-  .chamber-clock {
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    justify-self: end;
   }
 
   .chamber-stage {
