@@ -3,10 +3,10 @@
 </script>
 
 <div class="tally" aria-label="Evidence ruled and struck">
-  <div class="tally-row tally-row-proof">
-    <span class="tally-label tally-proof">Proof</span>
+  <div class="tally-row tally-row-dismiss">
+    <span class="tally-label tally-dismiss">Struck</span>
     <span class="tally-numeral">
-      <span class="tally-count">{gameState.proofCount}</span>
+      <span class="tally-count">{gameState.dismissedCount}</span>
       <span class="tally-cap">collected</span>
     </span>
   </div>
@@ -17,10 +17,10 @@
       <span class="tally-cap">collected</span>
     </span>
   </div>
-  <div class="tally-row tally-row-dismiss">
-    <span class="tally-label tally-dismiss">Struck</span>
+  <div class="tally-row tally-row-proof">
+    <span class="tally-label tally-proof">Proof</span>
     <span class="tally-numeral">
-      <span class="tally-count">{gameState.dismissedCount}</span>
+      <span class="tally-count">{gameState.proofCount}</span>
       <span class="tally-cap">collected</span>
     </span>
   </div>
