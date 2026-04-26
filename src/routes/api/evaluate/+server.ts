@@ -146,7 +146,10 @@ async function callReaction(
   try {
     const client = getClaudeClient();
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      // Sonnet handles in-character voice + connecting evidence to the claim
+      // measurably better than Haiku at this prompt size; Haiku tended toward
+      // generic atmospheric filler despite the "name a SPECIFIC detail" rule.
+      model: 'claude-sonnet-4-6',
       max_tokens: 400,
       system: ARCHITECT_SYSTEM_PROMPT,
       messages: [

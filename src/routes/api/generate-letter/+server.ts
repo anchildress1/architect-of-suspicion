@@ -82,13 +82,16 @@ async function generateLetter(
     const client = getClaudeClient();
     const [letterResponse, closingResponse] = await Promise.all([
       client.messages.create({
-        model: 'claude-haiku-4-5',
+        // The cover letter is the verdict screen's centerpiece — the long-form
+        // narrative the player came for. Sonnet for tone, structure, and
+        // claim-specific rhetoric.
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: ARCHITECT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: buildCoverLetterPrompt(claimText, verdict, evidence) }],
       }),
       client.messages.create({
-        model: 'claude-haiku-4-5',
+        model: 'claude-sonnet-4-6',
         max_tokens: 200,
         system: ARCHITECT_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: buildClosingLinePrompt(verdict) }],
