@@ -121,9 +121,8 @@
     </div>
 
     <p class="dossier-intro">
-      The doors are bolted. The gallery has assembled. Nine chambers stand between you and a verdict
-      &mdash; each holds witnesses, nothing more. You will pick. You will rule. And I, the
-      Architect, will be watching.
+      The doors are bolted. The gallery has assembled. Witnesses await &mdash; you will pick, you
+      will rule. And I, the Architect, will be watching.
     </p>
 
     <div class="dossier-cta">
@@ -150,7 +149,7 @@
         </span>
       </button>
       <p class="dossier-meta-text">
-        9 chambers &middot; verdict required <br />
+        Verdict required <br />
         no accounts &middot; no timer
       </p>
     </div>

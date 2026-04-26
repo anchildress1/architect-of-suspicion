@@ -61,14 +61,8 @@
         <div class="board-overlay" aria-hidden="true"></div>
 
         <header class="board-head">
-          <div>
-            <h1 class="board-title">The Mansion</h1>
-            <p class="board-sub">Nine chambers &middot; pick one to enter</p>
-          </div>
-          <p class="board-clock">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &middot; chamber
-            clock
-          </p>
+          <h1 class="board-title">The Mansion</h1>
+          <p class="board-sub">Pick a chamber to enter</p>
         </header>
 
         {#each rooms as room (room.slug)}
@@ -210,14 +204,6 @@
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-top: 0.35rem;
-  }
-
-  .board-clock {
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
   }
 
   /* Room pin: dot + leader + tag */

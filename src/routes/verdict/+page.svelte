@@ -151,10 +151,7 @@
     {:else}
       <section class="sealed reveal">
         <header class="sealed-head">
-          <div>
-            <p class="sealed-eyebrow">The Record &middot; Sealed</p>
-            <h1 class="sealed-title">Verdict Rendered</h1>
-          </div>
+          <h1 class="sealed-title">Verdict Rendered</h1>
           <div class="sealed-stamp" data-verdict={verdict}>
             <span class="sealed-stamp-word">{verdict === 'accuse' ? 'Accused' : 'Pardoned'}</span>
             <span class="sealed-stamp-year">MMXXVI &middot; Case 0426</span>
@@ -464,21 +461,12 @@
     margin-bottom: 2rem;
   }
 
-  .sealed-eyebrow {
-    font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-  }
-
   .sealed-title {
     font-family: var(--font-display);
     font-style: italic;
     font-size: clamp(2rem, 4vw, 3rem);
     color: var(--color-bone);
     line-height: 1;
-    margin-top: 0.4rem;
   }
 
   .sealed-stamp {

@@ -42,11 +42,6 @@
   <h2 class="wc-title">{card.title}</h2>
   <p class="wc-body">{card.blurb}</p>
 
-  <footer class="wc-foot">
-    <span class="wc-who">Case 23&middot;{(index + 11).toString().padStart(2, '0')}</span>
-    <span class="wc-line"></span>
-  </footer>
-
   <div class="wc-stamp wc-stamp-proof" aria-hidden={chosen !== 'proof'}>Proof</div>
   <div class="wc-stamp wc-stamp-objection" aria-hidden={chosen !== 'objection'}>Objection</div>
   <div class="wc-stamp wc-stamp-dismiss" aria-hidden={chosen !== 'dismiss'}>Struck</div>
@@ -135,24 +130,6 @@
     max-width: 56ch;
     margin-bottom: 1.8rem;
     text-wrap: pretty;
-  }
-
-  .wc-foot {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-bottom: 1.2rem;
-  }
-
-  .wc-line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(233, 228, 216, 0.18), transparent);
   }
 
   /* Stamps — top-right, blue/red/neutral verdict colors on dark. */
