@@ -5,20 +5,21 @@
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
-  // Pin coordinates expressed as percent of the house exterior image. Tuned
-  // for label visibility — pins live closer to the building centerline so
-  // the tag (and its 200px width) stays inside the canvas without crowding
-  // a neighbor on the same band. `flip: true` draws the leader/tag LEFT.
+  // Pin coordinates expressed as percent of the house exterior image. Each
+  // band's middle pin sits at a markedly different y from its side pins so
+  // the 200px tags don't collide on a shared row — the staggered POC layout
+  // depends on this vertical breathing room. `flip: true` draws leader/tag
+  // LEFT (right-edge pins always flip so the tag stays inside the canvas).
   const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 38, y: 22, flip: false, chamber: 'I' },
-    gallery: { x: 60, y: 13, flip: false, chamber: 'II' },
-    'control-room': { x: 88, y: 25, flip: true, chamber: 'III' },
-    parlor: { x: 36, y: 56, flip: false, chamber: 'IV' },
-    'entry-hall': { x: 60, y: 50, flip: false, chamber: 'V' },
-    library: { x: 88, y: 53, flip: true, chamber: 'VI' },
-    workshop: { x: 36, y: 82, flip: false, chamber: 'VII' },
-    cellar: { x: 58, y: 76, flip: false, chamber: 'VIII' },
-    'back-hall': { x: 88, y: 84, flip: true, chamber: 'IX' },
+    attic: { x: 22, y: 22, flip: false, chamber: 'I' },
+    gallery: { x: 50, y: 9, flip: false, chamber: 'II' },
+    'control-room': { x: 92, y: 20, flip: true, chamber: 'III' },
+    parlor: { x: 22, y: 46, flip: false, chamber: 'IV' },
+    'entry-hall': { x: 50, y: 58, flip: false, chamber: 'V' },
+    library: { x: 92, y: 42, flip: true, chamber: 'VI' },
+    workshop: { x: 22, y: 70, flip: false, chamber: 'VII' },
+    cellar: { x: 50, y: 88, flip: false, chamber: 'VIII' },
+    'back-hall': { x: 92, y: 72, flip: true, chamber: 'IX' },
   };
 
   let wanderNarrated = $state(false);
