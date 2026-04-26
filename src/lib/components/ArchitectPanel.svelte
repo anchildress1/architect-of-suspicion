@@ -43,7 +43,9 @@
     position: sticky;
     top: 0;
     z-index: 20;
-    width: 320px;
+    /* Fluid width — gives the mansion board breathing room at sub-1400px
+       viewports without ever shrinking past the gauge's native scale. */
+    width: clamp(240px, 22vw, 320px);
     height: 100vh;
     flex-shrink: 0;
     display: flex;

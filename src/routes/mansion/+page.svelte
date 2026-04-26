@@ -12,16 +12,27 @@
   // — deliberately NOT a 3x3 grid. Both x and y vary across each chamber so
   // the eye reads "pinned to a building" rather than "tabular layout."
   // `flip: true` draws leader/tag LEFT.
+  // Pin coords correspond to actual features in the mansion artwork:
+  // - Attic = far-left attic window
+  // - Gallery = left dormer/peak window
+  // - Control Room = right peak window
+  // - Parlor = mid-floor bay window left
+  // - Library = mid-floor bay window right
+  // - Entry Hall = main door (sealed)
+  // - Workshop = ground-floor window left
+  // - Back Hall = ground-floor window right
+  // - Cellar = cellar door at base of stairs
+  // y-staggered per band so 170px tags don't share a row.
   const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 16, y: 28, flip: false, chamber: 'I' },
-    gallery: { x: 22, y: 6, flip: false, chamber: 'II' },
-    'control-room': { x: 92, y: 18, flip: true, chamber: 'III' },
-    parlor: { x: 12, y: 48, flip: false, chamber: 'IV' },
-    'entry-hall': { x: 52, y: 64, flip: false, chamber: 'V' },
-    library: { x: 92, y: 36, flip: true, chamber: 'VI' },
-    workshop: { x: 22, y: 78, flip: false, chamber: 'VII' },
-    cellar: { x: 56, y: 88, flip: false, chamber: 'VIII' },
-    'back-hall': { x: 92, y: 80, flip: true, chamber: 'IX' },
+    attic: { x: 14, y: 24, flip: false, chamber: 'I' },
+    gallery: { x: 28, y: 12, flip: false, chamber: 'II' },
+    'control-room': { x: 86, y: 18, flip: true, chamber: 'III' },
+    parlor: { x: 14, y: 44, flip: false, chamber: 'IV' },
+    library: { x: 86, y: 42, flip: true, chamber: 'VI' },
+    'entry-hall': { x: 50, y: 76, flip: false, chamber: 'V' },
+    workshop: { x: 14, y: 66, flip: false, chamber: 'VII' },
+    'back-hall': { x: 86, y: 64, flip: true, chamber: 'IX' },
+    cellar: { x: 50, y: 92, flip: false, chamber: 'VIII' },
   };
 
   // Per-room exhaustion: a chamber is "exhausted" once every card in its
@@ -315,7 +326,7 @@
     position: absolute;
     top: 50%;
     left: 14px;
-    width: 58px;
+    width: 42px;
     height: 1px;
     background: linear-gradient(90deg, rgba(196, 162, 78, 0.55), transparent);
     transform-origin: left;
@@ -335,11 +346,14 @@
     background: linear-gradient(270deg, rgba(255, 215, 106, 0.6), transparent);
   }
 
+  /* Tag width is fluid relative to the viewport, with a generous floor for
+     readability. The clamp + the architect panel's matching clamp keep the
+     three-across layout viable down to ~1100px viewport width. */
   .pin-tag {
     position: absolute;
     top: -28px;
-    left: 72px;
-    width: 200px;
+    left: 48px;
+    width: clamp(130px, 12vw, 200px);
     padding: 0.55rem 0.7rem;
     background: linear-gradient(180deg, rgba(20, 22, 30, 0.85) 0%, rgba(11, 12, 18, 0.9) 100%);
     border: 1px solid rgba(196, 162, 78, 0.45);
@@ -354,7 +368,7 @@
 
   .room-pin-flip .pin-tag {
     left: auto;
-    right: 72px;
+    right: 48px;
     text-align: right;
   }
 
