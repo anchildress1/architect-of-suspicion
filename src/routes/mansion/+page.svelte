@@ -182,9 +182,6 @@
     left: 0;
     right: 0;
     z-index: 5;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
     padding: 1.2rem 1.5rem;
     background: linear-gradient(to bottom, rgba(11, 11, 13, 0.85), transparent);
   }
