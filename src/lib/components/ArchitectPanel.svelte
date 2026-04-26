@@ -86,7 +86,7 @@
     grid-template-columns: auto 1fr auto;
     gap: 0.6rem;
     align-items: center;
-    padding: 0.85rem 1rem;
+    padding: 0.95rem 1rem;
     border-top: 1px solid rgba(233, 228, 216, 0.1);
     text-decoration: none;
     color: var(--color-brass-dim);
@@ -94,8 +94,11 @@
     font-size: 0.65rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    transition: all 0.3s ease;
     background: rgba(11, 11, 13, 0.7);
+    transition:
+      background var(--motion-base) var(--ease-out),
+      color var(--motion-base) var(--ease-out),
+      box-shadow var(--motion-base) var(--ease-out);
   }
 
   .panel-render[data-active='true'] {
@@ -103,22 +106,29 @@
   }
 
   .panel-render:hover {
-    background: rgba(233, 228, 216, 0.06);
+    background: rgba(210, 58, 42, 0.08);
     color: var(--color-bone);
+    box-shadow: inset 2px 0 0 var(--color-ember);
   }
 
   .pr-mark {
     font-family: var(--font-display);
     font-size: 1rem;
     color: var(--color-ember);
+    transition: text-shadow var(--motion-base) var(--ease-out);
+  }
+
+  .panel-render:hover .pr-mark {
+    text-shadow: 0 0 12px rgba(210, 58, 42, 0.4);
   }
 
   .pr-arrow {
-    transition: transform 0.3s ease;
+    transition: transform var(--motion-base) var(--ease-out);
   }
 
   .panel-render:hover .pr-arrow {
-    transform: translateX(3px);
+    transform: translateX(4px);
+    color: var(--color-ember);
   }
 
   @media (max-width: 767px) {

@@ -120,8 +120,8 @@
     text-align: left;
     cursor: pointer;
     transition:
-      background 0.2s ease,
-      border-color 0.2s ease;
+      background var(--motion-snap) var(--ease-out),
+      border-color var(--motion-snap) var(--ease-out);
   }
 
   .nu-pick:hover {

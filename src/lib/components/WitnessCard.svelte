@@ -82,7 +82,7 @@
     padding: 2rem 2.25rem 1.4rem;
     overflow: hidden;
     transition:
-      transform 360ms cubic-bezier(0.4, 0, 0.2, 1),
+      transform 360ms var(--ease-snap),
       opacity 360ms ease,
       filter 360ms ease;
   }
@@ -150,8 +150,8 @@
     opacity: 0;
     pointer-events: none;
     transition:
-      opacity 180ms ease-out,
-      transform 180ms cubic-bezier(0.3, 1.5, 0.4, 1);
+      opacity var(--motion-snap) ease-out,
+      transform var(--motion-snap) var(--ease-overshoot);
   }
 
   .wc-stamp-proof {
@@ -210,10 +210,10 @@
     cursor: pointer;
     text-align: left;
     transition:
-      box-shadow 0.2s ease,
-      border-color 0.2s ease,
-      background 0.2s ease,
-      color 0.2s ease;
+      box-shadow var(--motion-base) var(--ease-out),
+      border-color var(--motion-base) var(--ease-out),
+      background var(--motion-base) var(--ease-out),
+      color var(--motion-base) var(--ease-out);
   }
 
   .lv:disabled {

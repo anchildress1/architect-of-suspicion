@@ -309,9 +309,9 @@
     text-decoration: none;
     color: var(--color-paper);
     transition:
-      border-color 0.3s ease,
-      box-shadow 0.3s ease,
-      transform 0.3s ease;
+      border-color var(--motion-base) var(--ease-out),
+      box-shadow var(--motion-base) var(--ease-out),
+      transform var(--motion-base) var(--ease-out);
     backdrop-filter: blur(2px);
   }
 

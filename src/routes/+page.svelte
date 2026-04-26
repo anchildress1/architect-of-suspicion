@@ -461,9 +461,9 @@
     padding: 0.85rem 1.4rem;
     cursor: pointer;
     transition:
-      box-shadow 0.3s ease,
-      border-color 0.3s ease,
-      color 0.3s ease;
+      box-shadow var(--motion-base) var(--ease-out),
+      border-color var(--motion-base) var(--ease-out),
+      color var(--motion-base) var(--ease-out);
     box-shadow:
       inset 0 1px 0 rgba(255, 230, 170, 0.2),
       inset 0 -1px 0 rgba(0, 0, 0, 0.6),
@@ -473,7 +473,7 @@
   .lever-btn-key {
     flex-shrink: 0;
     color: rgba(240, 194, 77, 0.8);
-    transition: color 0.3s ease;
+    transition: color var(--motion-base) var(--ease-out);
   }
 
   .lever-btn-label {
