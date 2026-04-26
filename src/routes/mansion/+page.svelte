@@ -13,15 +13,15 @@
   // the eye reads "pinned to a building" rather than "tabular layout."
   // `flip: true` draws leader/tag LEFT.
   const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 18, y: 24, flip: false, chamber: 'I' },
-    gallery: { x: 47, y: 12, flip: false, chamber: 'II' },
-    'control-room': { x: 92, y: 20, flip: true, chamber: 'III' },
-    parlor: { x: 14, y: 50, flip: false, chamber: 'IV' },
-    'entry-hall': { x: 52, y: 56, flip: false, chamber: 'V' },
-    library: { x: 90, y: 44, flip: true, chamber: 'VI' },
-    workshop: { x: 24, y: 78, flip: false, chamber: 'VII' },
-    cellar: { x: 56, y: 86, flip: false, chamber: 'VIII' },
-    'back-hall': { x: 88, y: 68, flip: true, chamber: 'IX' },
+    attic: { x: 16, y: 28, flip: false, chamber: 'I' },
+    gallery: { x: 22, y: 6, flip: false, chamber: 'II' },
+    'control-room': { x: 92, y: 18, flip: true, chamber: 'III' },
+    parlor: { x: 12, y: 48, flip: false, chamber: 'IV' },
+    'entry-hall': { x: 52, y: 64, flip: false, chamber: 'V' },
+    library: { x: 92, y: 36, flip: true, chamber: 'VI' },
+    workshop: { x: 22, y: 78, flip: false, chamber: 'VII' },
+    cellar: { x: 56, y: 88, flip: false, chamber: 'VIII' },
+    'back-hall': { x: 92, y: 80, flip: true, chamber: 'IX' },
   };
 
   // Per-room exhaustion: a chamber is "exhausted" once every card in its
