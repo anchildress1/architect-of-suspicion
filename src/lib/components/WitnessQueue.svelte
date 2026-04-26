@@ -10,27 +10,20 @@
 
   let { deck, rulings, currentIndex, onJump }: Props = $props();
 
-  // Up to six remaining witnesses in stable deck order. The list does not
-  // rotate when the player navigates — position N stays the same card until
-  // it's ruled, at which point it drops out and later cards shift up. The
-  // currently-active card is highlighted in place.
-  const upcoming = $derived.by(() => {
-    const items: { card: ClaimCardEntry; originalIndex: number }[] = [];
-    for (let i = 0; i < deck.length && items.length < 6; i++) {
-      if (!rulings[deck[i].objectID]) {
-        items.push({ card: deck[i], originalIndex: i });
-      }
-    }
-    return items;
-  });
-
-  const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
+  // All remaining witnesses in stable deck order. Position N stays the same
+  // card until it's ruled, at which point it drops out and later cards shift
+  // up. Container scrolls if the list outgrows the rail.
+  const upcoming = $derived(
+    deck
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ card }) => !rulings[card.objectID]),
+  );
 </script>
 
 <aside class="next-up" aria-label="Next up — pick a witness">
   <header class="nu-head">
     <span class="nu-title">Next Up</span>
-    <span class="nu-count">{upcoming.length} of {remaining}</span>
+    <span class="nu-count">{upcoming.length} remaining</span>
   </header>
 
   {#if upcoming.length === 0}
