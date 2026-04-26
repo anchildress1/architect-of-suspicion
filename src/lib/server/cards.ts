@@ -91,6 +91,52 @@ export async function fetchClaimDeck(
   return { cards, error: null };
 }
 
+/**
+ * Per-category card counts for a claim, used by the mansion to mark a
+ * chamber as exhausted once every card in that category has been ruled.
+ *
+ * Two-step query for the same cross-schema reason as fetchClaimDeck:
+ * PostgREST cannot resolve embedded joins when .schema('suspicion') is
+ * active, so the join happens in application code.
+ */
+export async function fetchClaimCategoryCounts(
+  claimId: string,
+): Promise<{ counts: Record<string, number>; error: string | null }> {
+  if (!isUuid(claimId)) return { counts: {}, error: 'Invalid claim_id' };
+  const db = getSupabase();
+
+  const { data: claimRows, error: claimError } = await db
+    .schema('suspicion')
+    .from('claim_cards')
+    .select('card_id')
+    .eq('claim_id', claimId);
+
+  if (claimError) {
+    console.error('[cards] fetchClaimCategoryCounts failed:', claimError.message);
+    return { counts: {}, error: 'Failed to fetch category counts' };
+  }
+  if (!claimRows || claimRows.length === 0) return { counts: {}, error: null };
+
+  const cardIds = (claimRows as Array<{ card_id: string }>).map((r) => r.card_id);
+
+  const { data: cardRows, error: cardError } = await db
+    .from('cards')
+    .select('category')
+    .in('objectID', cardIds)
+    .is('deleted_at', null);
+
+  if (cardError) {
+    console.error('[cards] category lookup failed:', cardError.message);
+    return { counts: {}, error: 'Failed to fetch category counts' };
+  }
+
+  const counts: Record<string, number> = {};
+  for (const row of (cardRows as Array<{ category: string }>) ?? []) {
+    counts[row.category] = (counts[row.category] ?? 0) + 1;
+  }
+  return { counts, error: null };
+}
+
 /** Total claim_cards rows for a claim — used for room-level pacing telemetry. */
 export async function fetchClaimDeckSize(
   claimId: string,

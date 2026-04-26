@@ -5,22 +5,34 @@
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
-  // Pin coordinates expressed as percent of the house exterior image. Each
-  // band's middle pin sits at a markedly different y from its side pins so
-  // the 200px tags don't collide on a shared row — the staggered POC layout
-  // depends on this vertical breathing room. `flip: true` draws leader/tag
-  // LEFT (right-edge pins always flip so the tag stays inside the canvas).
+  let { data } = $props();
+
+  // Pin coordinates expressed as percent of the house exterior image.
+  // Hand-placed onto the artwork's windows / doors / architectural features
+  // — deliberately NOT a 3x3 grid. Both x and y vary across each chamber so
+  // the eye reads "pinned to a building" rather than "tabular layout."
+  // `flip: true` draws leader/tag LEFT.
   const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 22, y: 22, flip: false, chamber: 'I' },
-    gallery: { x: 50, y: 9, flip: false, chamber: 'II' },
+    attic: { x: 18, y: 24, flip: false, chamber: 'I' },
+    gallery: { x: 47, y: 12, flip: false, chamber: 'II' },
     'control-room': { x: 92, y: 20, flip: true, chamber: 'III' },
-    parlor: { x: 22, y: 46, flip: false, chamber: 'IV' },
-    'entry-hall': { x: 50, y: 58, flip: false, chamber: 'V' },
-    library: { x: 92, y: 42, flip: true, chamber: 'VI' },
-    workshop: { x: 22, y: 70, flip: false, chamber: 'VII' },
-    cellar: { x: 50, y: 88, flip: false, chamber: 'VIII' },
-    'back-hall': { x: 92, y: 72, flip: true, chamber: 'IX' },
+    parlor: { x: 14, y: 50, flip: false, chamber: 'IV' },
+    'entry-hall': { x: 52, y: 56, flip: false, chamber: 'V' },
+    library: { x: 90, y: 44, flip: true, chamber: 'VI' },
+    workshop: { x: 24, y: 78, flip: false, chamber: 'VII' },
+    cellar: { x: 56, y: 86, flip: false, chamber: 'VIII' },
+    'back-hall': { x: 88, y: 68, flip: true, chamber: 'IX' },
   };
+
+  // Per-room exhaustion: a chamber is "exhausted" once every card in its
+  // category has been ruled. Compares server-loaded category totals against
+  // the player's persisted evidence count for that category.
+  function isExhausted(category: string): boolean {
+    const total = data.categoryCounts[category];
+    if (!total || total === 0) return false;
+    const ruled = gameState.current.evidence.filter((e) => e.card.category === category).length;
+    return ruled >= total;
+  }
 
   let wanderNarrated = $state(false);
 
@@ -68,13 +80,15 @@
         {#each rooms as room (room.slug)}
           {@const pin = PINS[room.slug]}
           {@const visited = gameState.current.roomsVisited.includes(room.slug)}
-          {@const sealed = !room.isPlayable && room.slug !== 'attic'}
+          {@const exhausted = isExhausted(room.category)}
+          {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
           {#if pin}
             <div
               class="room-pin"
               class:room-pin-flip={pin.flip}
-              class:room-pin-visited={visited}
+              class:room-pin-visited={visited && !exhausted}
               class:room-pin-sealed={sealed}
+              class:room-pin-exhausted={exhausted}
               style="left: {pin.x}%; top: {pin.y}%"
             >
               <span class="pin-dot" aria-hidden="true"></span>
@@ -84,10 +98,10 @@
                 <div class="pin-tag pin-tag-sealed" aria-hidden="true">
                   <p class="pin-row1">
                     <span>Ch. {pin.chamber}</span>
-                    <span class="pin-tag-status">— — —</span>
+                    <span class="pin-tag-status">{exhausted ? '✓' : '— — —'}</span>
                   </p>
                   <p class="pin-name">{room.name}</p>
-                  <p class="pin-cat">Sealed &middot; no entry</p>
+                  <p class="pin-cat">{exhausted ? 'Closed · all ruled' : 'Sealed · no entry'}</p>
                 </div>
               {:else if room.slug === 'attic'}
                 <a href="/attic" class="pin-tag pin-tag-meta">
@@ -268,6 +282,32 @@
     animation: none;
     transform: scale(1);
     opacity: 0.55;
+  }
+
+  /* Exhausted: cyan rim, no ping. Reads as "completed/closed-positive"
+     vs sealed's "never-was-open" ember warning. */
+  .room-pin-exhausted .pin-dot {
+    background: radial-gradient(circle at 35% 30%, #6b8fb0, #2c3e52 65%, #1a2030 100%);
+  }
+
+  .room-pin-exhausted .pin-dot::before,
+  .room-pin-exhausted .pin-dot::after {
+    border-color: rgba(107, 143, 176, 0.5);
+    animation: none;
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  .room-pin-exhausted .pin-tag {
+    border-color: rgba(107, 143, 176, 0.4);
+  }
+
+  .room-pin-exhausted .pin-leader {
+    background: linear-gradient(90deg, rgba(107, 143, 176, 0.45), transparent);
+  }
+
+  .room-pin-exhausted.room-pin-flip .pin-leader {
+    background: linear-gradient(270deg, rgba(107, 143, 176, 0.45), transparent);
   }
 
   /* Leader connects dot to tag in warm brass. */
