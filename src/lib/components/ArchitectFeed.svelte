@@ -24,11 +24,6 @@
   aria-live="polite"
   aria-label="The Architect's record"
 >
-  <div class="feed-head">
-    <span>The Record</span>
-    <span class="feed-count">{gameState.current.feed.length} ent.</span>
-  </div>
-
   {#if gameState.current.feed.length === 0}
     <p class="feed-empty">The Architect observes in silence.</p>
   {:else}
@@ -51,22 +46,6 @@
     gap: 0.55rem;
     scrollbar-width: thin;
     scrollbar-color: rgba(233, 228, 216, 0.18) transparent;
-  }
-
-  .feed-head {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-bottom: 0.25rem;
-  }
-
-  .feed-count {
-    color: var(--color-brass-dim);
-    opacity: 0.7;
   }
 
   .feed-empty {

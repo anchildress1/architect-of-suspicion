@@ -108,11 +108,6 @@
     <circle cx="130" cy="130" r="3" fill="#0b0b0d" />
   </svg>
 
-  <div class="meter-poles" aria-hidden="true">
-    <span>Pardon</span>
-    <span>Accuse</span>
-  </div>
-
   {#if delta !== null}
     {#key deltaSeq}
       <span
@@ -178,18 +173,6 @@
     font-size: 0.78em;
     color: var(--color-brass);
     margin-left: 0.05em;
-  }
-
-  .meter-poles {
-    display: flex;
-    justify-content: space-between;
-    margin-top: -0.4rem;
-    padding: 0 0.4rem;
-    font-family: var(--font-readout);
-    font-size: 9px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-brass);
   }
 
   .meter-delta {

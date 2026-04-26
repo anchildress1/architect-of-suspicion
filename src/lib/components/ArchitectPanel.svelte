@@ -13,23 +13,16 @@
 </script>
 
 <aside class="architect-panel transition-architect" aria-label="The Architect's rail">
-  <div class="panel-head">
-    <p class="panel-eyebrow">Magistrate &middot; Presiding</p>
+  <header class="panel-head">
     <h2 class="panel-title">The Architect</h2>
-    <div class="panel-flourish" aria-hidden="true">
-      <span class="bar"></span>
-      <span class="diamond"></span>
-      <span class="bar bar-flip"></span>
-    </div>
-  </div>
+  </header>
 
   <AttentionMeter value={gameState.attention} />
 
   {#if gameState.current.claimText}
-    <div class="panel-claim transition-claim">
-      <span class="claim-eyebrow">The Claim</span>
-      <blockquote class="claim-text">&ldquo;{gameState.current.claimText}&rdquo;</blockquote>
-    </div>
+    <blockquote class="panel-claim transition-claim">
+      &ldquo;{gameState.current.claimText}&rdquo;
+    </blockquote>
   {/if}
 
   <ArchitectFeed />
@@ -38,9 +31,9 @@
 
   {#if showVerdictLink && gameState.current.sessionId}
     <a class="panel-render" href="/verdict" data-active={gameState.ruledCount > 0}>
-      <span class="pr-mark">&sect;</span>
+      <span class="pr-mark" aria-hidden="true">&sect;</span>
       <span class="pr-text">Render your verdict</span>
-      <span class="pr-arrow">&rarr;</span>
+      <span class="pr-arrow" aria-hidden="true">&rarr;</span>
     </a>
   {/if}
 </aside>
@@ -66,72 +59,26 @@
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
   }
 
-  .panel-eyebrow {
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-  }
-
   .panel-title {
     font-family: var(--font-display);
     font-style: italic;
     font-size: 1.6rem;
     color: var(--color-bone);
-    margin-top: 0.3rem;
+    line-height: 1;
   }
 
-  .panel-flourish {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    margin-top: 0.5rem;
-  }
-
-  .bar {
-    width: 36px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--color-bone), transparent);
-    opacity: 0.6;
-  }
-
-  .bar-flip {
-    transform: scaleX(-1);
-  }
-
-  .diamond {
-    width: 5px;
-    height: 5px;
-    background: var(--color-bone);
-    transform: rotate(45deg);
-    opacity: 0.7;
-  }
-
+  /* The italic claim with the ember left rule is its own context — no eyebrow. */
   .panel-claim {
-    padding: 0.85rem 1rem;
+    margin: 0;
+    padding: 0.85rem 1rem 0.85rem 1.2rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
+    border-left: 2px solid rgba(210, 58, 42, 0.45);
     background: rgba(20, 20, 23, 0.5);
-  }
-
-  .claim-eyebrow {
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-  }
-
-  .claim-text {
     font-family: var(--font-display);
     font-style: italic;
     font-size: 0.95rem;
     color: var(--color-paper);
     line-height: 1.4;
-    margin-top: 0.35rem;
-    border-left: 2px solid rgba(210, 58, 42, 0.45);
-    padding-left: 0.6rem;
   }
 
   .panel-render {
