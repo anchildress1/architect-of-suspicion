@@ -238,6 +238,10 @@
     /* Slow Ken Burns drift on entry — purely transform, no blur. */
     animation: kenBurns 24s ease-in-out infinite alternate;
     z-index: 0;
+    /* Decorative — never absorb pointer events that belong to the
+       picker (non-positioned, lives below positioned descendants
+       under standard SVG/CSS painting order). */
+    pointer-events: none;
   }
 
   @keyframes kenBurns {

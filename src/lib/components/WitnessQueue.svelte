@@ -60,6 +60,10 @@
 
 <style>
   .next-up {
+    /* Explicit position + z-index so the picker stays above the chamber-bg
+       and chamber-overlay even if their pointer-events guards regress. */
+    position: relative;
+    z-index: 5;
     width: 280px;
     flex-shrink: 0;
     display: flex;
