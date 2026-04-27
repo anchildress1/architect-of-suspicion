@@ -8,6 +8,7 @@ Companion docs (read these first):
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — stack, API contracts, DB schema, project structure, design tokens
 - [SPRINT-PLAN.md](docs/SPRINT-PLAN.md) — milestones, issues, CI setup, dependencies
 - [CLAIM-ENGINE-PRD.md](docs/CLAIM-ENGINE-PRD.md) — 4-pass seed pipeline
+- [mansion-pin-layout.md](docs/mansion-pin-layout.md) — pin surface contract + the authoritative pin coord table
 
 Do not duplicate information from those docs here.
 

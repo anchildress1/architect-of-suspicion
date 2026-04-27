@@ -1,59 +1,86 @@
 /**
- * Pin geometry for the mansion overlay.
+ * Pin layout contract for the mansion overlay.
  *
- * Each pin is a percentage-based offset onto the `house-exterior.webp`
- * artwork. Coords are hand-placed onto real architectural features in the
- * photograph (windows, doors, archways) so the overlay reads as
- * "notes pinned onto a building" rather than a tabular layout.
+ * Each pin owns ONE rectangle — its **surface** — expressed as percentages
+ * of the mansion canvas (0..100 on each axis). The brass dot AND the
+ * info tag both render strictly INSIDE this rectangle. The renderer uses
+ * `overflow: hidden` on the surface element, so a careless tweak cannot
+ * visually escape the declared box. This is the property that makes pin
+ * tweaks safe — the artwork can be retuned without breaking the frame.
  *
- * Feature map (locked to the artwork — do not reorder or rename):
- *   - attic        = far-left tower upper window
- *   - gallery      = peaked dormer left of the clock
- *   - control-room = right peaked dormer
- *   - parlor       = 2nd-floor bay window, left
- *   - library      = 2nd-floor bay window, right
- *   - entry-hall   = sealed main door (centred)
- *   - workshop     = ground-floor lit window, left of the door
- *   - back-hall    = ground-floor lit window, right of the door
- *   - cellar       = archway at the base of the stairs
+ * `flip` selects which corner of the surface holds the dot:
+ *   - flip=false → dot pinned to the TOP-LEFT  (tag fills the right side)
+ *   - flip=true  → dot pinned to the TOP-RIGHT (tag fills the left side)
  *
- * `flip: true` draws the leader/tag LEFT instead of right, so right-edge
- * pins don't overflow the canvas. The chamber numerals (I–IX) are display
- * labels only and follow the in-game ordering, not the slug list order.
+ * Authoritative table + diagram: docs/mansion-pin-layout.md
  *
- * Coordinates are tuned for the 1440×900 board aspect ratio. If the
- * artwork is ever swapped, re-tune all pins together — they form a
- * single composition. The `?debug=pins` querystring on /mansion paints
- * leader bounding boxes for collision checks.
+ * Invariants (enforced by mansionPins.test.ts):
+ *   1. Every surface fits inside [0..100, 0..100].
+ *   2. No two surfaces overlap.
+ *   3. Chamber numerals are unique across pins.
+ *   4. Every room slug from $lib/rooms has a matching pin (and vice versa).
+ *
+ * Visual debugging: append `?debug=pins` to /mansion to outline every
+ * surface, so collisions or out-of-bounds tweaks are immediately visible.
  */
-export interface MansionPin {
-  /** Percent-offset from the left of `house-exterior.webp`. */
+export interface PinSurface {
+  /** Left edge of the surface, percent of canvas width. */
   x: number;
-  /** Percent-offset from the top of `house-exterior.webp`. */
+  /** Top edge of the surface, percent of canvas height. */
   y: number;
-  /** Draw the leader/tag to the LEFT of the dot when true. */
+  /** Width of the surface, percent of canvas width. */
+  w: number;
+  /** Height of the surface, percent of canvas height. */
+  h: number;
+}
+
+export interface MansionPin {
+  surface: PinSurface;
+  /** When true, dot anchors to the top-RIGHT of the surface and the tag
+   *  fills the area to its left (mirrored layout for right-edge pins). */
   flip: boolean;
-  /** Roman-numeral chamber label. Display-only. */
+  /** Roman-numeral chamber label. Display-only, must be unique. */
   chamber: string;
 }
 
 function freezePins<T extends Record<string, MansionPin>>(pins: T): Readonly<T> {
-  for (const pin of Object.values(pins)) Object.freeze(pin);
+  for (const pin of Object.values(pins)) {
+    Object.freeze(pin.surface);
+    Object.freeze(pin);
+  }
   return Object.freeze(pins);
 }
 
+/**
+ * Authoritative pin layout. Surfaces hand-tuned to:
+ *   - Sit on the artwork's named architectural features
+ *   - Stay inside [0..100, 0..100] on both axes (Invariant 1)
+ *   - Not overlap any other surface (Invariant 2)
+ *
+ * If the mansion artwork changes, retune all surfaces together — they form
+ * a single composition. Update docs/mansion-pin-layout.md in the same commit.
+ */
 export const MANSION_PINS = freezePins({
-  attic: { x: 18, y: 23, flip: false, chamber: 'I' },
-  gallery: { x: 48, y: 6, flip: false, chamber: 'II' },
-  'control-room': { x: 95, y: 21, flip: true, chamber: 'III' },
-  'entry-hall': { x: 52, y: 49, flip: false, chamber: 'V' },
-  parlor: { x: 22, y: 55, flip: false, chamber: 'IV' },
-  library: { x: 80, y: 60, flip: true, chamber: 'VI' },
-  cellar: { x: 59, y: 79, flip: false, chamber: 'VIII' },
-  workshop: { x: 19, y: 83, flip: false, chamber: 'VII' },
-  'back-hall': { x: 95, y: 92, flip: true, chamber: 'IX' },
+  attic: { surface: { x: 6, y: 20, w: 22, h: 12 }, flip: false, chamber: 'I' },
+  gallery: { surface: { x: 38, y: 4, w: 22, h: 12 }, flip: false, chamber: 'II' },
+  'control-room': { surface: { x: 72, y: 20, w: 22, h: 12 }, flip: true, chamber: 'III' },
+  parlor: { surface: { x: 6, y: 52, w: 22, h: 12 }, flip: false, chamber: 'IV' },
+  'entry-hall': { surface: { x: 38, y: 44, w: 22, h: 12 }, flip: false, chamber: 'V' },
+  library: { surface: { x: 60, y: 52, w: 22, h: 12 }, flip: true, chamber: 'VI' },
+  workshop: { surface: { x: 6, y: 80, w: 22, h: 12 }, flip: false, chamber: 'VII' },
+  cellar: { surface: { x: 38, y: 70, w: 22, h: 12 }, flip: false, chamber: 'VIII' },
+  'back-hall': { surface: { x: 72, y: 80, w: 22, h: 12 }, flip: true, chamber: 'IX' },
 }) satisfies Readonly<Record<string, MansionPin>>;
 
 export function getMansionPin(slug: string): MansionPin | undefined {
   return (MANSION_PINS as Record<string, MansionPin>)[slug];
+}
+
+/** Two surfaces overlap when their rectangles intersect on both axes. */
+export function surfacesOverlap(a: PinSurface, b: PinSurface): boolean {
+  const aRight = a.x + a.w;
+  const aBottom = a.y + a.h;
+  const bRight = b.x + b.w;
+  const bBottom = b.y + b.h;
+  return a.x < bRight && aRight > b.x && a.y < bBottom && aBottom > b.y;
 }

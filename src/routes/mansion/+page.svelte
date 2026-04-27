@@ -141,17 +141,22 @@
           {@const exhausted = isExhausted(room.category)}
           {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
           {#if pin}
+            <!-- The pin's surface is its only visual budget. overflow:hidden
+                 below makes that a hard guarantee — a future tweak that
+                 over-sizes the dot or tag will be clipped, not leaked into
+                 neighbouring chambers or out of the brass frame.
+                 Contract: docs/mansion-pin-layout.md -->
             <div
-              class="room-pin"
-              class:room-pin-flip={pin.flip}
-              class:room-pin-visited={visited && !exhausted}
-              class:room-pin-sealed={sealed}
-              class:room-pin-exhausted={exhausted}
-              class:room-pin-debug={debugPins}
-              style="left: {pin.x}%; top: {pin.y}%"
+              class="pin-surface"
+              class:pin-surface-flip={pin.flip}
+              class:pin-surface-visited={visited && !exhausted}
+              class:pin-surface-sealed={sealed}
+              class:pin-surface-exhausted={exhausted}
+              class:pin-surface-debug={debugPins}
+              style="left: {pin.surface.x}%; top: {pin.surface.y}%; width: {pin.surface
+                .w}%; height: {pin.surface.h}%"
             >
               <span class="pin-dot" aria-hidden="true"></span>
-              <span class="pin-leader" aria-hidden="true"></span>
 
               {#if sealed}
                 <div class="pin-tag pin-tag-sealed" aria-hidden="true">
@@ -276,22 +281,37 @@
     margin-top: 0.35rem;
   }
 
-  /* Room pin: dot + leader + tag */
-  .room-pin {
+  /* Pin surface: the bounding box for one chamber's pin. The dot sits in
+     one top corner (controlled by .pin-surface-flip) and the tag fills the
+     rest. overflow:hidden is the contract enforcer — any geometry tweak
+     that would push content past these bounds is clipped, not leaked into
+     other surfaces or the brass frame. See $lib/mansionPins.ts. */
+  .pin-surface {
     position: absolute;
-    transform: translate(-50%, -50%);
     z-index: 4;
+    overflow: hidden;
+    pointer-events: none; /* re-enabled on .pin-tag for hit testing */
   }
 
-  /* Pins as physical brass dots with two pinging rings. */
+  /* Pinging brass dot, anchored to the top-left of the surface (default)
+     or top-right when flipped. Inset slightly so the ping rings stay
+     visible inside overflow:hidden. */
   .pin-dot {
-    position: relative;
+    position: absolute;
+    top: 6px;
+    left: 6px;
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #f0c24d, #8a7235 65%, #3a2f18 100%);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+
+  .pin-surface-flip .pin-dot {
+    left: auto;
+    right: 6px;
   }
 
   .pin-dot::before,
@@ -320,127 +340,99 @@
     }
   }
 
-  /* Visited: dot saturates to gold, ring borders brighten. */
-  .room-pin-visited .pin-dot {
+  .pin-surface-visited .pin-dot {
     background: radial-gradient(circle at 35% 30%, #ffd76a, #c89a3a 65%, #5a4220 100%);
   }
 
-  .room-pin-visited .pin-dot::before,
-  .room-pin-visited .pin-dot::after {
+  .pin-surface-visited .pin-dot::before,
+  .pin-surface-visited .pin-dot::after {
     border-color: rgba(255, 215, 106, 0.65);
   }
 
-  /* Sealed: ember rim, no ping. */
-  .room-pin-sealed .pin-dot {
+  .pin-surface-sealed .pin-dot {
     background: radial-gradient(circle at 35% 30%, #4a4248, #2a2428 65%, #1a141a 100%);
   }
 
-  .room-pin-sealed .pin-dot::before,
-  .room-pin-sealed .pin-dot::after {
+  .pin-surface-sealed .pin-dot::before,
+  .pin-surface-sealed .pin-dot::after {
     border-color: rgba(210, 58, 42, 0.45);
     animation: none;
     transform: scale(1);
     opacity: 0.55;
   }
 
-  /* Exhausted: cyan rim, no ping. Reads as "completed/closed-positive"
-     vs sealed's "never-was-open" ember warning. */
-  .room-pin-exhausted .pin-dot {
+  .pin-surface-exhausted .pin-dot {
     background: radial-gradient(circle at 35% 30%, #6b8fb0, #2c3e52 65%, #1a2030 100%);
   }
 
-  .room-pin-exhausted .pin-dot::before,
-  .room-pin-exhausted .pin-dot::after {
+  .pin-surface-exhausted .pin-dot::before,
+  .pin-surface-exhausted .pin-dot::after {
     border-color: rgba(107, 143, 176, 0.5);
     animation: none;
     transform: scale(1);
     opacity: 0.6;
   }
 
-  .room-pin-exhausted .pin-tag {
+  .pin-surface-exhausted .pin-tag {
     border-color: rgba(107, 143, 176, 0.4);
   }
 
-  .room-pin-exhausted .pin-leader {
-    background: linear-gradient(90deg, rgba(107, 143, 176, 0.45), transparent);
-  }
-
-  .room-pin-exhausted.room-pin-flip .pin-leader {
-    background: linear-gradient(270deg, rgba(107, 143, 176, 0.45), transparent);
-  }
-
-  /* Leader connects dot to tag in warm brass. */
-  .pin-leader {
-    position: absolute;
-    top: 50%;
-    left: 14px;
-    width: 42px;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(196, 162, 78, 0.55), transparent);
-    transform-origin: left;
-  }
-
-  .room-pin-flip .pin-leader {
-    left: auto;
-    right: 14px;
-    background: linear-gradient(270deg, rgba(196, 162, 78, 0.55), transparent);
-  }
-
-  .room-pin-visited .pin-leader {
-    background: linear-gradient(90deg, rgba(255, 215, 106, 0.6), transparent);
-  }
-
-  .room-pin-visited.room-pin-flip .pin-leader {
-    background: linear-gradient(270deg, rgba(255, 215, 106, 0.6), transparent);
-  }
-
-  /* Debug overlay (?debug=pins): paint the bounding box around the tag so
-     collisions are visible without manual eyeballing. Skipped in normal use. */
-  .room-pin-debug .pin-tag {
+  /* Debug overlay (?debug=pins): paint the surface and tag boxes so
+     out-of-bounds tweaks are visible at a glance. */
+  .pin-surface-debug {
     outline: 1px dashed rgba(107, 143, 176, 0.85);
-    outline-offset: 2px;
+    outline-offset: 0;
   }
 
-  /* Tag width is fluid relative to the viewport, with a generous floor for
-     readability. The clamp + the architect panel's matching clamp keep the
-     three-across layout viable down to ~1100px viewport width. */
+  .pin-surface-debug .pin-tag {
+    outline: 1px dashed rgba(255, 215, 106, 0.6);
+  }
+
+  /* The tag fills the rest of the surface beside the dot. Dimensions are
+     surface-relative (calc(100% - dot_keepout)), never pixel-clamped, so
+     the tag can never grow past its declared box. */
   .pin-tag {
     position: absolute;
-    top: -28px;
-    left: 48px;
-    width: clamp(130px, 12vw, 200px);
-    padding: 0.55rem 0.7rem;
+    top: 0;
+    left: 28px;
+    right: 0;
+    bottom: 0;
+    padding: 0.4rem 0.6rem;
     background: linear-gradient(180deg, rgba(20, 22, 30, 0.85) 0%, rgba(11, 12, 18, 0.9) 100%);
     border: 1px solid rgba(196, 162, 78, 0.45);
     text-decoration: none;
     color: var(--color-paper);
+    pointer-events: auto;
     transition:
       border-color var(--motion-base) var(--ease-out),
       box-shadow var(--motion-base) var(--ease-out),
       transform var(--motion-base) var(--ease-out);
     backdrop-filter: blur(2px);
+    overflow: hidden;
   }
 
-  .room-pin-flip .pin-tag {
-    left: auto;
-    right: 48px;
+  .pin-surface-flip .pin-tag {
+    left: 0;
+    right: 28px;
     text-align: right;
   }
 
-  .pin-tag:hover {
+  .pin-tag:hover,
+  .pin-tag:focus-visible {
     border-color: rgba(255, 215, 106, 0.75);
     box-shadow:
       0 12px 32px rgba(0, 0, 0, 0.55),
       0 0 0 1px rgba(255, 215, 106, 0.35);
-    transform: translateY(-2px);
+    /* No translate — the surface is the budget, and translate would push
+       the tag past it and get clipped. Use a glow instead. */
+    outline: none;
   }
 
-  /* Visited tag border glows brass; sealed gets the ember rim. */
-  .room-pin-visited .pin-tag {
+  .pin-surface-visited .pin-tag {
     border-color: rgba(255, 215, 106, 0.55);
   }
 
-  .room-pin-sealed .pin-tag {
+  .pin-surface-sealed .pin-tag {
     border-color: rgba(210, 58, 42, 0.4);
   }
 
@@ -473,7 +465,7 @@
   .pin-name {
     font-family: var(--font-display);
     font-style: italic;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     color: var(--color-bone);
     line-height: 1.1;
   }
@@ -586,7 +578,7 @@
 
     .board-bg,
     .board-overlay,
-    .room-pin {
+    .pin-surface {
       display: none;
     }
 
