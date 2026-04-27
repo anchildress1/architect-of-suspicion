@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { Classification, FullCard } from '$lib/types';
+import type { Classification, EvaluateConflictResponse, FullCard } from '$lib/types';
 import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
@@ -137,6 +137,46 @@ async function loadPickHistory(
   }));
 }
 
+async function loadCanonicalPick(
+  sessionId: string,
+  cardId: string,
+): Promise<EvaluateConflictResponse> {
+  const supabase = getSupabase();
+  const suspicion = supabase.schema('suspicion');
+
+  const [pickRes, sessionRes] = await Promise.all([
+    suspicion
+      .from('picks')
+      .select('classification')
+      .eq('session_id', sessionId)
+      .eq('card_id', cardId)
+      .maybeSingle(),
+    suspicion.from('sessions').select('attention').eq('session_id', sessionId).maybeSingle(),
+  ]);
+
+  if (pickRes.error || !pickRes.data) {
+    console.error(
+      '[evaluate] canonical pick read failed:',
+      pickRes.error?.message ?? 'no row returned for unique-conflict pick',
+    );
+    error(500, 'Failed to recover canonical pick after conflict');
+  }
+  if (sessionRes.error || !sessionRes.data) {
+    console.error(
+      '[evaluate] canonical attention read failed:',
+      sessionRes.error?.message ?? 'session row missing',
+    );
+    error(500, 'Failed to recover canonical attention after conflict');
+  }
+
+  return {
+    canonical: {
+      classification: pickRes.data.classification as Classification,
+      attention: Number(sessionRes.data.attention),
+    },
+  };
+}
+
 async function callReaction(
   claimText: string,
   card: FullCard,
@@ -205,8 +245,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
   if (pickError) {
     // 23505 = unique_violation: the card has already been ruled in this session.
+    // Return the *canonical* pick + attention so the client can re-sync to the
+    // server's truth instead of committing the attempted classification (which
+    // may differ from what was actually persisted — see types.EvaluateConflictResponse).
     if ((pickError as { code?: string }).code === '23505') {
-      error(409, 'Card already ruled in this session');
+      const canonical = await loadCanonicalPick(session.sessionId, input.cardId);
+      return json(canonical satisfies EvaluateConflictResponse, { status: 409 });
     }
     console.error('[evaluate] picks insert failed:', pickError.message);
     error(500, 'Failed to record pick');
