@@ -7,32 +7,26 @@
 
   let { data } = $props();
 
-  // Pin coordinates expressed as percent of the house exterior image.
-  // Hand-placed onto the artwork's windows / doors / architectural features
-  // — deliberately NOT a 3x3 grid. Both x and y vary across each chamber so
-  // the eye reads "pinned to a building" rather than "tabular layout."
-  // `flip: true` draws leader/tag LEFT.
-  // Pin coords correspond to actual features in the mansion artwork:
-  // - Attic = far-left attic window
-  // - Gallery = left dormer/peak window
-  // - Control Room = right peak window
-  // - Parlor = mid-floor bay window left
-  // - Library = mid-floor bay window right
-  // - Entry Hall = main door (sealed)
-  // - Workshop = ground-floor window left
-  // - Back Hall = ground-floor window right
-  // - Cellar = cellar door at base of stairs
-  // y-staggered per band so 170px tags don't share a row.
+  // Pin coordinates as percent of the house exterior image. Each pin sits on
+  // a real architectural feature in the artwork, with both x and y staggered
+  // so neighbours never share a column or row — the eye reads "notes pinned
+  // onto a building" instead of "labels arranged on a frame."
+  // Feature map: attic = left tower upper window; gallery = peaked dormer
+  // left of the clock; control-room = right peaked dormer; parlor / library
+  // = the two 2nd-floor bay windows; workshop / back-hall = ground-floor
+  // lit windows flanking the door (NOT the corner turrets); entry-hall =
+  // the sealed main door; cellar = the archway at the base of the stairs.
+  // `flip: true` draws leader/tag LEFT instead of right.
   const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 14, y: 24, flip: false, chamber: 'I' },
-    gallery: { x: 28, y: 12, flip: false, chamber: 'II' },
-    'control-room': { x: 86, y: 18, flip: true, chamber: 'III' },
-    parlor: { x: 14, y: 44, flip: false, chamber: 'IV' },
-    library: { x: 86, y: 42, flip: true, chamber: 'VI' },
-    'entry-hall': { x: 50, y: 76, flip: false, chamber: 'V' },
-    workshop: { x: 14, y: 66, flip: false, chamber: 'VII' },
-    'back-hall': { x: 86, y: 64, flip: true, chamber: 'IX' },
-    cellar: { x: 50, y: 92, flip: false, chamber: 'VIII' },
+    attic: { x: 18, y: 23, flip: false, chamber: 'I' },
+    gallery: { x: 48, y: 6, flip: false, chamber: 'II' },
+    'control-room': { x: 95, y: 21, flip: true, chamber: 'III' },
+    'entry-hall': { x: 52, y: 49, flip: false, chamber: 'V' },
+    parlor: { x: 22, y: 55, flip: false, chamber: 'IV' },
+    library: { x: 80, y: 60, flip: true, chamber: 'VI' },
+    cellar: { x: 59, y: 79, flip: false, chamber: 'VIII' },
+    workshop: { x: 19, y: 83, flip: false, chamber: 'VII' },
+    'back-hall': { x: 95, y: 92, flip: true, chamber: 'IX' },
   };
 
   // Per-room exhaustion: a chamber is "exhausted" once every card in its
