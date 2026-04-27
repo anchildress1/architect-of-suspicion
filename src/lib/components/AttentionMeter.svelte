@@ -34,12 +34,16 @@
   });
 </script>
 
-<div class="meter" role="img" aria-label="The Architect's attention: {mood}">
+<div class="meter">
   <p class="meter-mood-line" aria-hidden="true">
     <span class="meter-mood-name">{mood}</span>
     <span class="meter-mood-sep">·</span>
     <span class="meter-mood-value">{value}<small>/100</small></span>
   </p>
+
+  <span class="meter-sr" aria-live="polite" aria-atomic="true">
+    The Architect's attention: {mood}, {value} of 100.
+  </span>
 
   <svg viewBox="0 0 260 150" aria-hidden="true">
     <defs>
@@ -136,6 +140,21 @@
   .meter svg {
     width: 100%;
     height: auto;
+  }
+
+  /* SR-only live region: keeps mood + value in parity with sighted users.
+     Visual readout above is aria-hidden because the gauge SVG carries it,
+     and the SVG itself is decorative. */
+  .meter-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .needle-g {
