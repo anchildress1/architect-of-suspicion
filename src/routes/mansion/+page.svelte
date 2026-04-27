@@ -1,34 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/state';
   import { rooms } from '$lib/rooms';
+  import { getMansionPin } from '$lib/mansionPins';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
   let { data } = $props();
 
-  // Pin coordinates as percent of the house exterior image. Each pin sits on
-  // a real architectural feature in the artwork, with both x and y staggered
-  // so neighbours never share a column or row — the eye reads "notes pinned
-  // onto a building" instead of "labels arranged on a frame."
-  // Feature map: attic = left tower upper window; gallery = peaked dormer
-  // left of the clock; control-room = right peaked dormer; parlor / library
-  // = the two 2nd-floor bay windows; workshop / back-hall = ground-floor
-  // lit windows flanking the door (NOT the corner turrets); entry-hall =
-  // the sealed main door; cellar = the archway at the base of the stairs.
-  // `flip: true` draws leader/tag LEFT instead of right.
-  const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 18, y: 23, flip: false, chamber: 'I' },
-    gallery: { x: 48, y: 6, flip: false, chamber: 'II' },
-    'control-room': { x: 95, y: 21, flip: true, chamber: 'III' },
-    'entry-hall': { x: 52, y: 49, flip: false, chamber: 'V' },
-    parlor: { x: 22, y: 55, flip: false, chamber: 'IV' },
-    library: { x: 80, y: 60, flip: true, chamber: 'VI' },
-    cellar: { x: 59, y: 79, flip: false, chamber: 'VIII' },
-    workshop: { x: 19, y: 83, flip: false, chamber: 'VII' },
-    'back-hall': { x: 95, y: 92, flip: true, chamber: 'IX' },
-  };
+  // ?debug=pins paints the leader/tag bounding boxes so collisions can be
+  // spotted at a glance during artwork tuning. Off in production paths.
+  const debugPins = $derived(page.url.searchParams.get('debug') === 'pins');
 
   // Per-room exhaustion: a chamber is "exhausted" once every card in its
   // category has been ruled. Compares server-loaded category totals against
@@ -101,7 +85,7 @@
         </header>
 
         {#each rooms as room (room.slug)}
-          {@const pin = PINS[room.slug]}
+          {@const pin = getMansionPin(room.slug)}
           {@const visited = gameState.current.roomsVisited.includes(room.slug)}
           {@const exhausted = isExhausted(room.category)}
           {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
@@ -112,6 +96,7 @@
               class:room-pin-visited={visited && !exhausted}
               class:room-pin-sealed={sealed}
               class:room-pin-exhausted={exhausted}
+              class:room-pin-debug={debugPins}
               style="left: {pin.x}%; top: {pin.y}%"
             >
               <span class="pin-dot" aria-hidden="true"></span>
@@ -356,6 +341,13 @@
 
   .room-pin-visited.room-pin-flip .pin-leader {
     background: linear-gradient(270deg, rgba(255, 215, 106, 0.6), transparent);
+  }
+
+  /* Debug overlay (?debug=pins): paint the bounding box around the tag so
+     collisions are visible without manual eyeballing. Skipped in normal use. */
+  .room-pin-debug .pin-tag {
+    outline: 1px dashed rgba(107, 143, 176, 0.85);
+    outline-offset: 2px;
   }
 
   /* Tag width is fluid relative to the viewport, with a generous floor for
