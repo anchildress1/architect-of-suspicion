@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { invalidateAll } from '$app/navigation';
   import { rooms } from '$lib/rooms';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
@@ -41,16 +42,33 @@
 
   let wanderNarrated = $state(false);
 
+  // Re-run +page.server.ts so categoryCounts reflect any deck drift since SSR
+  // (claim re-seed mid-session, soft-deletes, etc.). Without this, a chamber
+  // can stay marked "Closed · all ruled" — or fail to mark — for the rest of
+  // the session because the counts are frozen at first paint.
+  function refreshCounts() {
+    void invalidateAll();
+  }
+
   onMount(async () => {
     if (!gameState.current.sessionId || !gameState.current.claimId) {
       // No session — bounce back to summons.
       window.location.href = '/';
       return;
     }
+    refreshCounts();
     if (!wanderNarrated && gameState.current.roomsVisited.length >= 2) {
       wanderNarrated = true;
       await requestNarration('wander', 'mansion');
     }
+  });
+
+  $effect(() => {
+    function onVisibility() {
+      if (document.visibilityState === 'visible') refreshCounts();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   });
 </script>
 
