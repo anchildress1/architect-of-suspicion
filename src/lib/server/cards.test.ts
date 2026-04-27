@@ -22,7 +22,7 @@ vi.mock('$lib/server/supabase', () => ({
   }),
 }));
 
-import { fetchClaimDeck, fetchClaimDeckSize } from './cards';
+import { fetchClaimDeck, fetchClaimDeckSize, fetchClaimCategoryCounts } from './cards';
 
 const VALID_CLAIM_ID = '550e8400-e29b-41d4-a716-446655440000';
 const VALID_CARD_ID = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
@@ -224,6 +224,98 @@ describe('fetchClaimDeck', () => {
 
     expect(cards).toHaveLength(1);
     expect(cards[0].objectID).toBe('aaa');
+  });
+});
+
+function setupCategoryCountsQueries(
+  claimRows: Array<{ card_id: string }> | null,
+  cardRows: Array<{ category: string }> | null,
+  claimError: unknown = null,
+  cardError: unknown = null,
+) {
+  // Step 1: schema('suspicion').from('claim_cards').select('card_id').eq('claim_id', ...)
+  const claimResult = { data: claimRows, error: claimError };
+  const claimEqThenable = Object.assign(Promise.resolve(claimResult), {});
+  const claimEq = vi.fn().mockReturnValue(claimEqThenable);
+  const claimSelect = vi.fn().mockReturnValue({ eq: claimEq });
+  mockSchemaFrom.mockReturnValue({ select: claimSelect });
+
+  // Step 2: from('cards').select('category').in('objectID', ids).is('deleted_at', null)
+  const cardResult = { data: cardRows, error: cardError };
+  const cardIsThenable = Object.assign(Promise.resolve(cardResult), {});
+  const cardIs = vi.fn().mockReturnValue(cardIsThenable);
+  const cardIn = vi.fn().mockReturnValue({ is: cardIs });
+  const cardSelect = vi.fn().mockReturnValue({ in: cardIn });
+  mockPublicFrom.mockReturnValue({ select: cardSelect });
+}
+
+describe('fetchClaimCategoryCounts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns counts={} with an error message for an invalid claim_id', async () => {
+    const { counts, error } = await fetchClaimCategoryCounts('not-a-uuid');
+    expect(counts).toEqual({});
+    expect(error).toBe('Invalid claim_id');
+    expect(mockSchemaFrom).not.toHaveBeenCalled();
+    expect(mockPublicFrom).not.toHaveBeenCalled();
+  });
+
+  it('aggregates rows across categories', async () => {
+    setupCategoryCountsQueries(
+      [{ card_id: '1' }, { card_id: '2' }, { card_id: '3' }, { card_id: '4' }],
+      [
+        { category: 'Decisions' },
+        { category: 'Decisions' },
+        { category: 'Awards' },
+        { category: 'Decisions' },
+      ],
+    );
+
+    const { counts, error } = await fetchClaimCategoryCounts(VALID_CLAIM_ID);
+
+    expect(error).toBeNull();
+    expect(counts).toEqual({ Decisions: 3, Awards: 1 });
+  });
+
+  it('returns counts={} without hitting step-2 when claim_cards is empty', async () => {
+    setupCategoryCountsQueries([], []);
+
+    const { counts, error } = await fetchClaimCategoryCounts(VALID_CLAIM_ID);
+
+    expect(counts).toEqual({});
+    expect(error).toBeNull();
+    expect(mockPublicFrom).not.toHaveBeenCalled();
+  });
+
+  it('returns error when step-1 (claim_cards) fails', async () => {
+    setupCategoryCountsQueries(null, null, { message: 'pg-down' });
+
+    const { counts, error } = await fetchClaimCategoryCounts(VALID_CLAIM_ID);
+
+    expect(counts).toEqual({});
+    expect(error).toBe('Failed to fetch category counts');
+    expect(mockPublicFrom).not.toHaveBeenCalled();
+  });
+
+  it('returns error when step-2 (cards) fails', async () => {
+    setupCategoryCountsQueries([{ card_id: VALID_CARD_ID }], null, null, { message: 'cards-down' });
+
+    const { counts, error } = await fetchClaimCategoryCounts(VALID_CLAIM_ID);
+
+    expect(counts).toEqual({});
+    expect(error).toBe('Failed to fetch category counts');
+  });
+
+  it('treats null cardRows from step-2 as zero counts (no soft-deleted rows)', async () => {
+    // Soft-deleted cards filtered by .is('deleted_at', null) leave no surviving rows.
+    setupCategoryCountsQueries([{ card_id: VALID_CARD_ID }], []);
+
+    const { counts, error } = await fetchClaimCategoryCounts(VALID_CLAIM_ID);
+
+    expect(counts).toEqual({});
+    expect(error).toBeNull();
   });
 });
 
