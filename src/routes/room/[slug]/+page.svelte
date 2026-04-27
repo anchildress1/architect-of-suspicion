@@ -62,7 +62,7 @@
     gameState.addFeedEntry({
       id: deliberatingId,
       type: 'narration',
-      text: 'The Architect deliberates&hellip;',
+      text: 'The Architect deliberates…',
       timestamp: Date.now(),
     });
 
