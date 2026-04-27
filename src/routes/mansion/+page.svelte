@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/state';
-  import { rooms } from '$lib/rooms';
+  import { rooms, roomsByGrid } from '$lib/rooms';
   import { getMansionPin } from '$lib/mansionPins';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
@@ -83,6 +83,57 @@
           <h1 class="board-title">The Mansion</h1>
           <p class="board-sub">Pick a chamber to enter</p>
         </header>
+
+        <!-- Narrow-viewport fallback. The pin overlay needs ≥1100px to
+             clear collisions; below that, render a 3×3 list so the layout
+             stays usable. CSS swaps which view is visible. -->
+        <ul class="board-list" aria-label="Chambers">
+          {#each roomsByGrid as room (room.slug)}
+            {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+            {@const exhausted = isExhausted(room.category)}
+            {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
+            {@const pin = getMansionPin(room.slug)}
+            <li
+              class="bl-item"
+              class:bl-item-visited={visited && !exhausted}
+              class:bl-item-sealed={sealed}
+              class:bl-item-exhausted={exhausted}
+            >
+              {#if sealed}
+                <div class="bl-link bl-link-sealed" aria-disabled="true">
+                  <p class="bl-row1">
+                    <span>Ch. {pin?.chamber ?? '—'}</span>
+                    <span class="bl-status">{exhausted ? '✓' : '— — —'}</span>
+                  </p>
+                  <p class="bl-name">{room.name}</p>
+                  <p class="bl-cat">{exhausted ? 'Closed · all ruled' : 'Sealed · no entry'}</p>
+                </div>
+              {:else if room.slug === 'attic'}
+                <a href="/attic" class="bl-link bl-link-meta">
+                  <p class="bl-row1">
+                    <span>Ch. {pin?.chamber ?? '—'}</span>
+                    <span class="bl-status">Meta</span>
+                  </p>
+                  <p class="bl-name">{room.name}</p>
+                  <p class="bl-cat">How to play · bio · credits</p>
+                </a>
+              {:else}
+                <a
+                  href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
+                  class="bl-link"
+                  aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
+                >
+                  <p class="bl-row1">
+                    <span>Ch. {pin?.chamber ?? '—'}</span>
+                    <span class="bl-status">{visited ? 'Resume' : 'Enter'}</span>
+                  </p>
+                  <p class="bl-name">{room.name}</p>
+                  <p class="bl-cat">{room.category}</p>
+                </a>
+              {/if}
+            </li>
+          {/each}
+        </ul>
 
         {#each rooms as room (room.slug)}
           {@const pin = getMansionPin(room.slug)}
@@ -436,26 +487,127 @@
     margin-top: 0.3rem;
   }
 
-  @media (max-width: 1100px) {
-    .pin-tag {
-      width: 160px;
-      font-size: 0.7rem;
-    }
+  /* Narrow-viewport list. Hidden on desktop; takes over below 1100px,
+     where the pin overlay can no longer keep tags from overlapping. */
+  .board-list {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 4.5rem 1rem 1.5rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    overflow-y: auto;
   }
 
-  @media (max-width: 900px) {
+  .bl-item {
+    min-width: 0;
+  }
+
+  .bl-link {
+    display: block;
+    height: 100%;
+    padding: 0.7rem 0.75rem;
+    background: linear-gradient(180deg, rgba(20, 22, 30, 0.9) 0%, rgba(11, 12, 18, 0.95) 100%);
+    border: 1px solid rgba(196, 162, 78, 0.45);
+    color: var(--color-paper);
+    text-decoration: none;
+    transition:
+      border-color var(--motion-base) var(--ease-out),
+      transform var(--motion-base) var(--ease-out);
+  }
+
+  .bl-link:hover,
+  .bl-link:focus-visible {
+    border-color: rgba(255, 215, 106, 0.75);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .bl-item-visited .bl-link {
+    border-color: rgba(255, 215, 106, 0.55);
+  }
+
+  .bl-item-sealed .bl-link-sealed {
+    border-color: rgba(210, 58, 42, 0.4);
+    opacity: 0.6;
+  }
+
+  .bl-item-exhausted .bl-link-sealed {
+    border-color: rgba(107, 143, 176, 0.45);
+    opacity: 0.7;
+  }
+
+  .bl-link-meta {
+    border-color: rgba(233, 228, 216, 0.18);
+    opacity: 0.85;
+  }
+
+  .bl-row1 {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 0.25rem;
+  }
+
+  .bl-status {
+    color: var(--color-bone);
+  }
+
+  .bl-name {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--color-bone);
+    line-height: 1.15;
+  }
+
+  .bl-cat {
+    font-family: var(--font-readout);
+    font-size: 0.5rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-top: 0.3rem;
+  }
+
+  @media (max-width: 1100px) {
+    /* Below the pin layout's collision-safe width, swap to the list. */
     .board {
-      max-width: 100%;
+      aspect-ratio: auto;
+      min-height: 70vh;
     }
 
-    .pin-tag {
-      width: 130px;
+    .board-bg,
+    .board-overlay,
+    .room-pin {
+      display: none;
+    }
+
+    .board-list {
+      display: grid;
     }
   }
 
   @media (max-width: 767px) {
     .mansion-main {
       padding: 0.75rem;
+    }
+
+    .board-list {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .board-list {
+      grid-template-columns: 1fr;
     }
   }
 </style>
