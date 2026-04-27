@@ -92,7 +92,10 @@ one composition.
 Workflow:
 
 1. Append `?debug=pins` to the `/mansion` URL. Surfaces and tags get
-   dashed outlines so you can see the rectangles.
+   dashed outlines so you can see the rectangles. **Debug mode also
+   skips the session redirect**, so you can inspect the layout without
+   spinning up a real game (chambers won't be enterable, but the pins
+   render).
 2. Edit `MANSION_PINS` in `src/lib/mansionPins.ts`.
 3. Update the table in this doc in the **same commit**.
 4. `pnpm vitest run src/lib/mansionPins.test.ts` — the test suite fails

@@ -10,8 +10,10 @@
 
   let { data } = $props();
 
-  // ?debug=pins paints the leader/tag bounding boxes so collisions can be
-  // spotted at a glance during artwork tuning. Off in production paths.
+  // ?debug=pins paints the surface + tag bounding boxes so collisions can
+  // be spotted at a glance during artwork tuning. It also skips the session
+  // redirect below so the layout is inspectable without a real game in
+  // progress. See docs/mansion-pin-layout.md.
   const debugPins = $derived(page.url.searchParams.get('debug') === 'pins');
 
   // Per-room exhaustion: a chamber is "exhausted" once every card in its
@@ -35,8 +37,11 @@
   }
 
   onMount(async () => {
+    // ?debug=pins lets the layout be inspected without spinning up a real
+    // game. Chambers won't be enterable but the surfaces / tags render so
+    // the contract in docs/mansion-pin-layout.md can be verified visually.
     if (!gameState.current.sessionId || !gameState.current.claimId) {
-      // No session — bounce back to summons.
+      if (debugPins) return;
       window.location.href = '/';
       return;
     }
