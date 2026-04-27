@@ -5,7 +5,12 @@
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
   import WitnessCard from '$lib/components/WitnessCard.svelte';
   import WitnessQueue from '$lib/components/WitnessQueue.svelte';
-  import type { Classification, ClaimCardEntry, EvaluateResponse } from '$lib/types';
+  import type {
+    Classification,
+    ClaimCardEntry,
+    EvaluateConflictResponse,
+    EvaluateResponse,
+  } from '$lib/types';
 
   let { data } = $props();
 
@@ -51,89 +56,106 @@
   }
 
   function jumpTo(index: number) {
+    // Block jumps mid-evaluate so an in-flight pick can't have its post-resolve
+    // pointer advance clobber the player's manual selection.
+    if (evaluating) return;
     if (index < 0 || index >= deck.length) return;
     pointer = index;
+  }
+
+  function pushFeedEntry(type: 'action' | 'reaction' | 'narration', text: string) {
+    gameState.addFeedEntry({ id: crypto.randomUUID(), type, text, timestamp: Date.now() });
+  }
+
+  function pushDeliberating(): string {
+    const id = crypto.randomUUID();
+    gameState.addFeedEntry({
+      id,
+      type: 'narration',
+      text: 'The Architect deliberates…',
+      timestamp: Date.now(),
+    });
+    return id;
+  }
+
+  function pushMechanismSeized() {
+    pushFeedEntry('narration', 'The mechanism seized — that exhibit could not be read.');
+  }
+
+  function commitRuling(card: ClaimCardEntry, classification: Classification, fromIndex: number) {
+    rulings = { ...rulings, [card.objectID]: classification };
+    gameState.addEvidence({ card, classification });
+    const next = nextUnruledIndex(fromIndex);
+    if (next >= 0) pointer = next;
+  }
+
+  async function applyEvaluateSuccess(
+    res: Response,
+    card: ClaimCardEntry,
+    classification: Classification,
+    ruledIndex: number,
+  ) {
+    const { ai_reaction, attention } = (await res.json()) as EvaluateResponse;
+    pushFeedEntry(
+      'action',
+      classification === 'dismiss'
+        ? `Struck "${card.title}" from the record.`
+        : `Classified "${card.title}" as ${classification}.`,
+    );
+    if (ai_reaction) pushFeedEntry('reaction', ai_reaction);
+    gameState.setAttention(attention);
+    commitRuling(card, classification, ruledIndex);
+  }
+
+  async function applyConflictRecovery(res: Response, card: ClaimCardEntry, ruledIndex: number) {
+    let canonicalClassification: Classification | null = null;
+    let canonicalAttention: number | null = null;
+    try {
+      const body = (await res.json()) as EvaluateConflictResponse;
+      canonicalClassification = body.canonical?.classification ?? null;
+      canonicalAttention = body.canonical?.attention ?? null;
+    } catch {
+      // Older or partial body — fall through to the seized-mechanism path.
+    }
+    if (!canonicalClassification) {
+      pushMechanismSeized();
+      return;
+    }
+    pushFeedEntry(
+      'narration',
+      `That exhibit was already ruled — the record stands as ${canonicalClassification}.`,
+    );
+    if (canonicalAttention !== null) gameState.setAttention(canonicalAttention);
+    commitRuling(card, canonicalClassification, ruledIndex);
   }
 
   async function decide(card: ClaimCardEntry, classification: Classification) {
     if (!gameState.current.sessionId || !gameState.current.claimId) return;
 
-    const deliberatingId = crypto.randomUUID();
-    gameState.addFeedEntry({
-      id: deliberatingId,
-      type: 'narration',
-      text: 'The Architect deliberates…',
-      timestamp: Date.now(),
-    });
-
+    // Capture the deck index *before* awaiting. A queue-jump during the fetch
+    // would otherwise advance the pointer relative to the player's new
+    // selection on resolve.
+    const ruledIndex = pointer;
+    const deliberatingId = pushDeliberating();
     evaluating = true;
     try {
       const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          card_id: card.objectID,
-          classification,
-        }),
+        body: JSON.stringify({ card_id: card.objectID, classification }),
       });
-
       gameState.removeFeedEntry(deliberatingId);
 
-      if (!res.ok) {
-        // 409 = card already ruled in this session (e.g., stale client after
-        // reload). Sync the client to the server's truth and advance instead
-        // of stranding the player on an un-actionable card.
-        if (res.status === 409) {
-          rulings = { ...rulings, [card.objectID]: classification };
-          gameState.addEvidence({ card, classification });
-          const next = nextUnruledIndex(pointer);
-          if (next >= 0) pointer = next;
-          return;
-        }
-        gameState.addFeedEntry({
-          id: crypto.randomUUID(),
-          type: 'narration',
-          text: 'The mechanism seized — that exhibit could not be read.',
-          timestamp: Date.now(),
-        });
-        return;
+      if (res.ok) {
+        await applyEvaluateSuccess(res, card, classification, ruledIndex);
+      } else if (res.status === 409) {
+        await applyConflictRecovery(res, card, ruledIndex);
+      } else {
+        pushMechanismSeized();
       }
-
-      const { ai_reaction, attention } = (await res.json()) as EvaluateResponse;
-
-      gameState.addFeedEntry({
-        id: crypto.randomUUID(),
-        type: 'action',
-        text:
-          classification === 'dismiss'
-            ? `Struck "${card.title}" from the record.`
-            : `Classified "${card.title}" as ${classification}.`,
-        timestamp: Date.now(),
-      });
-
-      if (ai_reaction) {
-        gameState.addFeedEntry({
-          id: crypto.randomUUID(),
-          type: 'reaction',
-          text: ai_reaction,
-          timestamp: Date.now(),
-        });
-      }
-
-      gameState.addEvidence({ card, classification });
-      gameState.setAttention(attention);
-
-      rulings = { ...rulings, [card.objectID]: classification };
-      const next = nextUnruledIndex(pointer);
-      if (next >= 0) pointer = next;
     } catch {
       gameState.removeFeedEntry(deliberatingId);
-      gameState.addFeedEntry({
-        id: crypto.randomUUID(),
-        type: 'narration',
-        text: 'The mechanism seized — that exhibit could not be read.',
-        timestamp: Date.now(),
-      });
+      pushMechanismSeized();
     } finally {
       evaluating = false;
     }
