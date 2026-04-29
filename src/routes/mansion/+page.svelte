@@ -295,15 +295,68 @@
   }
 
   /* Pin surface: the bounding box for one chamber's pin. The dot sits in
-     one top corner (controlled by .pin-surface-flip) and the tag fills the
-     rest. overflow:hidden is the contract enforcer — any geometry tweak
-     that would push content past these bounds is clipped, not leaked into
-     other surfaces or the brass frame. See $lib/mansionPins.ts. */
+     one top corner (controlled by .pin-surface-flip), a thin brass leader
+     bridges the gap, and the tag fills the rest. overflow:hidden is still
+     the contract enforcer — any geometry tweak that would push content
+     past these bounds is clipped, not leaked into other surfaces or the
+     brass frame. See $lib/mansionPins.ts. */
   .pin-surface {
     position: absolute;
     z-index: 4;
     overflow: hidden;
     pointer-events: none; /* re-enabled on .pin-tag for hit testing */
+  }
+
+  /* Leader — a thin brass hairline that runs from the right edge of the
+     dot to the left edge of the tag (or mirrored for flip=true). Lives
+     inside the surface so it cannot leak past the bounding box. */
+  .pin-surface::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    width: 36px;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      rgba(196, 162, 78, 0.85) 0%,
+      rgba(196, 162, 78, 0.45) 100%
+    );
+    pointer-events: none;
+  }
+
+  .pin-surface-flip::before {
+    left: auto;
+    right: 18px;
+    background: linear-gradient(
+      to left,
+      rgba(196, 162, 78, 0.85) 0%,
+      rgba(196, 162, 78, 0.45) 100%
+    );
+  }
+
+  .pin-surface-visited::before {
+    background: linear-gradient(
+      to right,
+      rgba(255, 215, 106, 0.9) 0%,
+      rgba(255, 215, 106, 0.55) 100%
+    );
+  }
+
+  .pin-surface-flip.pin-surface-visited::before {
+    background: linear-gradient(
+      to left,
+      rgba(255, 215, 106, 0.9) 0%,
+      rgba(255, 215, 106, 0.55) 100%
+    );
+  }
+
+  .pin-surface-sealed::before {
+    background: rgba(210, 58, 42, 0.35);
+  }
+
+  .pin-surface-exhausted::before {
+    background: rgba(107, 143, 176, 0.45);
   }
 
   /* Pinging brass dot, anchored to the top-left of the surface (default)
@@ -401,13 +454,13 @@
     outline: 1px dashed rgba(255, 215, 106, 0.6);
   }
 
-  /* The tag fills the rest of the surface beside the dot. Dimensions are
-     surface-relative (calc(100% - dot_keepout)), never pixel-clamped, so
-     the tag can never grow past its declared box. */
+  /* The tag fills the rest of the surface beside the dot, after the
+     leader's gap. Dimensions are surface-relative (calc(100% - keepout)),
+     never pixel-clamped, so the tag can never grow past its declared box. */
   .pin-tag {
     position: absolute;
     top: 0;
-    left: 28px;
+    left: 56px;
     right: 0;
     bottom: 0;
     padding: 0.4rem 0.6rem;
@@ -426,7 +479,7 @@
 
   .pin-surface-flip .pin-tag {
     left: 0;
-    right: 28px;
+    right: 56px;
     text-align: right;
   }
 
