@@ -44,17 +44,22 @@ interface MansionPin {
 Hand-tuned to land on the artwork's named architectural features while
 respecting Invariants 1 and 2.
 
-| Slug           | Chamber | Surface (x, y, w, h) | Flip  | Anchored on (artwork)               |
-| -------------- | ------- | -------------------- | ----- | ----------------------------------- |
-| `attic`        | I       | (10, 14, 22, 12)     | false | left tower roof window              |
-| `gallery`      | II      | (39, 8, 22, 12)      | false | central clock face                  |
-| `control-room` | III     | (64, 14, 22, 12)     | true  | right tower roof window             |
-| `parlor`       | IV      | (10, 34, 22, 12)     | false | 2nd-floor bay window, left          |
-| `entry-hall`   | V       | (39, 34, 22, 12)     | false | 2nd-floor central window + pediment |
-| `library`      | VI      | (64, 34, 22, 12)     | true  | 2nd-floor bay window, right         |
-| `workshop`     | VII     | (10, 56, 22, 12)     | false | ground-floor lit window, left       |
-| `cellar`       | VIII    | (39, 64, 22, 12)     | false | main door under the portico         |
-| `back-hall`    | IX      | (64, 56, 22, 12)     | true  | ground-floor lit window, right      |
+| Slug           | Chamber | Surface (x, y, w, h) | Flip  | Anchored on (artwork)             |
+| -------------- | ------- | -------------------- | ----- | --------------------------------- |
+| `attic`        | I       | (13, 15, 19, 10)     | false | left tower upper window           |
+| `gallery`      | II      | (51, 9, 17, 9)       | false | central clock face                |
+| `control-room` | III     | (71, 14, 18, 10)     | true  | right tower upper window          |
+| `parlor`       | IV      | (10, 46, 20, 10)     | false | 2nd-floor bay window, left        |
+| `entry-hall`   | V       | (52, 38, 24, 10)     | false | 2nd-floor central pediment + gear |
+| `library`      | VI      | (72, 48, 18, 10)     | true  | 2nd-floor bay window, right       |
+| `workshop`     | VII     | (13, 76, 22, 10)     | false | 1st-floor lit window, left        |
+| `cellar`       | VIII    | (49, 69, 18, 10)     | false | central front door under the lamp |
+| `back-hall`    | IX      | (71, 80, 18, 10)     | true  | 1st-floor lit window, right       |
+
+The numbers are calibrated against the design QA reference render
+shipped alongside this branch — every dot lands on its named feature
+on `house-exterior.webp`. If the artwork changes, retune all surfaces
+together.
 
 ## Rendering
 
