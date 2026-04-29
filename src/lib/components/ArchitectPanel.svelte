@@ -46,7 +46,10 @@
     /* Fluid width — gives the mansion board breathing room at sub-1400px
        viewports without ever shrinking past the gauge's native scale. */
     width: clamp(240px, 22vw, 320px);
-    height: 100vh;
+    /* `100dvh` matches the chamber/mansion shell so the rail tracks the
+       visible viewport (mobile browser chrome included), instead of the
+       static `100vh` that drifts under a hiding nav bar. */
+    height: 100dvh;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;

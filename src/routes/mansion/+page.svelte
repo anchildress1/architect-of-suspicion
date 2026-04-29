@@ -206,7 +206,10 @@
 <style>
   .mansion-shell {
     display: flex;
-    min-height: 100vh;
+    /* Same viewport-locked pattern as the chamber shell — the board lives
+       inside the visible frame and never causes a page-level scroll. */
+    height: 100dvh;
+    overflow: hidden;
     background: var(--color-ink);
   }
 
@@ -217,6 +220,11 @@
     align-items: center;
     justify-content: center;
     padding: 1.5rem 2rem;
+    /* Below 1100px the layout swaps to the .board-list view, which can
+       outgrow the viewport on tall lists. Allow internal scroll so the
+       page itself stays put. */
+    overflow-y: auto;
+    min-height: 0;
   }
 
   /* The board: a brass-bordered frame; the photograph is set INTO it. */

@@ -232,7 +232,14 @@
 <style>
   .chamber-shell {
     display: flex;
-    min-height: 100vh;
+    /* Lock the chamber to the visible viewport. `100dvh` follows the
+       browser-chrome show/hide behaviour on mobile so the layout never
+       falls under a tab strip. `overflow: hidden` is the contract that
+       enforces the scroll budget — no page-level scrolling, ever. The
+       queue rail's nu-list and the chamber stage are the only things
+       that may scroll, and only inside their own boxes. */
+    height: 100dvh;
+    overflow: hidden;
     background: var(--color-ink);
   }
 
