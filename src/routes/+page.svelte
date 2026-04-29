@@ -163,12 +163,18 @@
 <style>
   .summons {
     position: relative;
-    min-height: 100vh;
+    /* Same viewport-locked pattern as the chamber and mansion shells —
+       no page-level scroll. The dossier is sized with fluid clamps below
+       so it fits inside `100dvh` on a typical laptop without overflow. */
+    height: 100dvh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    /* Vertical padding scales with viewport height so short laptops don't
+       fight the dossier for room while wide displays still feel airy. */
+    padding: clamp(0.75rem, 2vh, 2rem) 2rem;
     background:
       radial-gradient(ellipse 60% 40% at 50% 55%, #1a1420 0%, transparent 70%),
       radial-gradient(ellipse at 50% 100%, rgba(210, 58, 42, 0.18), transparent 55%),
@@ -223,7 +229,7 @@
     position: relative;
     z-index: 5;
     text-align: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: clamp(1rem, 2.5vh, 2.5rem);
   }
 
   .summons-eyebrow {
@@ -232,13 +238,15 @@
     letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-bottom: 1rem;
+    margin-bottom: clamp(0.5rem, 1.2vh, 1rem);
   }
 
   .summons-headline {
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(2.5rem, 6vw, 4.25rem);
+    /* Fluid clamp that respects height too — keeps the marquee from
+       hogging the viewport on short laptops. */
+    font-size: clamp(2rem, 4vw + 2vh, 4.25rem);
     color: var(--color-bone);
     line-height: 1;
     text-shadow: 0 4px 40px rgba(210, 58, 42, 0.18);
@@ -256,7 +264,7 @@
     letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--color-paper-dim);
-    margin-top: 1.1rem;
+    margin-top: clamp(0.5rem, 1.4vh, 1.1rem);
   }
 
   .summons-sub .dot {
@@ -269,7 +277,10 @@
     position: relative;
     z-index: 5;
     width: min(100%, 640px);
-    padding: 44px 52px 56px;
+    /* Vertical padding scales with viewport height so the box stays
+       inside `100dvh` on short laptops — horizontal padding is preserved
+       so the typography breathing room doesn't change. */
+    padding: clamp(1.25rem, 3vh, 2.75rem) clamp(1.5rem, 5vw, 3.25rem) clamp(1.5rem, 3.5vh, 3.5rem);
     background: linear-gradient(180deg, #161922 0%, #0e1118 100%);
     border: 1px solid rgba(233, 228, 216, 0.25);
     box-shadow:
@@ -325,8 +336,8 @@
   .dossier-head {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1.7rem;
-    padding-bottom: 0.85rem;
+    margin-bottom: clamp(0.75rem, 2vh, 1.7rem);
+    padding-bottom: clamp(0.5rem, 1vh, 0.85rem);
     border-bottom: 1px dashed rgba(233, 228, 216, 0.2);
     font-family: var(--font-readout);
     font-size: 0.62rem;
@@ -341,17 +352,17 @@
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-bottom: 0.6rem;
+    margin-bottom: clamp(0.4rem, 0.8vh, 0.6rem);
   }
 
   .dossier-claim {
     position: relative;
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-size: clamp(1.4rem, 1.5vw + 1.5vh, 2.4rem);
     color: var(--color-bone);
     line-height: 1.25;
-    margin-bottom: 1.8rem;
+    margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
     text-wrap: balance;
   }
 
@@ -394,8 +405,8 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.8rem;
-    padding-bottom: 1.4rem;
+    margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
+    padding-bottom: clamp(0.7rem, 1.5vh, 1.4rem);
     border-bottom: 1px solid rgba(233, 228, 216, 0.1);
   }
 
@@ -434,8 +445,8 @@
     font-family: var(--font-body);
     font-size: 0.92rem;
     color: var(--color-paper-dim);
-    line-height: 1.7;
-    margin-bottom: 1.8rem;
+    line-height: 1.6;
+    margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
     text-wrap: pretty;
   }
 
