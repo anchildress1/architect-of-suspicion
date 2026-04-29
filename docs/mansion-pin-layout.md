@@ -44,17 +44,17 @@ interface MansionPin {
 Hand-tuned to land on the artwork's named architectural features while
 respecting Invariants 1 and 2.
 
-| Slug           | Chamber | Surface (x, y, w, h) | Flip  | Anchored on (artwork)             |
-| -------------- | ------- | -------------------- | ----- | --------------------------------- |
-| `attic`        | I       | (6, 20, 22, 12)      | false | left tower upper window           |
-| `gallery`      | II      | (38, 4, 22, 12)      | false | peaked dormer left of the clock   |
-| `control-room` | III     | (72, 20, 22, 12)     | true  | right peaked dormer               |
-| `parlor`       | IV      | (6, 52, 22, 12)      | false | 2nd-floor bay window, left        |
-| `entry-hall`   | V       | (38, 44, 22, 12)     | false | sealed main door                  |
-| `library`      | VI      | (60, 52, 22, 12)     | true  | 2nd-floor bay window, right       |
-| `workshop`     | VII     | (6, 80, 22, 12)      | false | ground-floor lit window, left     |
-| `cellar`       | VIII    | (38, 70, 22, 12)     | false | archway at the base of the stairs |
-| `back-hall`    | IX      | (72, 80, 22, 12)     | true  | ground-floor lit window, right    |
+| Slug           | Chamber | Surface (x, y, w, h) | Flip  | Anchored on (artwork)               |
+| -------------- | ------- | -------------------- | ----- | ----------------------------------- |
+| `attic`        | I       | (10, 14, 22, 12)     | false | left tower roof window              |
+| `gallery`      | II      | (39, 8, 22, 12)      | false | central clock face                  |
+| `control-room` | III     | (64, 14, 22, 12)     | true  | right tower roof window             |
+| `parlor`       | IV      | (10, 34, 22, 12)     | false | 2nd-floor bay window, left          |
+| `entry-hall`   | V       | (39, 34, 22, 12)     | false | 2nd-floor central window + pediment |
+| `library`      | VI      | (64, 34, 22, 12)     | true  | 2nd-floor bay window, right         |
+| `workshop`     | VII     | (10, 56, 22, 12)     | false | ground-floor lit window, left       |
+| `cellar`       | VIII    | (39, 64, 22, 12)     | false | main door under the portico         |
+| `back-hall`    | IX      | (64, 56, 22, 12)     | true  | ground-floor lit window, right      |
 
 ## Rendering
 

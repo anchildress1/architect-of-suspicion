@@ -61,15 +61,15 @@ function freezePins<T extends Record<string, MansionPin>>(pins: T): Readonly<T> 
  * a single composition. Update docs/mansion-pin-layout.md in the same commit.
  */
 export const MANSION_PINS = freezePins({
-  attic: { surface: { x: 6, y: 20, w: 22, h: 12 }, flip: false, chamber: 'I' },
-  gallery: { surface: { x: 38, y: 4, w: 22, h: 12 }, flip: false, chamber: 'II' },
-  'control-room': { surface: { x: 72, y: 20, w: 22, h: 12 }, flip: true, chamber: 'III' },
-  parlor: { surface: { x: 6, y: 52, w: 22, h: 12 }, flip: false, chamber: 'IV' },
-  'entry-hall': { surface: { x: 38, y: 44, w: 22, h: 12 }, flip: false, chamber: 'V' },
-  library: { surface: { x: 60, y: 52, w: 22, h: 12 }, flip: true, chamber: 'VI' },
-  workshop: { surface: { x: 6, y: 80, w: 22, h: 12 }, flip: false, chamber: 'VII' },
-  cellar: { surface: { x: 38, y: 70, w: 22, h: 12 }, flip: false, chamber: 'VIII' },
-  'back-hall': { surface: { x: 72, y: 80, w: 22, h: 12 }, flip: true, chamber: 'IX' },
+  attic: { surface: { x: 10, y: 14, w: 22, h: 12 }, flip: false, chamber: 'I' },
+  gallery: { surface: { x: 39, y: 8, w: 22, h: 12 }, flip: false, chamber: 'II' },
+  'control-room': { surface: { x: 64, y: 14, w: 22, h: 12 }, flip: true, chamber: 'III' },
+  parlor: { surface: { x: 10, y: 34, w: 22, h: 12 }, flip: false, chamber: 'IV' },
+  'entry-hall': { surface: { x: 39, y: 34, w: 22, h: 12 }, flip: false, chamber: 'V' },
+  library: { surface: { x: 64, y: 34, w: 22, h: 12 }, flip: true, chamber: 'VI' },
+  workshop: { surface: { x: 10, y: 56, w: 22, h: 12 }, flip: false, chamber: 'VII' },
+  cellar: { surface: { x: 39, y: 64, w: 22, h: 12 }, flip: false, chamber: 'VIII' },
+  'back-hall': { surface: { x: 64, y: 56, w: 22, h: 12 }, flip: true, chamber: 'IX' },
 }) satisfies Readonly<Record<string, MansionPin>>;
 
 export function getMansionPin(slug: string): MansionPin | undefined {
