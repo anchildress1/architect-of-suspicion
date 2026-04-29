@@ -340,10 +340,19 @@
     position: relative;
     z-index: 4;
     display: flex;
-    align-items: center;
+    /* `safe center` keeps the card centered when it fits, but pins the top
+       to the start when the card is taller than the stage — otherwise the
+       header and lever row get equally clipped by overflow and the player
+       can't act on the card. Together with `overflow-y: auto`, the stage
+       scrolls when needed instead of swallowing the levers. */
+    align-items: safe center;
     justify-content: center;
     padding: 1.5rem 2.5rem 2rem;
-    overflow: hidden;
+    overflow-y: auto;
+    /* Default min-height for grid items is `auto`, which lets content (e.g.
+       a long tally card or a lengthy ruling) widen the row past its 1fr
+       allocation. min-height: 0 keeps the row honest. */
+    min-height: 0;
   }
 
   .chamber-empty {

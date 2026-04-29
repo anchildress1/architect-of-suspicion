@@ -62,6 +62,11 @@
     background: rgba(11, 11, 13, 0.8);
     border-left: 1px solid rgba(233, 228, 216, 0.08);
     backdrop-filter: blur(12px);
+    /* The rail is a grid child of `.chamber-main`. Without min-height: 0,
+       a long deck pushes the 1fr row past its allocation and the chamber
+       stage (and its centered witness card) gets shoved out of view. The
+       internal nu-list scroll only kicks in once the rail itself is bounded. */
+    min-height: 0;
   }
 
   .nu-head {
