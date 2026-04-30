@@ -59,7 +59,8 @@
       <p><span class="credit-label">Design &amp; development:</span> Ashley Childress</p>
       <p><span class="credit-label">AI collaborator:</span> Claude by Anthropic</p>
       <p>
-        <span class="credit-label">Type:</span> Instrument Serif &middot; Geist &middot; JetBrains Mono
+        <span class="credit-label">Type:</span> Instrument Serif &middot; Geist Sans &middot; Geist Mono
+        &middot; JetBrains Mono
       </p>
     </section>
   </div>
@@ -99,7 +100,7 @@
   .attic-back {
     display: inline-block;
     font-family: var(--font-readout);
-    font-size: 0.6rem;
+    font-size: 11px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -120,8 +121,8 @@
 
   .attic-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.28em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -141,8 +142,8 @@
 
   .attic-section-title {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.24em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-bone);
     margin-bottom: 1rem;

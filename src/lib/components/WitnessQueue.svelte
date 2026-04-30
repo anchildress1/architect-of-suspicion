@@ -76,8 +76,8 @@
     padding: 1rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
@@ -147,7 +147,7 @@
 
   .nu-num {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.1em;
     color: var(--color-brass);
     padding-top: 0.15rem;

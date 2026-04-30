@@ -8,6 +8,8 @@
 @import '@fontsource/jetbrains-mono/300.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
 @import 'tailwindcss';
 
 @theme {
@@ -29,9 +31,9 @@
   --color-brass: #c9c4b4;
   /* brass-dim drives every small mono caption, eyebrow, field label, and
      timestamp on dark surfaces — most text in the rail and chrome. The
-     original #7a7668 scored 4.33:1 (sub-AA); the previous bump to #908a7e
-     hit 6.35:1 but still read flat at 9-10px sizes. Pushed to #aaa498
-     (8.0:1, well into AAA) so the small text reads cleanly at any size. */
+     original #7a7668 was sub-AA (4.33:1); #aaa498 lands at 8.0:1 (AAA).
+     Paired with the 11px label floor + 0.14em max tracking so word
+     shapes stay legible at the smallest sizes. */
   --color-brass-dim: #aaa498;
   --color-brass-deep: #3e3c34;
   --color-brass-glow: #e9e4d8;
@@ -46,10 +48,13 @@
 
   --color-rule: #2a2a30;
 
-  /* Typography — editorial noir */
+  /* Typography — industrial noir.
+     Four registers: display (accusations/exhibit titles), body (player voice),
+     architect (the narrator's transcript), readout (labels/captions). */
   --font-display: 'Instrument Serif', 'Times New Roman', serif;
   --font-body: 'Geist Sans', system-ui, sans-serif;
   --font-letter: 'Instrument Serif', serif;
+  --font-architect: 'Geist Mono', 'JetBrains Mono', monospace;
   --font-readout: 'JetBrains Mono', monospace;
   --font-mono: 'JetBrains Mono', monospace;
 

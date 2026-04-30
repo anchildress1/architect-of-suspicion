@@ -69,7 +69,7 @@ Do not duplicate information from those docs here.
 ## Visual Language
 
 - **Editorial noir** — bone (`#e9e4d8`) on ink (`#0b0b0d`), single hot accent ink-blood red (`#d23a2a`), cyan-ink (`#6b8fb0`) for Objection cues
-- Typography: Instrument Serif (display, italic), Geist Sans (body), JetBrains Mono (readout)
+- Typography: Instrument Serif (display/accusations, italic), Geist Sans (body/player voice), Geist Mono (Architect's voice/transcript), JetBrains Mono (readout/labels)
 - Restraint over ornament — no warm gold, no gaudy steampunk mechanics
 
 ## Testing

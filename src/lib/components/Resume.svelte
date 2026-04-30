@@ -58,7 +58,7 @@
 
   .resume-role {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -77,8 +77,8 @@
 
   .resume-section-title {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-bone);
     margin-bottom: 0.65rem;
@@ -97,7 +97,7 @@
 
   .resume-entry-meta {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.12em;
     color: var(--color-brass-dim);
     margin-top: 0.15rem;
@@ -121,7 +121,7 @@
 
   .resume-skill {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     color: var(--color-paper);
     background: rgba(58, 58, 66, 0.5);
     padding: 0.25rem 0.55rem;

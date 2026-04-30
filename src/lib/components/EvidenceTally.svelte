@@ -45,7 +45,7 @@
 
   .tally-label {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
   }
@@ -76,7 +76,7 @@
 
   .tally-cap {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.08em;
     color: var(--color-brass-dim);
   }

@@ -105,8 +105,8 @@
     padding-bottom: 0.7rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.12);
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -142,7 +142,7 @@
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 22px;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     border: 3px solid currentColor;
     padding: 0.4rem 0.9rem;
@@ -223,7 +223,7 @@
 
   .lv-key {
     font-family: var(--font-readout);
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);

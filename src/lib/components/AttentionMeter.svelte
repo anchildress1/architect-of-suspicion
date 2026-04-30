@@ -39,12 +39,6 @@
 </script>
 
 <div class="meter">
-  <p class="meter-mood-line" aria-hidden="true">
-    <span class="meter-mood-name">{mood}</span>
-    <span class="meter-mood-sep">·</span>
-    <span class="meter-mood-value">{value}<small>/100</small></span>
-  </p>
-
   <span class="meter-sr" aria-live="polite" aria-atomic="true">
     The Architect's attention: {mood}, {value} of 100.
   </span>
@@ -97,11 +91,6 @@
       />
     {/each}
 
-    <!-- Mood labels — geographic on the arc. -->
-    <text x="24" y="146" class="meter-arc-label" text-anchor="start">COOL</text>
-    <text x="130" y="36" class="meter-arc-label" text-anchor="middle">ENGAGED</text>
-    <text x="236" y="146" class="meter-arc-label" text-anchor="end">FURY</text>
-
     <!-- Needle: polygon points sit at absolute viewBox coords. CSS rotates
          the group around the hub center (130, 130). Combining translate
          and rotate in the SVG attribute caused matrix interpolation to
@@ -146,9 +135,8 @@
     height: auto;
   }
 
-  /* SR-only live region: keeps mood + value in parity with sighted users.
-     Visual readout above is aria-hidden because the gauge SVG carries it,
-     and the SVG itself is decorative. */
+  /* SR-only live region: keeps mood + value available to assistive tech.
+     The gauge SVG itself is aria-hidden — decorative. */
   .meter-sr {
     position: absolute;
     width: 1px;
@@ -167,44 +155,13 @@
     transform-box: view-box;
   }
 
-  .meter-arc-label {
-    font-family: var(--font-readout, monospace);
-    font-size: 9px;
-    letter-spacing: 0.22em;
-    fill: var(--color-bone-dim);
-  }
-
-  /* Mood + value above the gauge, mono and quiet. */
-  .meter-mood-line {
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-end;
-    gap: 0.35rem;
-    margin-bottom: 0.35rem;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--color-bone);
-  }
-
-  .meter-mood-sep {
-    color: var(--color-brass);
-  }
-
-  .meter-mood-value small {
-    font-size: 0.78em;
-    color: var(--color-brass);
-    margin-left: 0.05em;
-  }
-
   .meter-delta {
     position: absolute;
     bottom: 0.4rem;
     left: 50%;
     transform: translateX(-50%);
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 11px;
     letter-spacing: 0.12em;
     padding: 2px 8px;
     border: 1px solid currentColor;

@@ -66,13 +66,12 @@
 
   .panel-title {
     font-family: var(--font-display);
-    font-style: italic;
     font-size: 1.6rem;
     color: var(--color-bone);
     line-height: 1;
   }
 
-  /* The italic claim with the ember left rule is its own context — no eyebrow. */
+  /* The accusation — italic display serif with the ember left rule. */
   .panel-claim {
     margin: 0;
     padding: 0.85rem 1rem 0.85rem 1.2rem;
@@ -81,9 +80,9 @@
     background: rgba(20, 20, 23, 0.5);
     font-family: var(--font-display);
     font-style: italic;
-    font-size: 0.95rem;
+    font-size: 1rem;
     color: var(--color-paper);
-    line-height: 1.4;
+    line-height: 1.45;
   }
 
   .panel-render {
@@ -96,7 +95,7 @@
     text-decoration: none;
     color: var(--color-brass-dim);
     font-family: var(--font-readout);
-    font-size: 0.65rem;
+    font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     background: rgba(11, 11, 13, 0.7);

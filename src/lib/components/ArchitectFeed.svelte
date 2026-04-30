@@ -49,11 +49,10 @@
   }
 
   .feed-empty {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 0.95rem;
+    font-family: var(--font-architect);
+    font-size: 13.5px;
     color: var(--color-paper-dim);
-    line-height: 1.5;
+    line-height: 1.6;
   }
 
   .feed-entry {
@@ -69,7 +68,7 @@
 
   .feed-time {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -77,11 +76,10 @@
   }
 
   .feed-text {
-    font-family: var(--font-display);
-    font-size: 15.5px;
-    font-style: italic;
+    font-family: var(--font-architect);
+    font-size: 13.5px;
     color: #e8d8b8;
-    line-height: 1.55;
+    line-height: 1.6;
     text-wrap: pretty;
   }
 
@@ -101,7 +99,7 @@
     text-transform: none;
   }
 
-  /* Reaction = the Architect speaking (ember rule, italic serif body). */
+  /* Reaction = the Architect speaking (ember rule). */
   .feed-reaction {
     border-left: 2px solid var(--color-ember);
     color: var(--color-ember);

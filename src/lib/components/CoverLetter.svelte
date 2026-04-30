@@ -116,7 +116,7 @@
 
   .letter-from-sub {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: rgba(20, 20, 26, 0.6);
@@ -125,7 +125,7 @@
 
   .letter-meta {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: rgba(20, 20, 26, 0.6);
@@ -190,7 +190,7 @@
 
   .letter-role {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: rgba(20, 20, 26, 0.6);
@@ -228,7 +228,7 @@
 
   .wax-year {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     margin-top: 0.25rem;
@@ -249,7 +249,7 @@
     top: 1rem;
     right: 1rem;
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     background: transparent;

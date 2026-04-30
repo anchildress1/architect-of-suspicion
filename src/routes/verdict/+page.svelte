@@ -248,8 +248,8 @@
 
   .choose-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: 1rem;
@@ -303,7 +303,7 @@
 
   .ct-label {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -319,7 +319,7 @@
 
   .choose-error {
     font-family: var(--font-readout);
-    font-size: 0.65rem;
+    font-size: 12px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--color-ember);
@@ -395,7 +395,7 @@
   .choose-cancel {
     display: inline-block;
     font-family: var(--font-readout);
-    font-size: 0.6rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -417,8 +417,8 @@
 
   .composing-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: 1rem;
@@ -496,7 +496,7 @@
 
   .sealed-stamp-year {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     margin-top: 0.4rem;
   }
@@ -522,8 +522,8 @@
 
   .sealed-resume-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: 1rem;
@@ -546,7 +546,7 @@
     font-family: var(--font-display);
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     padding: 0.85rem 1.4rem;
     border: 1px solid rgba(196, 162, 78, 0.3);

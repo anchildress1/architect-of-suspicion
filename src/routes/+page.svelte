@@ -234,8 +234,8 @@
 
   .summons-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.65rem;
-    letter-spacing: 0.32em;
+    font-size: 12px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: clamp(0.5rem, 1.2vh, 1rem);
@@ -260,8 +260,8 @@
 
   .summons-sub {
     font-family: var(--font-readout);
-    font-size: 0.68rem;
-    letter-spacing: 0.22em;
+    font-size: 12px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-paper-dim);
     margin-top: clamp(0.5rem, 1.4vh, 1.1rem);
@@ -340,16 +340,16 @@
     padding-bottom: clamp(0.5rem, 1vh, 0.85rem);
     border-bottom: 1px dashed rgba(233, 228, 216, 0.2);
     font-family: var(--font-readout);
-    font-size: 0.62rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
 
   .dossier-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: clamp(0.4rem, 0.8vh, 0.6rem);
@@ -427,8 +427,8 @@
 
   .dossier-field {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -468,7 +468,7 @@
     font-family: var(--font-display);
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.28em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-bone);
     background: linear-gradient(180deg, #2a2417 0%, #14110a 100%);
@@ -515,7 +515,7 @@
 
   .dossier-meta-text {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -526,7 +526,7 @@
   .dossier-error {
     margin-top: 1rem;
     font-family: var(--font-readout);
-    font-size: 0.65rem;
+    font-size: 12px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-ember);

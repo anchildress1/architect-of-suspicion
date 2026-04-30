@@ -45,8 +45,8 @@
 
   .error-label {
     font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.3em;
+    font-size: 12px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: 1.5rem;
