@@ -37,7 +37,7 @@ its named architectural feature.
 | -------------- | ------- | ---------- | ---------- | ------------------------------- |
 | `attic`        | I       | (22, 18)   | (28, 14)   | left tower face / upper window  |
 | `gallery`      | II      | (53, 13)   | (56, 24)   | central clock face              |
-| `control-room` | III     | (78, 18)   | (60, 14)   | right tower face / upper window |
+| `control-room` | III     | (78, 18)   | (60, 7)    | right tower face / upper window |
 | `parlor`       | IV      | (22, 41)   | (28, 38)   | 2nd-floor bay window, left      |
 | `entry-hall`   | V       | (50, 50)   | (54, 56)   | 2nd-floor central door          |
 | `library`      | VI      | (78, 41)   | (60, 38)   | 2nd-floor bay window, right     |

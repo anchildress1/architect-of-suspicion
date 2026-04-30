@@ -57,7 +57,7 @@ function freezePins<T extends Record<string, MansionPin>>(pins: T): Readonly<T> 
 export const MANSION_PINS = freezePins({
   attic: { dot: { x: 22, y: 18 }, tag: { x: 28, y: 14 }, chamber: 'I' },
   gallery: { dot: { x: 53, y: 13 }, tag: { x: 56, y: 24 }, chamber: 'II' },
-  'control-room': { dot: { x: 78, y: 18 }, tag: { x: 60, y: 14 }, chamber: 'III' },
+  'control-room': { dot: { x: 78, y: 18 }, tag: { x: 60, y: 7 }, chamber: 'III' },
   parlor: { dot: { x: 22, y: 41 }, tag: { x: 28, y: 38 }, chamber: 'IV' },
   'entry-hall': { dot: { x: 50, y: 50 }, tag: { x: 54, y: 56 }, chamber: 'V' },
   library: { dot: { x: 78, y: 41 }, tag: { x: 60, y: 38 }, chamber: 'VI' },
