@@ -263,12 +263,18 @@
     min-height: 0;
   }
 
-  /* The board: a brass-bordered frame; the photograph is set INTO it. */
+  /* The board: a brass-bordered frame; the photograph is set INTO it.
+     The aspect ratio matches the artwork (`house-exterior.webp` is
+     2528×1696). Without this, `object-fit: cover` would crop the top
+     and bottom of the mansion to fill a wider canvas, and every pin
+     coord would be off-by-cropping. The board now letterboxes
+     horizontally on wide viewports (cheap inset shadow on the sides),
+     and pin coords map 1:1 to the artwork. */
   .board {
     position: relative;
     width: 100%;
     max-width: 1280px;
-    aspect-ratio: 1440 / 900;
+    aspect-ratio: 2528 / 1696;
     background: #0a0a0d;
     border: 1px solid rgba(196, 162, 78, 0.4);
     box-shadow:
