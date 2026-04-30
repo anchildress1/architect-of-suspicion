@@ -379,16 +379,20 @@
     pointer-events: none;
   }
 
+  /* Quote glyphs hang outside the claim block. Clamp the negative offset
+     so on narrow viewports they don't push past the dossier edge and (now
+     that the summons shell is `overflow: hidden`) get silently clipped at
+     the page boundary instead of staying visible. */
   .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::before {
     content: '\201C';
     top: 18px;
-    left: -36px;
+    left: clamp(-36px, -4vw, -12px);
   }
 
   .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::after {
     content: '\201D';
     bottom: 18px;
-    right: -36px;
+    right: clamp(-36px, -4vw, -12px);
   }
 
   .dossier-claim-loading {

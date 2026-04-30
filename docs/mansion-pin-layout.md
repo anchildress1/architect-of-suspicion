@@ -15,9 +15,11 @@ dot, a stray `translate()`) is **clipped**, not leaked into other surfaces
 or out of the brass frame.
 
 > If the box says you have 22% × 12%, that is what you get.
-> The pixel-px offsets that used to drive the leader and tag are gone.
-> Width/height are surface-relative. Do not reintroduce pixel offsets
-> on the tag — that defeats the contract.
+> The brass dot and the leader are pixel-sized glyphs (the dot is 14px,
+> the leader is a 36px hairline) and the tag reserves a 56px keepout
+> for them at one edge. That keepout is the only fixed-pixel value
+> inside the surface — everything else (tag width, tag height) is
+> surface-relative, and `overflow: hidden` guarantees nothing escapes.
 
 ## Data model
 
@@ -74,9 +76,14 @@ together.
 ```
 
 The dot lives in the top-left (or top-right, when `flip: true`) of the
-surface. The tag fills the rest. There is **no leader** in the new model
-— the dot and tag are visually adjacent inside the same rectangle, and
-proximity is enough.
+surface. A thin brass hairline (the **leader**) bridges the gap between
+the dot and the tag — painted by `.pin-surface::before`, with a 36px
+horizontal span anchored to the side of the dot. The tag fills the
+remainder of the surface beside the leader.
+
+The leader and the keepout for it are the only pixel-defined elements
+inside the surface; everything else (tag width, tag height, hover ring)
+is surface-relative.
 
 ## States
 

@@ -189,7 +189,7 @@
             </svg>
             <span>Print Letter</span>
           </button>
-          <button class="link-btn" type="button" onclick={playAgain}> Investigate Again </button>
+          <button class="link-btn" type="button" onclick={playAgain}>Investigate Again</button>
         </footer>
       </section>
     {/if}

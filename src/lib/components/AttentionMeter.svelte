@@ -21,16 +21,20 @@
   let deltaSeq = $state(0);
 
   $effect(() => {
+    // Track only `value`. Reading `previous` directly would also subscribe to
+    // it, and since the effect updates `previous` it would re-run, clearing
+    // its own pending `setTimeout` before the fade-out could fire. `untrack`
+    // keeps the read but skips the dependency.
     const v = value;
-    if (v !== previous) {
-      delta = v - previous;
-      previous = v;
-      deltaSeq += 1;
-      const t = setTimeout(() => {
-        delta = null;
-      }, 1850);
-      return () => clearTimeout(t);
-    }
+    const prev = untrack(() => previous);
+    if (v === prev) return;
+    delta = v - prev;
+    previous = v;
+    deltaSeq += 1;
+    const t = setTimeout(() => {
+      delta = null;
+    }, 1850);
+    return () => clearTimeout(t);
   });
 </script>
 

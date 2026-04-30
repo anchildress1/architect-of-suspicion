@@ -454,9 +454,13 @@
     outline: 1px dashed rgba(255, 215, 106, 0.6);
   }
 
-  /* The tag fills the rest of the surface beside the dot, after the
-     leader's gap. Dimensions are surface-relative (calc(100% - keepout)),
-     never pixel-clamped, so the tag can never grow past its declared box. */
+  /* The tag fills the rest of the surface beside the dot+leader. Its
+     width adjusts to the surface (right: 0 / left: 0), with a fixed-pixel
+     keepout (left: 56px or right: 56px) reserved for the dot and brass
+     leader. The keepout is intentionally pixel-based — the dot and leader
+     are pixel-rendered glyphs, so the gap that holds them is too — but
+     `overflow: hidden` on the surface still guarantees the tag cannot
+     escape its declared box, which is the contract that matters. */
   .pin-tag {
     position: absolute;
     top: 0;

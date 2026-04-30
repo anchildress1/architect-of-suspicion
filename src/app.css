@@ -76,6 +76,8 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(170, 164, 152, 0.35) transparent;
 }
 
 html,
@@ -140,12 +142,9 @@ body {
 
 /* ============================================
    SCROLLBAR — thin, on the dark surface
+   (Firefox/standards rules colocated with the global reset above so we
+   don't duplicate the universal selector. WebKit needs its own rules.)
    ============================================ */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(170, 164, 152, 0.35) transparent;
-}
-
 *::-webkit-scrollbar {
   width: 6px;
   height: 6px;

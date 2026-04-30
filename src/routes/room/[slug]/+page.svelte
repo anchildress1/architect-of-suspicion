@@ -83,10 +83,19 @@
   }
 
   function commitRuling(card: ClaimCardEntry, classification: Classification, fromIndex: number) {
+    // Dedupe: if the local state already records this card, don't double-add
+    // evidence. This matters most on the 409 conflict-recovery path — the
+    // server says the card was already ruled and we may be reconciling a
+    // race or retry where the client already holds a row for this objectID.
+    const wasRuled = Object.prototype.hasOwnProperty.call(rulings, card.objectID);
     rulings = { ...rulings, [card.objectID]: classification };
-    gameState.addEvidence({ card, classification });
-    const next = nextUnruledIndex(fromIndex);
-    if (next >= 0) pointer = next;
+    if (!wasRuled) gameState.addEvidence({ card, classification });
+    // Only auto-advance when the player hasn't moved off this card during the
+    // in-flight evaluation. Otherwise honour their manual selection.
+    if (pointer === fromIndex) {
+      const next = nextUnruledIndex(fromIndex);
+      if (next >= 0) pointer = next;
+    }
   }
 
   async function applyEvaluateSuccess(
@@ -130,11 +139,17 @@
   }
 
   async function decide(card: ClaimCardEntry, classification: Classification) {
+    // Reentrancy guard: WitnessCard already debounces inside its 360ms stamp
+    // animation, but a fast double-click on the levers (or a programmatic
+    // re-entry) could otherwise enqueue two /api/evaluate requests for the
+    // same card before `evaluating` flips. Bail at the door instead.
+    if (evaluating) return;
     if (!gameState.current.sessionId || !gameState.current.claimId) return;
 
     // Capture the deck index *before* awaiting. A queue-jump during the fetch
     // would otherwise advance the pointer relative to the player's new
-    // selection on resolve.
+    // selection on resolve. commitRuling honours the player's pointer move
+    // by only auto-advancing when they haven't navigated away.
     const ruledIndex = pointer;
     const deliberatingId = pushDeliberating();
     evaluating = true;
