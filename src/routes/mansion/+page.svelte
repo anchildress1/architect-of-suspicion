@@ -143,7 +143,9 @@
         <!-- Pin overlay: each pin is a free-floating dot + tag joined by an
              SVG leader. Coords come from $lib/mansionPins as canvas
              percentages so a viewport resize keeps every pin on its
-             feature without any re-layout. -->
+             feature without any re-layout. The leader endpoint is the
+             midpoint of the tag's nearest edge, so a tag placed above,
+             below, left, or right of its dot gets a clean connector. -->
         <svg
           class="pin-leaders"
           viewBox="0 0 100 100"
@@ -156,12 +158,26 @@
               {@const visited = gameState.current.roomsVisited.includes(room.slug)}
               {@const exhausted = isExhausted(room.category)}
               {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
-              {@const tagOnRight = pin.tag.x > pin.dot.x}
+              {@const TAG_W = 16}
+              {@const TAG_H = 7}
+              {@const dx = pin.dot.x - (pin.tag.x + TAG_W / 2)}
+              {@const dy = pin.dot.y - (pin.tag.y + TAG_H / 2)}
+              {@const horizontal = Math.abs(dx) >= Math.abs(dy)}
+              {@const endX = horizontal
+                ? dx > 0
+                  ? pin.tag.x + TAG_W
+                  : pin.tag.x
+                : pin.tag.x + TAG_W / 2}
+              {@const endY = horizontal
+                ? pin.tag.y + TAG_H / 2
+                : dy > 0
+                  ? pin.tag.y + TAG_H
+                  : pin.tag.y}
               <line
                 x1={pin.dot.x}
                 y1={pin.dot.y}
-                x2={tagOnRight ? pin.tag.x : pin.tag.x + 14}
-                y2={pin.dot.y}
+                x2={endX}
+                y2={endY}
                 class="leader-line"
                 class:leader-visited={visited && !exhausted}
                 class:leader-sealed={sealed}

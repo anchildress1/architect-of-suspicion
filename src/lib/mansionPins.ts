@@ -55,15 +55,15 @@ function freezePins<T extends Record<string, MansionPin>>(pins: T): Readonly<T> 
  * tag floating clear of the artwork's central detail.
  */
 export const MANSION_PINS = freezePins({
-  attic: { dot: { x: 14, y: 18 }, tag: { x: 19, y: 14 }, chamber: 'I' },
-  gallery: { dot: { x: 51, y: 12 }, tag: { x: 54, y: 10 }, chamber: 'II' },
-  'control-room': { dot: { x: 89, y: 18 }, tag: { x: 74, y: 15 }, chamber: 'III' },
-  parlor: { dot: { x: 13, y: 47 }, tag: { x: 17, y: 46 }, chamber: 'IV' },
-  'entry-hall': { dot: { x: 52, y: 42 }, tag: { x: 60, y: 40 }, chamber: 'V' },
-  library: { dot: { x: 90, y: 49 }, tag: { x: 75, y: 49 }, chamber: 'VI' },
-  workshop: { dot: { x: 13, y: 78 }, tag: { x: 22, y: 77 }, chamber: 'VII' },
-  cellar: { dot: { x: 49, y: 71 }, tag: { x: 53, y: 71 }, chamber: 'VIII' },
-  'back-hall': { dot: { x: 89, y: 82 }, tag: { x: 75, y: 83 }, chamber: 'IX' },
+  attic: { dot: { x: 22, y: 18 }, tag: { x: 28, y: 14 }, chamber: 'I' },
+  gallery: { dot: { x: 50, y: 13 }, tag: { x: 44, y: 1 }, chamber: 'II' },
+  'control-room': { dot: { x: 78, y: 18 }, tag: { x: 60, y: 14 }, chamber: 'III' },
+  parlor: { dot: { x: 22, y: 41 }, tag: { x: 28, y: 38 }, chamber: 'IV' },
+  'entry-hall': { dot: { x: 50, y: 42 }, tag: { x: 54, y: 50 }, chamber: 'V' },
+  library: { dot: { x: 78, y: 41 }, tag: { x: 60, y: 38 }, chamber: 'VI' },
+  workshop: { dot: { x: 20, y: 60 }, tag: { x: 26, y: 57 }, chamber: 'VII' },
+  cellar: { dot: { x: 50, y: 64 }, tag: { x: 54, y: 64 }, chamber: 'VIII' },
+  'back-hall': { dot: { x: 80, y: 60 }, tag: { x: 62, y: 57 }, chamber: 'IX' },
 }) satisfies Readonly<Record<string, MansionPin>>;
 
 export function getMansionPin(slug: string): MansionPin | undefined {

@@ -35,15 +35,19 @@ its named architectural feature.
 
 | Slug           | Chamber | Dot (x, y) | Tag (x, y) | Anchored on (artwork)             |
 | -------------- | ------- | ---------- | ---------- | --------------------------------- |
-| `attic`        | I       | (14, 18)   | (19, 14)   | left tower upper window           |
-| `gallery`      | II      | (51, 12)   | (54, 10)   | central clock face                |
-| `control-room` | III     | (89, 18)   | (74, 15)   | right tower upper window          |
-| `parlor`       | IV      | (13, 47)   | (17, 46)   | 2nd-floor bay window, left        |
-| `entry-hall`   | V       | (52, 42)   | (60, 40)   | 2nd-floor central pediment        |
-| `library`      | VI      | (90, 49)   | (75, 49)   | 2nd-floor bay window, right       |
-| `workshop`     | VII     | (13, 78)   | (22, 77)   | 1st-floor lit window, left        |
-| `cellar`       | VIII    | (49, 71)   | (53, 71)   | central front door under the lamp |
-| `back-hall`    | IX      | (89, 82)   | (75, 83)   | 1st-floor lit window, right       |
+| `attic`        | I       | (22, 18)   | (28, 14)   | left tower face / upper window    |
+| `gallery`      | II      | (50, 13)   | (54, 6)    | central clock face                |
+| `control-room` | III     | (78, 18)   | (60, 14)   | right tower face / upper window   |
+| `parlor`       | IV      | (22, 41)   | (28, 38)   | 2nd-floor bay window, left        |
+| `entry-hall`   | V       | (50, 42)   | (54, 50)   | 2nd-floor central gear medallion  |
+| `library`      | VI      | (78, 41)   | (60, 38)   | 2nd-floor bay window, right       |
+| `workshop`     | VII     | (20, 60)   | (26, 57)   | 1st-floor lit window, left        |
+| `cellar`       | VIII    | (50, 64)   | (54, 64)   | central front door under the lamp |
+| `back-hall`    | IX      | (80, 60)   | (62, 57)   | 1st-floor lit window, right       |
+
+These were measured directly off `house-exterior.webp` with a percentage
+grid overlay — every dot lands on its named feature. If the artwork ever
+changes, repeat the measurement instead of guessing.
 
 Tag width is 200px (set in CSS, not data). When the tag sits to the left
 of the dot, give it room: pick a `tag.x` that leaves the tag visually
