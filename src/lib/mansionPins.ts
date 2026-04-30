@@ -61,9 +61,9 @@ export const MANSION_PINS = freezePins({
   parlor: { dot: { x: 22, y: 41 }, tag: { x: 28, y: 38 }, chamber: 'IV' },
   'entry-hall': { dot: { x: 50, y: 42 }, tag: { x: 54, y: 50 }, chamber: 'V' },
   library: { dot: { x: 78, y: 41 }, tag: { x: 60, y: 38 }, chamber: 'VI' },
-  workshop: { dot: { x: 20, y: 60 }, tag: { x: 26, y: 57 }, chamber: 'VII' },
-  cellar: { dot: { x: 50, y: 64 }, tag: { x: 54, y: 64 }, chamber: 'VIII' },
-  'back-hall': { dot: { x: 80, y: 60 }, tag: { x: 62, y: 57 }, chamber: 'IX' },
+  workshop: { dot: { x: 20, y: 78 }, tag: { x: 26, y: 75 }, chamber: 'VII' },
+  cellar: { dot: { x: 50, y: 90 }, tag: { x: 54, y: 88 }, chamber: 'VIII' },
+  'back-hall': { dot: { x: 80, y: 78 }, tag: { x: 62, y: 75 }, chamber: 'IX' },
 }) satisfies Readonly<Record<string, MansionPin>>;
 
 export function getMansionPin(slug: string): MansionPin | undefined {
