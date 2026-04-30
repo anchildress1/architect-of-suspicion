@@ -264,8 +264,11 @@
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto 1fr;
+    /* Queue spans both rows on the right so it sits flush with the page
+       top, mirroring the Architect rail's full-height column on the left.
+       The header occupies only the left column. */
     grid-template-areas:
-      'head head'
+      'head queue'
       'stage queue';
     overflow: hidden;
   }
@@ -319,7 +322,7 @@
 
   .back-link {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
+    font-size: 11px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -338,8 +341,8 @@
 
   .chamber-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.28em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -384,8 +387,8 @@
 
   .chamber-empty-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.28em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -408,7 +411,7 @@
 
   .link-btn {
     font-family: var(--font-readout);
-    font-size: 0.65rem;
+    font-size: 12px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     padding: 0.7rem 1.2rem;

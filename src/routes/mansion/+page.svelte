@@ -279,30 +279,23 @@
     min-height: 0;
   }
 
-  /* The board: a brass-bordered frame; the photograph is set INTO it.
-     The aspect ratio matches the artwork (`house-exterior.webp` is
-     2528×1696). Without this, `object-fit: cover` would crop the top
-     and bottom of the mansion to fill a wider canvas, and every pin
-     coord would be off-by-cropping. The board now letterboxes
-     horizontally on wide viewports (cheap inset shadow on the sides),
-     and pin coords map 1:1 to the artwork. */
+  /* The board holds the artwork at its native aspect ratio so pin coords
+     (canvas %) keep landing on real building features. `object-fit: cover`
+     on a free-shaped canvas would crop and break every pin. The board
+     letterboxes against the surrounding ink — no frame, no ornament. */
   .board {
     position: relative;
     width: 100%;
-    max-width: 1280px;
+    max-width: min(100%, calc((100dvh - 3rem) * 2528 / 1696));
     aspect-ratio: 2528 / 1696;
-    background: #0a0a0d;
-    border: 1px solid rgba(196, 162, 78, 0.4);
-    box-shadow:
-      inset 0 0 0 6px rgba(0, 0, 0, 0.5),
-      0 30px 80px rgba(0, 0, 0, 0.7);
+    background: var(--color-ink);
     isolation: isolate;
   }
 
-  /* Canvas sits inside the frame; pins reference its dimensions. */
+  /* Canvas fills the board; pins reference its dimensions directly. */
   .board-canvas {
     position: absolute;
-    inset: 26px;
+    inset: 0;
     overflow: hidden;
   }
 
@@ -345,8 +338,8 @@
 
   .board-sub {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-top: 0.35rem;
@@ -510,7 +503,7 @@
     display: flex;
     justify-content: space-between;
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -531,7 +524,7 @@
 
   .pin-cat {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -600,7 +593,7 @@
     display: flex;
     justify-content: space-between;
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -621,7 +614,7 @@
 
   .bl-cat {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
