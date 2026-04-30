@@ -3,122 +3,90 @@
 Authoritative spec for the chamber pins overlaid on `house-exterior.webp`
 on `/mansion`.
 
-## The contract
+## The model
 
-Each pin owns **one rectangle** — its `surface` — expressed as percentages
-of the mansion canvas (0..100 on each axis). The brass dot **and** the info
-tag both render strictly **inside** that rectangle.
-
-This is the only rule. The renderer enforces it with `overflow: hidden`
-on the surface element so a sloppy tweak (a too-wide tag, an over-sized
-dot, a stray `translate()`) is **clipped**, not leaked into other surfaces
-or out of the brass frame.
-
-> If the box says you have 22% × 12%, that is what you get.
-> The brass dot and the leader are pixel-sized glyphs (the dot is 14px,
-> the leader is a 36px hairline) and the tag reserves a 56px keepout
-> for them at one edge. That keepout is the only fixed-pixel value
-> inside the surface — everything else (tag width, tag height) is
-> surface-relative, and `overflow: hidden` guarantees nothing escapes.
-
-## Data model
-
-`src/lib/mansionPins.ts`:
+Each pin is **two independent points** in canvas-percent coordinates plus
+a chamber numeral. The renderer places a brass dot at one, a dark info
+tag at the other, and connects them with an SVG hairline.
 
 ```ts
 interface MansionPin {
-  surface: { x: number; y: number; w: number; h: number }; // canvas %
-  flip: boolean; // false = dot in top-LEFT, true = dot in top-RIGHT
-  chamber: string; // Roman numeral, must be unique
+  dot: { x: number; y: number }; // 0..100, percent of canvas
+  tag: { x: number; y: number }; // 0..100, top-left of the tag
+  chamber: string; // unique Roman numeral
 }
 ```
 
+That's it. The dot and tag are decoupled — moving the dot doesn't push
+the tag, and a long category label can't push the layout sideways
+because the tag's width is fixed in CSS (200px).
+
 ## Invariants (enforced by `mansionPins.test.ts`)
 
-1. Every surface fits inside `[0..100, 0..100]` on both axes.
-2. No two surfaces overlap (touching edges is allowed).
-3. Chamber numerals are unique across pins.
-4. Every room slug from `$lib/rooms` has a matching pin (and vice versa).
-5. `MANSION_PINS` is deeply frozen — coords cannot be mutated at runtime.
+1. Both `dot` and `tag` fit inside `[0..100, 0..100]`.
+2. Chamber numerals are unique across pins.
+3. Every room slug from `$lib/rooms` has a matching pin (and vice versa).
+4. `MANSION_PINS` is deeply frozen — coords cannot be mutated at runtime.
 
-## Surface table
+## Pin table
 
-Hand-tuned to land on the artwork's named architectural features while
-respecting Invariants 1 and 2.
+Hand-tuned against the design QA reference render so each dot lands on
+its named architectural feature.
 
-| Slug           | Chamber | Surface (x, y, w, h) | Flip  | Anchored on (artwork)             |
-| -------------- | ------- | -------------------- | ----- | --------------------------------- |
-| `attic`        | I       | (13, 15, 19, 10)     | false | left tower upper window           |
-| `gallery`      | II      | (51, 9, 17, 9)       | false | central clock face                |
-| `control-room` | III     | (71, 14, 18, 10)     | true  | right tower upper window          |
-| `parlor`       | IV      | (10, 46, 20, 10)     | false | 2nd-floor bay window, left        |
-| `entry-hall`   | V       | (52, 38, 24, 10)     | false | 2nd-floor central pediment + gear |
-| `library`      | VI      | (72, 48, 18, 10)     | true  | 2nd-floor bay window, right       |
-| `workshop`     | VII     | (13, 76, 22, 10)     | false | 1st-floor lit window, left        |
-| `cellar`       | VIII    | (49, 69, 18, 10)     | false | central front door under the lamp |
-| `back-hall`    | IX      | (71, 80, 18, 10)     | true  | 1st-floor lit window, right       |
+| Slug           | Chamber | Dot (x, y) | Tag (x, y) | Anchored on (artwork)             |
+| -------------- | ------- | ---------- | ---------- | --------------------------------- |
+| `attic`        | I       | (14, 18)   | (19, 14)   | left tower upper window           |
+| `gallery`      | II      | (51, 12)   | (54, 10)   | central clock face                |
+| `control-room` | III     | (89, 18)   | (74, 15)   | right tower upper window          |
+| `parlor`       | IV      | (13, 47)   | (17, 46)   | 2nd-floor bay window, left        |
+| `entry-hall`   | V       | (52, 42)   | (60, 40)   | 2nd-floor central pediment        |
+| `library`      | VI      | (90, 49)   | (75, 49)   | 2nd-floor bay window, right       |
+| `workshop`     | VII     | (13, 78)   | (22, 77)   | 1st-floor lit window, left        |
+| `cellar`       | VIII    | (49, 71)   | (53, 71)   | central front door under the lamp |
+| `back-hall`    | IX      | (89, 82)   | (75, 83)   | 1st-floor lit window, right       |
 
-The numbers are calibrated against the design QA reference render
-shipped alongside this branch — every dot lands on its named feature
-on `house-exterior.webp`. If the artwork changes, retune all surfaces
-together.
+Tag width is 200px (set in CSS, not data). When the tag sits to the left
+of the dot, give it room: pick a `tag.x` that leaves the tag visually
+clear of the dot. The leader auto-routes from `dot` to the closest
+horizontal tag edge.
 
 ## Rendering
 
 ```
-┌─────────────────────────────────────┐  surface (overflow:hidden)
-│ ●  ┌──────────────────────────────┐ │
-│    │ Ch. N           ENTER         │ │  pin-tag (fills the rest)
-│    │ Chamber Name                  │ │
-│    │ CATEGORY                      │ │
-│    └──────────────────────────────┘ │
-└─────────────────────────────────────┘
+●─────  Ch. N        Enter
+        Chamber Name
+        CATEGORY
 ```
 
-The dot lives in the top-left (or top-right, when `flip: true`) of the
-surface. A thin brass hairline (the **leader**) bridges the gap between
-the dot and the tag — painted by `.pin-surface::before`, with a 36px
-horizontal span anchored to the side of the dot. The tag fills the
-remainder of the surface beside the leader.
-
-The leader and the keepout for it are the only pixel-defined elements
-inside the surface; everything else (tag width, tag height, hover ring)
-is surface-relative.
-
-## States
-
-The same surface is shared across all four states. Only colours change.
-
-| State     | Dot                | Tag border  |
-| --------- | ------------------ | ----------- |
-| Default   | warm brass + ping  | warm brass  |
-| Visited   | bright gold + ping | bright gold |
-| Sealed    | charcoal, no ping  | ember red   |
-| Exhausted | cyan, no ping      | cyan        |
+- The dot is centered on `dot` (CSS `transform: translate(-50%, -50%)`).
+- The tag's top-left is at `tag`. It has a fixed pixel width and
+  auto height.
+- The leader is an SVG line in a `<svg viewBox="0 0 100 100">` that
+  shares the canvas — no manual scale math, the line stays correct as
+  the canvas resizes.
 
 ## Tweaking the layout
 
-When the artwork changes, retune **all** surfaces together — they form
-one composition.
+When the artwork changes:
 
-Workflow:
-
-1. Append `?debug=pins` to the `/mansion` URL. Surfaces and tags get
-   dashed outlines so you can see the rectangles. **Debug mode also
-   skips the session redirect**, so you can inspect the layout without
-   spinning up a real game (chambers won't be enterable, but the pins
-   render).
+1. Append `?debug=pins` to `/mansion`. Every tag gets a dashed yellow
+   outline, and debug mode skips the session redirect so you can inspect
+   the layout without spinning up a real game (chambers won't be
+   enterable, but the pins render).
 2. Edit `MANSION_PINS` in `src/lib/mansionPins.ts`.
-3. Update the table in this doc in the **same commit**.
-4. `pnpm vitest run src/lib/mansionPins.test.ts` — the test suite fails
-   if any surface drifts outside the canvas, overlaps another surface,
-   or loses parity with `$lib/rooms`.
+3. Update the table above in the **same commit**.
+4. `pnpm vitest run src/lib/mansionPins.test.ts` — the suite fails if
+   any coord drifts outside the canvas or loses parity with `$lib/rooms`.
 
 ## Why this exists
 
-Earlier passes at this overlay used point-based coords (`{ x, y }`) plus
-pixel-px offsets for the leader and tag. Each artwork tweak forced a
-ripple of follow-up tweaks because the geometry wasn't bounded — a 2%
-shift on a dot's `x` would push its tag past the brass frame at some
-viewport widths. The surface-bounded model trades expressive freedom for
-predictability: you can move pins freely, but you cannot move them out.
+Earlier iterations bound dot and tag together inside a single
+"surface" rectangle with `overflow: hidden` to prevent geometry tweaks
+from leaking into other pins. That gave us predictability but cost us
+the freedom to place a tag where it needed to be — the surface had to
+be enlarged whenever the tag wanted breathing room, and tag widths
+ended up dictated by surface widths instead of typography.
+
+The current model is simpler: dot and tag are independent points; a
+leader connects them; tag size is a typography decision (fixed pixel
+width); the canvas is the only shared coordinate space.

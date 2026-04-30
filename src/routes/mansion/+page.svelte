@@ -10,10 +10,10 @@
 
   let { data } = $props();
 
-  // ?debug=pins paints the surface + tag bounding boxes so collisions can
-  // be spotted at a glance during artwork tuning. It also skips the session
-  // redirect below so the layout is inspectable without a real game in
-  // progress. See docs/mansion-pin-layout.md.
+  // ?debug=pins outlines every tag so the coords are easy to spot during
+  // artwork tuning. It also skips the session redirect below so the layout
+  // is inspectable without a real game in progress.
+  // See docs/mansion-pin-layout.md.
   const debugPins = $derived(page.url.searchParams.get('debug') === 'pins');
 
   // Per-room exhaustion: a chamber is "exhausted" once every card in its
@@ -38,8 +38,8 @@
 
   onMount(async () => {
     // ?debug=pins lets the layout be inspected without spinning up a real
-    // game. Chambers won't be enterable but the surfaces / tags render so
-    // the contract in docs/mansion-pin-layout.md can be verified visually.
+    // game. Chambers won't be enterable but every dot, tag, and leader
+    // renders so the coords in docs/mansion-pin-layout.md can be checked.
     if (!gameState.current.sessionId || !gameState.current.claimId) {
       if (debugPins) return;
       window.location.href = '/';
@@ -140,62 +140,98 @@
           {/each}
         </ul>
 
+        <!-- Pin overlay: each pin is a free-floating dot + tag joined by an
+             SVG leader. Coords come from $lib/mansionPins as canvas
+             percentages so a viewport resize keeps every pin on its
+             feature without any re-layout. -->
+        <svg
+          class="pin-leaders"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {#each rooms as room (room.slug)}
+            {@const pin = getMansionPin(room.slug)}
+            {#if pin}
+              {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+              {@const exhausted = isExhausted(room.category)}
+              {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
+              {@const tagOnRight = pin.tag.x > pin.dot.x}
+              <line
+                x1={pin.dot.x}
+                y1={pin.dot.y}
+                x2={tagOnRight ? pin.tag.x : pin.tag.x + 14}
+                y2={pin.dot.y}
+                class="leader-line"
+                class:leader-visited={visited && !exhausted}
+                class:leader-sealed={sealed}
+                class:leader-exhausted={exhausted}
+                vector-effect="non-scaling-stroke"
+              />
+            {/if}
+          {/each}
+        </svg>
+
         {#each rooms as room (room.slug)}
           {@const pin = getMansionPin(room.slug)}
           {@const visited = gameState.current.roomsVisited.includes(room.slug)}
           {@const exhausted = isExhausted(room.category)}
           {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
           {#if pin}
-            <!-- The pin's surface is its only visual budget. overflow:hidden
-                 below makes that a hard guarantee — a future tweak that
-                 over-sizes the dot or tag will be clipped, not leaked into
-                 neighbouring chambers or out of the brass frame.
-                 Contract: docs/mansion-pin-layout.md -->
-            <div
-              class="pin-surface"
-              class:pin-surface-flip={pin.flip}
-              class:pin-surface-visited={visited && !exhausted}
-              class:pin-surface-sealed={sealed}
-              class:pin-surface-exhausted={exhausted}
-              class:pin-surface-debug={debugPins}
-              style="left: {pin.surface.x}%; top: {pin.surface.y}%; width: {pin.surface
-                .w}%; height: {pin.surface.h}%"
-            >
-              <span class="pin-dot" aria-hidden="true"></span>
+            <span
+              class="pin-dot"
+              class:pin-dot-visited={visited && !exhausted}
+              class:pin-dot-sealed={sealed}
+              class:pin-dot-exhausted={exhausted}
+              style="left: {pin.dot.x}%; top: {pin.dot.y}%"
+              aria-hidden="true"
+            ></span>
 
-              {#if sealed}
-                <div class="pin-tag pin-tag-sealed" aria-hidden="true">
-                  <p class="pin-row1">
-                    <span>Ch. {pin.chamber}</span>
-                    <span class="pin-tag-status">{exhausted ? '✓' : '— — —'}</span>
-                  </p>
-                  <p class="pin-name">{room.name}</p>
-                  <p class="pin-cat">{exhausted ? 'Closed · all ruled' : 'Sealed · no entry'}</p>
-                </div>
-              {:else if room.slug === 'attic'}
-                <a href="/attic" class="pin-tag pin-tag-meta">
-                  <p class="pin-row1">
-                    <span>Ch. {pin.chamber}</span>
-                    <span class="pin-tag-status">Meta</span>
-                  </p>
-                  <p class="pin-name">{room.name}</p>
-                  <p class="pin-cat">How to play &middot; bio &middot; credits</p>
-                </a>
-              {:else}
-                <a
-                  href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
-                  class="pin-tag"
-                  aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
-                >
-                  <p class="pin-row1">
-                    <span>Ch. {pin.chamber}</span>
-                    <span class="pin-tag-status">{visited ? 'Resume' : 'Enter'}</span>
-                  </p>
-                  <p class="pin-name">{room.name}</p>
-                  <p class="pin-cat">{room.category}</p>
-                </a>
-              {/if}
-            </div>
+            {#if sealed}
+              <div
+                class="pin-tag pin-tag-sealed"
+                class:pin-tag-debug={debugPins}
+                style="left: {pin.tag.x}%; top: {pin.tag.y}%"
+                aria-hidden="true"
+              >
+                <p class="pin-row1">
+                  <span>Ch. {pin.chamber}</span>
+                  <span class="pin-tag-status">{exhausted ? '✓' : '— — —'}</span>
+                </p>
+                <p class="pin-name">{room.name}</p>
+                <p class="pin-cat">{exhausted ? 'Closed · all ruled' : 'Sealed · no entry'}</p>
+              </div>
+            {:else if room.slug === 'attic'}
+              <a
+                href="/attic"
+                class="pin-tag pin-tag-meta"
+                class:pin-tag-debug={debugPins}
+                style="left: {pin.tag.x}%; top: {pin.tag.y}%"
+              >
+                <p class="pin-row1">
+                  <span>Ch. {pin.chamber}</span>
+                  <span class="pin-tag-status">Meta</span>
+                </p>
+                <p class="pin-name">{room.name}</p>
+                <p class="pin-cat">How to play &middot; bio &middot; credits</p>
+              </a>
+            {:else}
+              <a
+                href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
+                class="pin-tag"
+                class:pin-tag-visited={visited}
+                class:pin-tag-debug={debugPins}
+                style="left: {pin.tag.x}%; top: {pin.tag.y}%"
+                aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
+              >
+                <p class="pin-row1">
+                  <span>Ch. {pin.chamber}</span>
+                  <span class="pin-tag-status">{visited ? 'Resume' : 'Enter'}</span>
+                </p>
+                <p class="pin-name">{room.name}</p>
+                <p class="pin-cat">{room.category}</p>
+              </a>
+            {/if}
           {/if}
         {/each}
       </div>
@@ -294,90 +330,47 @@
     margin-top: 0.35rem;
   }
 
-  /* Pin surface: the bounding box for one chamber's pin. The dot sits in
-     one top corner (controlled by .pin-surface-flip), a thin brass leader
-     bridges the gap, and the tag fills the rest. overflow:hidden is still
-     the contract enforcer — any geometry tweak that would push content
-     past these bounds is clipped, not leaked into other surfaces or the
-     brass frame. See $lib/mansionPins.ts. */
-  .pin-surface {
+  /* SVG leader layer. Spans the canvas with viewBox 0 0 100 100 so each
+     line's coords match the pin coords directly (canvas %). Lines are
+     decorative; they sit below the dot and tag in z-order. */
+  .pin-leaders {
     position: absolute;
-    z-index: 4;
-    overflow: hidden;
-    pointer-events: none; /* re-enabled on .pin-tag for hit testing */
-  }
-
-  /* Leader — a thin brass hairline that runs from the right edge of the
-     dot to the left edge of the tag (or mirrored for flip=true). Lives
-     inside the surface so it cannot leak past the bounding box. */
-  .pin-surface::before {
-    content: '';
-    position: absolute;
-    top: 12px;
-    left: 18px;
-    width: 36px;
-    height: 1px;
-    background: linear-gradient(
-      to right,
-      rgba(196, 162, 78, 0.85) 0%,
-      rgba(196, 162, 78, 0.45) 100%
-    );
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
     pointer-events: none;
   }
 
-  .pin-surface-flip::before {
-    left: auto;
-    right: 18px;
-    background: linear-gradient(
-      to left,
-      rgba(196, 162, 78, 0.85) 0%,
-      rgba(196, 162, 78, 0.45) 100%
-    );
+  .leader-line {
+    stroke: rgba(196, 162, 78, 0.6);
+    stroke-width: 1;
   }
 
-  .pin-surface-visited::before {
-    background: linear-gradient(
-      to right,
-      rgba(255, 215, 106, 0.9) 0%,
-      rgba(255, 215, 106, 0.55) 100%
-    );
+  .leader-line.leader-visited {
+    stroke: rgba(255, 215, 106, 0.7);
   }
 
-  .pin-surface-flip.pin-surface-visited::before {
-    background: linear-gradient(
-      to left,
-      rgba(255, 215, 106, 0.9) 0%,
-      rgba(255, 215, 106, 0.55) 100%
-    );
+  .leader-line.leader-sealed {
+    stroke: rgba(210, 58, 42, 0.4);
   }
 
-  .pin-surface-sealed::before {
-    background: rgba(210, 58, 42, 0.35);
+  .leader-line.leader-exhausted {
+    stroke: rgba(107, 143, 176, 0.55);
   }
 
-  .pin-surface-exhausted::before {
-    background: rgba(107, 143, 176, 0.45);
-  }
-
-  /* Pinging brass dot, anchored to the top-left of the surface (default)
-     or top-right when flipped. Inset slightly so the ping rings stay
-     visible inside overflow:hidden. */
+  /* Brass dot — centered on its (x, y) point so resizing the canvas
+     keeps the dot pinned to its architectural feature. */
   .pin-dot {
     position: absolute;
-    top: 6px;
-    left: 6px;
-    display: block;
     width: 14px;
     height: 14px;
     border-radius: 50%;
+    transform: translate(-50%, -50%);
     background: radial-gradient(circle at 35% 30%, #f0c24d, #8a7235 65%, #3a2f18 100%);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    z-index: 5;
     pointer-events: none;
-  }
-
-  .pin-surface-flip .pin-dot {
-    left: auto;
-    right: 6px;
   }
 
   .pin-dot::before,
@@ -406,115 +399,84 @@
     }
   }
 
-  .pin-surface-visited .pin-dot {
+  .pin-dot-visited {
     background: radial-gradient(circle at 35% 30%, #ffd76a, #c89a3a 65%, #5a4220 100%);
   }
-
-  .pin-surface-visited .pin-dot::before,
-  .pin-surface-visited .pin-dot::after {
+  .pin-dot-visited::before,
+  .pin-dot-visited::after {
     border-color: rgba(255, 215, 106, 0.65);
   }
 
-  .pin-surface-sealed .pin-dot {
+  .pin-dot-sealed {
     background: radial-gradient(circle at 35% 30%, #4a4248, #2a2428 65%, #1a141a 100%);
   }
-
-  .pin-surface-sealed .pin-dot::before,
-  .pin-surface-sealed .pin-dot::after {
+  .pin-dot-sealed::before,
+  .pin-dot-sealed::after {
     border-color: rgba(210, 58, 42, 0.45);
     animation: none;
     transform: scale(1);
     opacity: 0.55;
   }
 
-  .pin-surface-exhausted .pin-dot {
+  .pin-dot-exhausted {
     background: radial-gradient(circle at 35% 30%, #6b8fb0, #2c3e52 65%, #1a2030 100%);
   }
-
-  .pin-surface-exhausted .pin-dot::before,
-  .pin-surface-exhausted .pin-dot::after {
+  .pin-dot-exhausted::before,
+  .pin-dot-exhausted::after {
     border-color: rgba(107, 143, 176, 0.5);
     animation: none;
     transform: scale(1);
     opacity: 0.6;
   }
 
-  .pin-surface-exhausted .pin-tag {
-    border-color: rgba(107, 143, 176, 0.4);
-  }
-
-  /* Debug overlay (?debug=pins): paint the surface and tag boxes so
-     out-of-bounds tweaks are visible at a glance. */
-  .pin-surface-debug {
-    outline: 1px dashed rgba(107, 143, 176, 0.85);
-    outline-offset: 0;
-  }
-
-  .pin-surface-debug .pin-tag {
-    outline: 1px dashed rgba(255, 215, 106, 0.6);
-  }
-
-  /* The tag fills the rest of the surface beside the dot+leader. Its
-     width adjusts to the surface (right: 0 / left: 0), with a fixed-pixel
-     keepout (left: 56px or right: 56px) reserved for the dot and brass
-     leader. The keepout is intentionally pixel-based — the dot and leader
-     are pixel-rendered glyphs, so the gap that holds them is too — but
-     `overflow: hidden` on the surface still guarantees the tag cannot
-     escape its declared box, which is the contract that matters. */
+  /* Tag — fixed pixel width, free-floating from its top-left coord.
+     Width is intentionally fixed so a long category label can't push
+     the layout sideways; height is auto to hold the three text lines. */
   .pin-tag {
     position: absolute;
-    top: 0;
-    left: 56px;
-    right: 0;
-    bottom: 0;
-    padding: 0.4rem 0.6rem;
-    background: linear-gradient(180deg, rgba(20, 22, 30, 0.85) 0%, rgba(11, 12, 18, 0.9) 100%);
-    border: 1px solid rgba(196, 162, 78, 0.45);
+    width: 200px;
+    padding: 0.4rem 0.65rem 0.45rem;
+    background: linear-gradient(180deg, rgba(20, 22, 30, 0.92) 0%, rgba(11, 12, 18, 0.95) 100%);
+    border: 1px solid rgba(196, 162, 78, 0.5);
     text-decoration: none;
     color: var(--color-paper);
-    pointer-events: auto;
+    z-index: 4;
     transition:
       border-color var(--motion-base) var(--ease-out),
-      box-shadow var(--motion-base) var(--ease-out),
-      transform var(--motion-base) var(--ease-out);
+      box-shadow var(--motion-base) var(--ease-out);
     backdrop-filter: blur(2px);
-    overflow: hidden;
-  }
-
-  .pin-surface-flip .pin-tag {
-    left: 0;
-    right: 56px;
-    text-align: right;
   }
 
   .pin-tag:hover,
   .pin-tag:focus-visible {
-    border-color: rgba(255, 215, 106, 0.75);
+    border-color: rgba(255, 215, 106, 0.85);
     box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.55),
-      0 0 0 1px rgba(255, 215, 106, 0.35);
-    /* No translate — the surface is the budget, and translate would push
-       the tag past it and get clipped. Use a glow instead. */
+      0 10px 28px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 215, 106, 0.4);
     outline: none;
   }
 
-  .pin-surface-visited .pin-tag {
-    border-color: rgba(255, 215, 106, 0.55);
-  }
-
-  .pin-surface-sealed .pin-tag {
-    border-color: rgba(210, 58, 42, 0.4);
+  .pin-tag-visited {
+    border-color: rgba(255, 215, 106, 0.6);
   }
 
   .pin-tag-sealed {
     cursor: default;
+    border-color: rgba(210, 58, 42, 0.45);
     opacity: 0.55;
     pointer-events: none;
   }
 
   .pin-tag-meta {
-    border-color: rgba(233, 228, 216, 0.1);
-    opacity: 0.85;
+    border-color: rgba(233, 228, 216, 0.18);
+    opacity: 0.9;
+  }
+
+  /* Debug overlay (?debug=pins): outline each tag so coords are easy to
+     spot during artwork tuning. */
+  .pin-tag-debug {
+    outline: 1px dashed rgba(255, 215, 106, 0.6);
+    outline-offset: 1px;
   }
 
   .pin-row1 {
@@ -648,7 +610,9 @@
 
     .board-bg,
     .board-overlay,
-    .pin-surface {
+    .pin-leaders,
+    .pin-dot,
+    .pin-tag {
       display: none;
     }
 

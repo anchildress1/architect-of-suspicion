@@ -1,86 +1,71 @@
 /**
- * Pin layout contract for the mansion overlay.
+ * Pin layout for the mansion overlay.
  *
- * Each pin owns ONE rectangle — its **surface** — expressed as percentages
- * of the mansion canvas (0..100 on each axis). The brass dot AND the
- * info tag both render strictly INSIDE this rectangle. The renderer uses
- * `overflow: hidden` on the surface element, so a careless tweak cannot
- * visually escape the declared box. This is the property that makes pin
- * tweaks safe — the artwork can be retuned without breaking the frame.
+ * Two independent points define each pin:
+ *   - `dot` — where the brass dot lands on the artwork (the architectural
+ *     feature for the chamber)
+ *   - `tag` — the top-left of the dark info tag
  *
- * `flip` selects which corner of the surface holds the dot:
- *   - flip=false → dot pinned to the TOP-LEFT  (tag fills the right side)
- *   - flip=true  → dot pinned to the TOP-RIGHT (tag fills the left side)
+ * Both are expressed as percentages of the mansion canvas (0..100 on each
+ * axis). The renderer places the dot centered on `dot`, places the tag
+ * top-left at `tag`, and draws a brass hairline leader from one to the
+ * other. Tag width is a fixed pixel value declared in CSS — tag content
+ * doesn't dictate canvas geometry, so a long category label can't push
+ * the layout sideways.
  *
  * Authoritative table + diagram: docs/mansion-pin-layout.md
  *
  * Invariants (enforced by mansionPins.test.ts):
- *   1. Every surface fits inside [0..100, 0..100].
- *   2. No two surfaces overlap.
- *   3. Chamber numerals are unique across pins.
- *   4. Every room slug from $lib/rooms has a matching pin (and vice versa).
+ *   1. `dot` and `tag` both fit inside [0..100, 0..100].
+ *   2. Chamber numerals are unique across pins.
+ *   3. Every room slug from $lib/rooms has a matching pin (and vice versa).
+ *   4. `MANSION_PINS` is deeply frozen — coords cannot be mutated at runtime.
  *
- * Visual debugging: append `?debug=pins` to /mansion to outline every
- * surface, so collisions or out-of-bounds tweaks are immediately visible.
+ * Visual debugging: append `?debug=pins` to /mansion to outline every tag
+ * (and stay on the page without a session).
  */
-export interface PinSurface {
-  /** Left edge of the surface, percent of canvas width. */
+export interface PinPoint {
+  /** Percent of canvas width (0..100). */
   x: number;
-  /** Top edge of the surface, percent of canvas height. */
+  /** Percent of canvas height (0..100). */
   y: number;
-  /** Width of the surface, percent of canvas width. */
-  w: number;
-  /** Height of the surface, percent of canvas height. */
-  h: number;
 }
 
 export interface MansionPin {
-  surface: PinSurface;
-  /** When true, dot anchors to the top-RIGHT of the surface and the tag
-   *  fills the area to its left (mirrored layout for right-edge pins). */
-  flip: boolean;
+  /** Brass dot anchor — sits on the artwork's named architectural feature. */
+  dot: PinPoint;
+  /** Top-left of the info tag. Tag width is fixed in CSS. */
+  tag: PinPoint;
   /** Roman-numeral chamber label. Display-only, must be unique. */
   chamber: string;
 }
 
 function freezePins<T extends Record<string, MansionPin>>(pins: T): Readonly<T> {
   for (const pin of Object.values(pins)) {
-    Object.freeze(pin.surface);
+    Object.freeze(pin.dot);
+    Object.freeze(pin.tag);
     Object.freeze(pin);
   }
   return Object.freeze(pins);
 }
 
 /**
- * Authoritative pin layout. Surfaces hand-tuned to:
- *   - Sit on the artwork's named architectural features
- *   - Stay inside [0..100, 0..100] on both axes (Invariant 1)
- *   - Not overlap any other surface (Invariant 2)
- *
- * If the mansion artwork changes, retune all surfaces together — they form
- * a single composition. Update docs/mansion-pin-layout.md in the same commit.
+ * Authoritative pin layout. Hand-tuned against the design QA reference
+ * render so each dot lands on its named architectural feature, with the
+ * tag floating clear of the artwork's central detail.
  */
 export const MANSION_PINS = freezePins({
-  attic: { surface: { x: 13, y: 15, w: 19, h: 10 }, flip: false, chamber: 'I' },
-  gallery: { surface: { x: 51, y: 9, w: 17, h: 9 }, flip: false, chamber: 'II' },
-  'control-room': { surface: { x: 71, y: 14, w: 18, h: 10 }, flip: true, chamber: 'III' },
-  parlor: { surface: { x: 10, y: 46, w: 20, h: 10 }, flip: false, chamber: 'IV' },
-  'entry-hall': { surface: { x: 52, y: 38, w: 24, h: 10 }, flip: false, chamber: 'V' },
-  library: { surface: { x: 72, y: 48, w: 18, h: 10 }, flip: true, chamber: 'VI' },
-  workshop: { surface: { x: 13, y: 76, w: 22, h: 10 }, flip: false, chamber: 'VII' },
-  cellar: { surface: { x: 49, y: 69, w: 18, h: 10 }, flip: false, chamber: 'VIII' },
-  'back-hall': { surface: { x: 71, y: 80, w: 18, h: 10 }, flip: true, chamber: 'IX' },
+  attic: { dot: { x: 14, y: 18 }, tag: { x: 19, y: 14 }, chamber: 'I' },
+  gallery: { dot: { x: 51, y: 12 }, tag: { x: 54, y: 10 }, chamber: 'II' },
+  'control-room': { dot: { x: 89, y: 18 }, tag: { x: 74, y: 15 }, chamber: 'III' },
+  parlor: { dot: { x: 13, y: 47 }, tag: { x: 17, y: 46 }, chamber: 'IV' },
+  'entry-hall': { dot: { x: 52, y: 42 }, tag: { x: 60, y: 40 }, chamber: 'V' },
+  library: { dot: { x: 90, y: 49 }, tag: { x: 75, y: 49 }, chamber: 'VI' },
+  workshop: { dot: { x: 13, y: 78 }, tag: { x: 22, y: 77 }, chamber: 'VII' },
+  cellar: { dot: { x: 49, y: 71 }, tag: { x: 53, y: 71 }, chamber: 'VIII' },
+  'back-hall': { dot: { x: 89, y: 82 }, tag: { x: 75, y: 83 }, chamber: 'IX' },
 }) satisfies Readonly<Record<string, MansionPin>>;
 
 export function getMansionPin(slug: string): MansionPin | undefined {
   return (MANSION_PINS as Record<string, MansionPin>)[slug];
-}
-
-/** Two surfaces overlap when their rectangles intersect on both axes. */
-export function surfacesOverlap(a: PinSurface, b: PinSurface): boolean {
-  const aRight = a.x + a.w;
-  const aBottom = a.y + a.h;
-  const bRight = b.x + b.w;
-  const bBottom = b.y + b.h;
-  return a.x < bRight && aRight > b.x && a.y < bBottom && aBottom > b.y;
 }
