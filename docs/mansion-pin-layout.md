@@ -33,17 +33,17 @@ because the tag's width is fixed in CSS (200px).
 Hand-tuned against the design QA reference render so each dot lands on
 its named architectural feature.
 
-| Slug           | Chamber | Dot (x, y) | Tag (x, y) | Anchored on (artwork)            |
-| -------------- | ------- | ---------- | ---------- | -------------------------------- |
-| `attic`        | I       | (22, 18)   | (28, 14)   | left tower face / upper window   |
-| `gallery`      | II      | (50, 13)   | (54, 6)    | central clock face               |
-| `control-room` | III     | (78, 18)   | (60, 14)   | right tower face / upper window  |
-| `parlor`       | IV      | (22, 41)   | (28, 38)   | 2nd-floor bay window, left       |
-| `entry-hall`   | V       | (50, 42)   | (54, 50)   | 2nd-floor central gear medallion |
-| `library`      | VI      | (78, 41)   | (60, 38)   | 2nd-floor bay window, right      |
-| `workshop`     | VII     | (20, 78)   | (26, 75)   | left foundation stairs           |
-| `cellar`       | VIII    | (50, 90)   | (54, 88)   | basement archway at the base     |
-| `back-hall`    | IX      | (80, 78)   | (62, 75)   | right foundation stairs          |
+| Slug           | Chamber | Dot (x, y) | Tag (x, y) | Anchored on (artwork)           |
+| -------------- | ------- | ---------- | ---------- | ------------------------------- |
+| `attic`        | I       | (22, 18)   | (28, 14)   | left tower face / upper window  |
+| `gallery`      | II      | (53, 13)   | (56, 24)   | central clock face              |
+| `control-room` | III     | (78, 18)   | (60, 14)   | right tower face / upper window |
+| `parlor`       | IV      | (22, 41)   | (28, 38)   | 2nd-floor bay window, left      |
+| `entry-hall`   | V       | (50, 50)   | (54, 56)   | 2nd-floor central door          |
+| `library`      | VI      | (78, 41)   | (60, 38)   | 2nd-floor bay window, right     |
+| `workshop`     | VII     | (20, 78)   | (26, 75)   | left foundation stairs          |
+| `cellar`       | VIII    | (50, 90)   | (54, 88)   | basement archway at the base    |
+| `back-hall`    | IX      | (80, 78)   | (62, 75)   | right foundation stairs         |
 
 These were measured directly off `house-exterior.webp` with a percentage
 grid overlay — every dot lands on its named feature. If the artwork ever

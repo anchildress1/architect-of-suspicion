@@ -471,6 +471,11 @@
 
   .pin-tag:hover,
   .pin-tag:focus-visible {
+    /* Pop to the top of the pin layer so an overlapped tag underneath
+       can still be hovered/clicked once the user reaches its visible
+       edge. Without this, the "front" tag (later in DOM order) wins
+       every hit even after the user moves onto the back tag. */
+    z-index: 6;
     border-color: rgba(255, 215, 106, 0.85);
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.55),
