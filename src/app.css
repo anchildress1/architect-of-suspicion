@@ -22,7 +22,6 @@
   --color-rivet: #3a3a42;
 
   --color-bone: #e9e4d8;
-  --color-bone-2: #d6d0c0;
   --color-bone-dim: #a5a090;
   --color-paper: #e9e4d8;
   --color-paper-dim: #a5a090;
@@ -35,13 +34,17 @@
      Paired with the 11px label floor + 0.14em max tracking so word
      shapes stay legible at the smallest sizes. */
   --color-brass-dim: #aaa498;
-  --color-brass-deep: #3e3c34;
-  --color-brass-glow: #e9e4d8;
+
+  /* The brass-key palette — the "way in" affordance. Lives on every
+     hand-touchable metal surface: the lever button keys, the mansion
+     pin furniture (dot, leader, tag border), and the verdict ghost
+     buttons. Two values: a base for rest, a glow for hover/focus.
+     Nothing else uses warm gold — that is the rule. */
+  --color-brass-key: #c4a24e;
+  --color-brass-key-glow: #f0c24d;
 
   --color-ember: #d23a2a;
-  --color-ember-deep: #8a1f14;
   --color-oxblood: #8a1f14;
-  --color-oxblood-hi: #d23a2a;
 
   --color-cyan-ink: #6b8fb0;
   --color-cyan-deep: #2c3e52;
