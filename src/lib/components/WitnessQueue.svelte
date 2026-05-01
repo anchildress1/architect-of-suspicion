@@ -55,6 +55,11 @@
        and chamber-overlay even if their pointer-events guards regress. */
     position: relative;
     z-index: 5;
+    /* Pinned to the named "queue" area in chamber-main's grid-template-areas
+       (`'head queue' / 'stage queue'`). Without this, auto-placement would
+       drop the queue into row 1 column 2 only and starve the stage row of
+       its 1fr allocation, collapsing the witness card off-screen. */
+    grid-area: queue;
     width: 280px;
     flex-shrink: 0;
     display: flex;
