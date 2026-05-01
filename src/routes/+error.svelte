@@ -94,7 +94,6 @@
 
   .error-link:hover {
     border-color: var(--color-brass);
-    background: rgba(196, 162, 78, 0.1);
-    box-shadow: 0 0 20px rgba(196, 162, 78, 0.1);
+    background: rgba(233, 228, 216, 0.06);
   }
 </style>

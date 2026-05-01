@@ -426,12 +426,13 @@
   }
 
   .link-btn-primary {
-    border-color: var(--color-ember);
-    color: var(--color-ember);
+    border-color: var(--color-brass-key);
+    color: var(--color-bone);
   }
 
   .link-btn-primary:hover {
-    background: rgba(210, 58, 42, 0.1);
+    border-color: var(--color-brass-key-glow);
+    background: rgba(240, 194, 77, 0.08);
   }
 
   @media (max-width: 900px) {

@@ -482,7 +482,7 @@
 
   .lever-btn-key {
     flex-shrink: 0;
-    color: rgba(240, 194, 77, 0.8);
+    color: var(--color-brass-key);
     transition: color var(--motion-base) var(--ease-out);
   }
 
@@ -491,7 +491,8 @@
   }
 
   .lever-btn:hover:not(:disabled) {
-    border-color: rgba(240, 194, 77, 0.7);
+    border-color: var(--color-brass-key-glow);
+    /* The 0.25 alpha glow uses the brass-key-glow hex (#f0c24d). */
     box-shadow:
       inset 0 1px 0 rgba(255, 230, 170, 0.32),
       inset 0 -1px 0 rgba(0, 0, 0, 0.6),
@@ -500,7 +501,7 @@
   }
 
   .lever-btn:hover:not(:disabled) .lever-btn-key {
-    color: rgb(240, 194, 77);
+    color: var(--color-brass-key-glow);
   }
 
   .lever-btn:disabled {

@@ -532,10 +532,10 @@
     gap: 14px;
     margin-top: 28px;
     padding-top: 24px;
-    border-top: 1px solid rgba(196, 162, 78, 0.3);
+    border-top: 1px solid var(--color-brass-key);
   }
 
-  /* Ghost button — quiet, brass border, brightens on hover. */
+  /* Ghost button — quiet, brass-key border, brightens on hover. */
   .link-btn {
     display: inline-flex;
     align-items: center;
@@ -546,7 +546,7 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
     padding: 0.85rem 1.4rem;
-    border: 1px solid rgba(196, 162, 78, 0.3);
+    border: 1px solid var(--color-brass-key);
     background: transparent;
     color: var(--color-bone);
     cursor: pointer;
@@ -558,14 +558,14 @@
   }
 
   .link-btn:hover {
-    border-color: var(--color-bone);
-    box-shadow: 0 0 16px rgba(196, 162, 78, 0.25);
+    border-color: var(--color-brass-key-glow);
+    box-shadow: 0 0 16px rgba(240, 194, 77, 0.25);
   }
 
-  /* Primary — same lever chrome as the Summons CTA, with a wax-seal icon. */
+  /* Primary — lever chrome with a wax-seal icon (the brass key wears a seal here). */
   .link-btn-primary {
     background: linear-gradient(180deg, #2a2417 0%, #14110a 100%);
-    border-color: var(--color-bone-dim);
+    border-color: var(--color-brass-key);
     color: var(--color-bone);
     box-shadow:
       inset 0 1px 0 rgba(255, 230, 170, 0.2),
@@ -575,12 +575,12 @@
 
   .link-btn-seal {
     flex-shrink: 0;
-    color: rgba(240, 194, 77, 0.8);
+    color: var(--color-brass-key);
     transition: color 0.3s ease;
   }
 
   .link-btn-primary:hover {
-    border-color: rgba(240, 194, 77, 0.7);
+    border-color: var(--color-brass-key-glow);
     box-shadow:
       inset 0 1px 0 rgba(255, 230, 170, 0.32),
       inset 0 -1px 0 rgba(0, 0, 0, 0.6),
@@ -589,7 +589,7 @@
   }
 
   .link-btn-primary:hover .link-btn-seal {
-    color: rgb(240, 194, 77);
+    color: var(--color-brass-key-glow);
   }
 
   @media (max-width: 1024px) {
