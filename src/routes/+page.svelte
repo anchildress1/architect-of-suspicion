@@ -116,7 +116,7 @@
       <span class="dossier-sep" aria-hidden="true"></span>
       <div class="dossier-meta-right">
         <p class="dossier-field">Filed by</p>
-        <p class="dossier-value dossier-value-italic">Anonymous</p>
+        <p class="dossier-value">Anonymous</p>
       </div>
     </div>
 
@@ -438,11 +438,6 @@
     font-size: 1.05rem;
     color: var(--color-bone);
     margin-top: 0.2rem;
-  }
-
-  .dossier-value-italic {
-    font-style: italic;
-    opacity: 0.85;
   }
 
   .dossier-intro {

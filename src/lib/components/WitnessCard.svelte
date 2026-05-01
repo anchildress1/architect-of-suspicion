@@ -231,7 +231,6 @@
 
   .lv-name {
     font-family: var(--font-display);
-    font-style: italic;
     font-size: 1.15rem;
     color: var(--color-bone);
   }

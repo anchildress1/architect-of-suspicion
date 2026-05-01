@@ -91,8 +91,7 @@
 
   .nu-empty {
     padding: 1.5rem 1rem;
-    font-family: var(--font-display);
-    font-style: italic;
+    font-family: var(--font-body);
     font-size: 0.95rem;
     color: var(--color-paper-dim);
     text-align: center;

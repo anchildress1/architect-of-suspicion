@@ -515,8 +515,8 @@
   }
 
   .pin-name {
-    font-family: var(--font-display);
-    font-style: italic;
+    font-family: var(--font-body);
+    font-weight: 500;
     font-size: 0.95rem;
     color: var(--color-bone);
     line-height: 1.1;
@@ -605,8 +605,8 @@
   }
 
   .bl-name {
-    font-family: var(--font-display);
-    font-style: italic;
+    font-family: var(--font-body);
+    font-weight: 500;
     font-size: 1rem;
     color: var(--color-bone);
     line-height: 1.15;

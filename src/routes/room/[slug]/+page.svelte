@@ -394,11 +394,10 @@
   }
 
   .chamber-empty-text {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.4rem;
+    font-family: var(--font-architect);
+    font-size: 1.05rem;
     color: var(--color-bone);
-    line-height: 1.4;
+    line-height: 1.55;
     margin: 1rem 0 1.8rem;
     text-wrap: balance;
   }

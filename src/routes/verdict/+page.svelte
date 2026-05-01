@@ -295,7 +295,6 @@
 
   .ct-count {
     font-family: var(--font-display);
-    font-style: italic;
     font-size: 1.7rem;
     color: var(--color-bone);
     line-height: 1;
@@ -310,8 +309,7 @@
   }
 
   .choose-prompt {
-    font-family: var(--font-display);
-    font-style: italic;
+    font-family: var(--font-body);
     font-size: 0.95rem;
     color: var(--color-paper-dim);
     margin-bottom: 1.5rem;
@@ -367,7 +365,6 @@
 
   .vb-label {
     font-family: var(--font-display);
-    font-style: italic;
     font-size: 1.2rem;
     color: var(--color-bone);
   }
