@@ -14,6 +14,7 @@
 
 <aside class="architect-panel transition-architect" aria-label="The Architect's rail">
   <header class="panel-head">
+    <p class="panel-eyebrow">Magistrate &middot; Case 0426</p>
     <h2 class="panel-title">The Architect</h2>
   </header>
 
@@ -62,6 +63,15 @@
     padding: 1.1rem 1rem 0.85rem;
     text-align: center;
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
+  }
+
+  .panel-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 0.4rem;
   }
 
   .panel-title {

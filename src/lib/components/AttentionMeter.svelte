@@ -9,7 +9,7 @@
 
   let { value }: Props = $props();
 
-  // Half-circle gauge from -90° (left/Drifting) to +90° (right/Riveted).
+  // Half-circle gauge from -90° (left/Exonerating) to +90° (right/Damning).
   const angle = $derived(-90 + ((value - ATTENTION_MIN) / (ATTENTION_MAX - ATTENTION_MIN)) * 180);
   const mood = $derived(moodFor(value));
 
@@ -39,8 +39,10 @@
 </script>
 
 <div class="meter">
+  <p class="meter-eyebrow" aria-hidden="true">Inclination</p>
+
   <span class="meter-sr" aria-live="polite" aria-atomic="true">
-    The Architect's attention: {mood}, {value} of 100.
+    The Architect's inclination: {mood}, {value} of 100.
   </span>
 
   <svg viewBox="0 0 260 150" aria-hidden="true">
@@ -128,6 +130,16 @@
     align-items: stretch;
     padding: 1rem 1rem 0.75rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
+  }
+
+  .meter-eyebrow {
+    font-family: var(--font-readout);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    text-align: center;
+    margin-bottom: 0.35rem;
   }
 
   .meter svg {

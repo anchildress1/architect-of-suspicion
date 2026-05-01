@@ -1,9 +1,15 @@
 /**
- * The Architect's Attention meter.
+ * The Architect's Inclination meter.
  *
- * One smoothed needle that drifts with the player's classification trajectory.
- * The needle's position never reveals per-pick correctness — its motion is
- * eased over multiple picks so an individual delta is unreadable on its own.
+ * One smoothed needle that reveals which way the case is bending in the
+ * Architect's reading — toward exonerating the subject or toward damning
+ * them. The needle's position never reveals per-pick correctness; its
+ * motion is eased over multiple picks so an individual delta is unreadable.
+ *
+ * Crucially: the verdict is predetermined by the seeded ai_score on each
+ * card. The dial does not show the Architect "deciding" or "being
+ * persuaded" — it reveals where the case was always going to land. The
+ * Architect is the dial's voice, not its author.
  *
  * Inputs (from /api/evaluate):
  *   attention_delta ∈ [-1, 1] = pickSign × pre_seeded_ai_score
@@ -12,8 +18,8 @@
  *     dismiss   →  0
  *
  * Output (rendered to the user):
- *   needle ∈ [0, 100], one of four mood labels (Drifting / Watching / Interested / Riveted),
- *   never the raw delta, never a number readout.
+ *   needle ∈ [0, 100], one of four labels (Exonerating / Watching /
+ *   Tightening / Damning), never the raw delta, never a number readout.
  */
 
 export const BASELINE_ATTENTION = 50;
@@ -28,12 +34,12 @@ export const ATTENTION_MAX = 100;
  */
 export const SMOOTHING = 0.18;
 
-/** Per-pick contribution to the attention "target." Tuned so a confident
+/** Per-pick contribution to the inclination "target." Tuned so a confident
  *  Proof of a strongly-supporting card (delta ≈ 1) shifts the target by 50,
- *  reaching FURY/Riveted only after several aligned picks. */
+ *  reaching Damning only after several aligned picks. */
 export const DELTA_GAIN = 50;
 
-export type AttentionMood = 'Drifting' | 'Watching' | 'Interested' | 'Riveted';
+export type AttentionMood = 'Exonerating' | 'Watching' | 'Tightening' | 'Damning';
 
 export function clampAttention(value: number): number {
   if (Number.isNaN(value)) return BASELINE_ATTENTION;
@@ -63,12 +69,14 @@ export function attentionFromHistory(deltas: readonly number[]): number {
   return value;
 }
 
-/** Map the needle position to one of four moods. Boundaries are intentionally
- *  uneven — the ends are narrower so reaching them feels earned. */
+/** Map the needle position to one of four labels along the
+ *  exonerating ↔ damning spectrum. Boundaries are intentionally uneven —
+ *  the ends are narrower so reaching them feels earned, and the lower
+ *  band is wider since the seed defaults toward suspicion. */
 export function moodFor(value: number): AttentionMood {
   const v = clampAttention(value);
-  if (v < 30) return 'Drifting';
+  if (v < 30) return 'Exonerating';
   if (v < 55) return 'Watching';
-  if (v < 80) return 'Interested';
-  return 'Riveted';
+  if (v < 80) return 'Tightening';
+  return 'Damning';
 }
