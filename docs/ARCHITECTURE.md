@@ -381,12 +381,11 @@ gcloud run deploy architect-of-suspicion \
 
 1. The `fact` field never reaches the client
 2. The raw `ai_score` from `suspicion.claim_cards` never reaches the client — only the smoothed attention value
-3. The Architect never speaks unprompted
-4. Score is `-1.0` to `1.0`, **pre-seeded** in `suspicion.claim_cards.ai_score`. Runtime AI never scores.
-5. Every pick is logged to `suspicion.picks` before client response
-6. The cover letter references only **ruled** evidence (proof + objection); dismissed exhibits are excluded
-7. The cover letter is written in The Architect's editorial-noir voice
-8. The resume is static content, not AI-generated
-9. Chamber names and grid positions match background images exactly
-10. `public.cards` schema is never modified
-11. About category cards are excluded from gameplay
+3. Score is `-1.0` to `1.0`, **pre-seeded** in `suspicion.claim_cards.ai_score`. Runtime AI never scores.
+4. Every pick is logged to `suspicion.picks` before client response
+5. The cover letter references only **ruled** evidence (proof + objection); dismissed exhibits are excluded
+6. The cover letter is written in The Architect's editorial-noir voice
+7. The resume is static content, not AI-generated
+8. Chamber names and grid positions match background images exactly
+9. `public.cards` schema is never modified
+10. About category cards are excluded from gameplay

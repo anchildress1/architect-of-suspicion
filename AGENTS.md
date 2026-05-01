@@ -19,13 +19,12 @@ Do not duplicate information from those docs here.
 3. The `public.cards` schema is never modified — read-only from the game's perspective
 4. Every pick is written to `suspicion.picks` **before** the client response is sent
 5. Score is `-1.0` to `1.0` and is **pre-seeded by the claim engine in `suspicion.claim_cards.ai_score`**. The runtime AI never produces a score
-6. The Architect never speaks unprompted — all output is a reaction to a player action
-7. The Architect's reaction prose never reveals per-pick correctness or any numeric magnitude
-8. Classification is permanent within a session — no undo
-9. The cover letter stays in The Architect's editorial-noir voice, references only **ruled** evidence (Proof + Objection — dismissed exhibits are excluded)
-10. Chamber names, slugs, and grid positions match background image filenames exactly — do not rename or reorder
-11. The `About` category is excluded from gameplay
-12. No authentication — anonymous sessions only, no Supabase Auth
+6. The Architect's reaction prose never reveals per-pick correctness or any numeric magnitude
+7. Classification is permanent within a session — no undo
+8. The cover letter stays in The Architect's editorial-noir voice, references only **ruled** evidence (Proof + Objection — dismissed exhibits are excluded)
+9. Chamber names, slugs, and grid positions match background image filenames exactly — do not rename or reorder
+10. The `About` category is excluded from gameplay
+11. No authentication — anonymous sessions only, no Supabase Auth
 
 ## Coding Rules
 
