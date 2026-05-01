@@ -16,4 +16,5 @@ RUN pnpm install --frozen-lockfile --prod
 ENV PORT=8080
 ENV HOST=0.0.0.0
 EXPOSE 8080
+USER node
 CMD ["node", "build"]
