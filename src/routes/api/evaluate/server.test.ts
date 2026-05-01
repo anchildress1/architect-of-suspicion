@@ -87,7 +87,7 @@ interface MockOptions {
   attentionUpdateError?: unknown;
   canonicalPick?: { classification: string } | null;
   canonicalPickError?: unknown;
-  canonicalAttention?: { attention: number } | null;
+  canonicalAttention?: { attention: number | null } | null;
   canonicalAttentionError?: unknown;
 }
 
@@ -460,6 +460,31 @@ describe('POST /api/evaluate', () => {
       canonical: { classification: 'objection', attention: 42 },
     });
   });
+
+  it.each([
+    { label: 'null', dbValue: null, expected: 50 },
+    { label: 'too low', dbValue: -999, expected: 0 },
+    { label: 'too high', dbValue: 999, expected: 100 },
+  ])(
+    'normalizes $label canonical attention before returning a conflict',
+    async ({ dbValue, expected }) => {
+      setupSupabase({
+        pairScore: 0.3,
+        insertError: { message: 'duplicate', code: '23505' },
+        canonicalPick: { classification: 'proof' },
+        canonicalAttention: { attention: dbValue },
+      });
+      mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+      const res = await POST(makeRequest(validBody));
+      const body = await res.json();
+
+      expect(res.status).toBe(409);
+      expect(body).toEqual({
+        canonical: { classification: 'proof', attention: expected },
+      });
+    },
+  );
 
   it('500s on conflict if the canonical pick cannot be re-read', async () => {
     setupSupabase({

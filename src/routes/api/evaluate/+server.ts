@@ -6,7 +6,7 @@ import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildReactionPrompt } from '$lib/server/prompts/evaluate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
-import { applyAttentionDelta, clampAttention } from '$lib/attention';
+import { applyAttentionDelta, BASELINE_ATTENTION, clampAttention } from '$lib/attention';
 import { loadSessionCapability } from '$lib/server/sessionCapability';
 import { isUuid, parseJsonBodyWithLimit } from '$lib/server/validation';
 
@@ -172,7 +172,11 @@ async function loadCanonicalPick(
   return {
     canonical: {
       classification: pickRes.data.classification as Classification,
-      attention: Number(sessionRes.data.attention),
+      attention: clampAttention(
+        typeof sessionRes.data.attention === 'number'
+          ? sessionRes.data.attention
+          : BASELINE_ATTENTION,
+      ),
     },
   };
 }

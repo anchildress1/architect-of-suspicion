@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { error as kitError, isHttpError } from '@sveltejs/kit';
 
 const mockFetchClaimCategoryCounts = vi.fn();
 const mockLoadSessionCapability = vi.fn();
@@ -24,17 +25,55 @@ describe('mansion +page.server load', () => {
     vi.clearAllMocks();
   });
 
-  it('returns empty counts when loadSessionCapability throws (missing/invalid)', async () => {
-    mockLoadSessionCapability.mockRejectedValue(new Error('Missing session capability'));
+  it('returns empty counts when loadSessionCapability rejects missing session with 401', async () => {
+    let capabilityErr: unknown;
+    try {
+      kitError(401, 'Missing session capability');
+    } catch (err) {
+      capabilityErr = err;
+    }
+    mockLoadSessionCapability.mockRejectedValue(capabilityErr);
+
     const result = await load(makeEvent());
+
     expect(result).toEqual({ categoryCounts: {} });
     expect(mockFetchClaimCategoryCounts).not.toHaveBeenCalled();
   });
 
   it('returns empty counts when capability is forged (mismatched hash)', async () => {
-    mockLoadSessionCapability.mockRejectedValue(new Error('Invalid session capability'));
+    let capabilityErr: unknown;
+    try {
+      kitError(401, 'Invalid session capability');
+    } catch (err) {
+      capabilityErr = err;
+    }
+    mockLoadSessionCapability.mockRejectedValue(capabilityErr);
+
     const result = await load(makeEvent());
+
     expect(result).toEqual({ categoryCounts: {} });
+    expect(mockFetchClaimCategoryCounts).not.toHaveBeenCalled();
+  });
+
+  it('re-throws when capability check fails with infrastructure error', async () => {
+    let infraErr: unknown;
+    try {
+      kitError(500, 'Failed to read session');
+    } catch (err) {
+      infraErr = err;
+    }
+    mockLoadSessionCapability.mockRejectedValue(infraErr);
+
+    await expect(load(makeEvent())).rejects.toSatisfy(
+      (err: unknown) => isHttpError(err) && err.status === 500,
+    );
+    expect(mockFetchClaimCategoryCounts).not.toHaveBeenCalled();
+  });
+
+  it('re-throws unexpected non-HTTP errors from capability check', async () => {
+    mockLoadSessionCapability.mockRejectedValue(new TypeError('network failure'));
+
+    await expect(load(makeEvent())).rejects.toThrow('network failure');
     expect(mockFetchClaimCategoryCounts).not.toHaveBeenCalled();
   });
 

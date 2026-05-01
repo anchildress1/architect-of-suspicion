@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { isHttpError } from '@sveltejs/kit';
 import { fetchClaimCategoryCounts } from '$lib/server/cards';
 import { loadSessionCapability } from '$lib/server/sessionCapability';
 
@@ -17,7 +18,8 @@ export const load: PageServerLoad = async ({ cookies }) => {
   let claimId: string;
   try {
     claimId = (await loadSessionCapability(cookies)).claimId;
-  } catch {
+  } catch (err) {
+    if (!isHttpError(err) || err.status !== 401) throw err;
     return { categoryCounts: {} as Record<string, number> };
   }
   const { counts } = await fetchClaimCategoryCounts(claimId);
