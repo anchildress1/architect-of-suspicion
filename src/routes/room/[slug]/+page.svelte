@@ -139,10 +139,10 @@
   }
 
   async function decide(card: ClaimCardEntry, classification: Classification) {
-    // Reentrancy guard: WitnessCard already debounces inside its 360ms stamp
-    // animation, but a fast double-click on the levers (or a programmatic
-    // re-entry) could otherwise enqueue two /api/evaluate requests for the
-    // same card before `evaluating` flips. Bail at the door instead.
+    // Reentrancy guard: WitnessCard hides its lever buttons synchronously on
+    // first click (via its `chosen` state), but a programmatic re-entry could
+    // otherwise enqueue two /api/evaluate requests for the same card before
+    // `evaluating` flips. Bail at the door instead.
     if (evaluating) return;
     if (!gameState.current.sessionId || !gameState.current.claimId) return;
 

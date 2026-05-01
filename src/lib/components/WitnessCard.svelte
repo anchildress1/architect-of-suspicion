@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
   import type { Classification, ClaimCardEntry } from '$lib/types';
 
   interface Props {
@@ -12,18 +11,15 @@
 
   let { card, index, total, onDecide, disabled = false }: Props = $props();
   let chosen = $state<Classification | null>(null);
-  let timer: ReturnType<typeof setTimeout> | null = null;
 
   function decide(c: Classification) {
     if (chosen || disabled) return;
     chosen = c;
-    // Let the stamp animation read before swapping the witness.
-    timer = setTimeout(() => onDecide(card, c), 360);
+    // Fire the pick immediately — the stamp + exit transitions on this card
+    // play in parallel with the API call (typically 2–5s round-trip), giving
+    // the player far more readtime than the previous 360ms cosmetic delay.
+    onDecide(card, c);
   }
-
-  onDestroy(() => {
-    if (timer) clearTimeout(timer);
-  });
 </script>
 
 <article
