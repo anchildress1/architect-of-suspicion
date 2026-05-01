@@ -36,8 +36,8 @@
         sharpens with the case &mdash; they will not say which calls were right.
       </p>
       <p>
-        When the gallery has heard enough, render your verdict. The Architect will compose a sealed
-        letter from the ruled evidence.
+        When the gallery has heard enough, render your verdict. The Architect will compose a brief
+        from the ruled evidence.
       </p>
     </section>
 

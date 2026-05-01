@@ -64,16 +64,15 @@
   .error-message {
     font-family: var(--font-body);
     font-size: 1.1rem;
-    font-style: italic;
-    color: var(--color-parchment);
+    color: var(--color-bone);
     line-height: 1.6;
     margin-bottom: 0.75rem;
   }
 
   .error-detail {
     font-family: var(--font-readout);
-    font-size: 0.7rem;
-    color: var(--color-parchment-dim);
+    font-size: 11px;
+    color: var(--color-brass-dim);
     margin-bottom: 2rem;
   }
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import { moodFor, ATTENTION_MIN, ATTENTION_MAX } from '$lib/attention';
 
   interface Props {
@@ -12,37 +11,13 @@
   // Half-circle gauge from -90° (left/Exonerating) to +90° (right/Damning).
   const angle = $derived(-90 + ((value - ATTENTION_MIN) / (ATTENTION_MAX - ATTENTION_MIN)) * 180);
   const mood = $derived(moodFor(value));
-
-  // Per-pick delta callout: mono pill that fades in on attention change.
-  // We capture the initial value intentionally so the first frame doesn't
-  // flash a delta of `value - undefined`.
-  let previous = $state(untrack(() => value));
-  let delta = $state<number | null>(null);
-  let deltaSeq = $state(0);
-
-  $effect(() => {
-    // Track only `value`. Reading `previous` directly would also subscribe to
-    // it, and since the effect updates `previous` it would re-run, clearing
-    // its own pending `setTimeout` before the fade-out could fire. `untrack`
-    // keeps the read but skips the dependency.
-    const v = value;
-    const prev = untrack(() => previous);
-    if (v === prev) return;
-    delta = v - prev;
-    previous = v;
-    deltaSeq += 1;
-    const t = setTimeout(() => {
-      delta = null;
-    }, 1850);
-    return () => clearTimeout(t);
-  });
 </script>
 
 <div class="meter">
   <p class="meter-eyebrow" aria-hidden="true">Inclination</p>
 
   <span class="meter-sr" aria-live="polite" aria-atomic="true">
-    The Architect's inclination: {mood}, {value} of 100.
+    The Architect's inclination: {mood}.
   </span>
 
   <svg viewBox="0 0 260 150" aria-hidden="true">
@@ -106,20 +81,6 @@
     <circle cx="130" cy="130" r="10" fill="url(#meter-hub)" stroke="#3e3c34" stroke-width="1.2" />
     <circle cx="130" cy="130" r="3" fill="#0b0b0d" />
   </svg>
-
-  {#if delta !== null}
-    {#key deltaSeq}
-      <span
-        class="meter-delta"
-        class:delta-up={delta > 0}
-        class:delta-down={delta < 0}
-        class:delta-flat={delta === 0}
-        aria-hidden="true"
-      >
-        {delta > 0 ? `+${delta}` : delta}
-      </span>
-    {/key}
-  {/if}
 </div>
 
 <style>
@@ -167,58 +128,9 @@
     transform-box: view-box;
   }
 
-  .meter-delta {
-    position: absolute;
-    bottom: 0.4rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    padding: 2px 8px;
-    border: 1px solid currentColor;
-    background: rgba(11, 11, 13, 0.8);
-    pointer-events: none;
-    animation: deltaPop 1850ms ease forwards;
-  }
-
-  .delta-up {
-    color: var(--color-ember);
-  }
-
-  .delta-down {
-    color: var(--color-cyan-ink);
-  }
-
-  .delta-flat {
-    color: var(--color-brass-dim);
-  }
-
-  @keyframes deltaPop {
-    0% {
-      opacity: 0;
-      transform: translate(-50%, 6px);
-    }
-    20% {
-      opacity: 1;
-      transform: translate(-50%, 0);
-    }
-    80% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-      transform: translate(-50%, -4px);
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .needle-g {
       transition: none;
-    }
-    .meter-delta {
-      animation: none;
-      opacity: 1;
     }
   }
 </style>

@@ -51,10 +51,10 @@
   }
 
   .tally-proof {
-    color: var(--color-cyan-ink);
+    color: var(--color-bone);
   }
   .tally-objection {
-    color: var(--color-ember);
+    color: var(--color-cyan-ink);
   }
   .tally-dismiss {
     color: var(--color-brass-dim);
@@ -81,12 +81,12 @@
     color: var(--color-brass-dim);
   }
 
-  /* Proof = blue (cyan-ink), Objection = red (ember), Struck stays neutral. */
+  /* Proof stays bone, Objection uses cyan-ink, Struck stays neutral. */
   .tally-row-proof .tally-count {
-    color: var(--color-cyan-ink);
+    color: var(--color-bone);
   }
   .tally-row-objection .tally-count {
-    color: var(--color-ember);
+    color: var(--color-cyan-ink);
   }
   .tally-row-dismiss .tally-count {
     color: var(--color-brass-dim);

@@ -10,7 +10,7 @@ import { loadSessionCapability } from '$lib/server/sessionCapability';
 import { parseJsonBodyWithLimit } from '$lib/server/validation';
 
 const FALLBACK_LETTER =
-  'The record could not be composed. The verdict stands, but the letter will have to be written by hand.';
+  'The record could not be composed. The verdict stands, but the brief will have to be drafted on another instrument.';
 
 const FALLBACK_CLOSING = 'The investigation is concluded. The record speaks for itself.';
 

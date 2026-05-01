@@ -151,10 +151,10 @@
   }
 
   .wc-stamp-proof {
-    color: var(--color-cyan-ink);
+    color: var(--color-bone);
   }
   .wc-stamp-objection {
-    color: var(--color-ember);
+    color: var(--color-cyan-ink);
   }
   .wc-stamp-dismiss {
     color: var(--color-brass-dim);
@@ -245,8 +245,20 @@
     line-height: 1.3;
   }
 
-  /* Per-verdict hover: ring + glow in the verdict color (blue/red/neutral). */
+  /* Per-verdict hover: proof stays bone, objection uses cyan-ink, dismiss stays neutral. */
   .lv-proof:hover:not(:disabled) {
+    border-color: var(--color-bone);
+    color: var(--color-paper);
+    box-shadow:
+      0 0 0 1px rgba(233, 228, 216, 0.75),
+      0 8px 24px rgba(233, 228, 216, 0.18);
+  }
+
+  .lv-proof:hover:not(:disabled) .lv-name {
+    color: var(--color-bone);
+  }
+
+  .lv-objection:hover:not(:disabled) {
     border-color: var(--color-cyan-ink);
     color: var(--color-paper);
     box-shadow:
@@ -254,20 +266,8 @@
       0 8px 24px rgba(107, 143, 176, 0.28);
   }
 
-  .lv-proof:hover:not(:disabled) .lv-name {
-    color: var(--color-cyan-ink);
-  }
-
-  .lv-objection:hover:not(:disabled) {
-    border-color: var(--color-ember);
-    color: var(--color-paper);
-    box-shadow:
-      0 0 0 1px var(--color-ember),
-      0 8px 24px rgba(210, 58, 42, 0.32);
-  }
-
   .lv-objection:hover:not(:disabled) .lv-name {
-    color: var(--color-ember);
+    color: var(--color-cyan-ink);
   }
 
   .lv-dismiss:hover:not(:disabled) {

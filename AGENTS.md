@@ -67,7 +67,7 @@ Do not duplicate information from those docs here.
 
 ## Visual Language
 
-- **Editorial noir** — bone (`#e9e4d8`) on ink (`#0b0b0d`), single hot accent ink-blood red (`#d23a2a`), cyan-ink (`#6b8fb0`) for Objection cues
+- **Industrial noir** — bone (`#e9e4d8`) on ink (`#0b0b0d`), single hot accent ink-blood red (`#d23a2a`), cyan-ink (`#6b8fb0`) for Objection cues, brass-key (`#c4a24e`) reserved for "way in" affordances (lever buttons, mansion pin furniture, verdict ghost buttons). No Victorian / steampunk vocabulary or styling — no pen, no paper, no parchment, no wax seal, no Roman numerals.
 - Typography: Instrument Serif (display/accusations, italic), Geist Sans (body/player voice), Geist Mono (Architect's voice/transcript), JetBrains Mono (readout/labels)
 - Restraint over ornament — no warm gold, no gaudy steampunk mechanics
 

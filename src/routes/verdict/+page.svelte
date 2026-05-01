@@ -144,7 +144,7 @@
       <section class="composing reveal" aria-live="polite">
         <p class="composing-eyebrow">The Architect composes the record</p>
         <p class="composing-headline">
-          The gallery falls silent.<br />The pen moves.
+          The gallery falls silent.<br />The mechanism turns.
         </p>
         <div class="composing-spinner" aria-hidden="true"></div>
       </section>
@@ -154,7 +154,7 @@
           <h1 class="sealed-title">Verdict Rendered</h1>
           <div class="sealed-stamp" data-verdict={verdict}>
             <span class="sealed-stamp-word">{verdict === 'accuse' ? 'Accused' : 'Pardoned'}</span>
-            <span class="sealed-stamp-year">MMXXVI &middot; Case 0426</span>
+            <span class="sealed-stamp-year">2026 &middot; Case 0426</span>
           </div>
         </header>
 
