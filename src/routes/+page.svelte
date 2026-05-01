@@ -261,7 +261,7 @@
     justify-content: space-between;
     margin-bottom: clamp(0.75rem, 2vh, 1.7rem);
     padding-bottom: clamp(0.5rem, 1vh, 0.85rem);
-    border-bottom: 1px dashed rgba(233, 228, 216, 0.2);
+    border-bottom: 1px solid rgba(233, 228, 216, 0.18);
     font-family: var(--font-readout);
     font-size: 11px;
     letter-spacing: 0.14em;

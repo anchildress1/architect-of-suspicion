@@ -87,13 +87,13 @@
       filter 360ms ease;
   }
 
-  /* 3px ember left rule — accent against the dark panel. */
+  /* 2px ember left rule — the universal "voice" edge across the app. */
   .wc-edge {
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
-    width: 3px;
+    width: 2px;
     background: var(--color-ember);
     pointer-events: none;
   }
