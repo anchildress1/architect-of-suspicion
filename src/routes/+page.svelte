@@ -62,13 +62,6 @@
 
 <main class="summons noise" aria-label="The summons">
   <div class="ember-floor" aria-hidden="true"></div>
-  {#each [12, 28, 44, 60, 76, 88] as left, i (left)}
-    <div
-      class="steam-shaft"
-      style="left: {left}%; animation-delay: {i * 0.8}s; animation-duration: {5 + (i % 3)}s"
-      aria-hidden="true"
-    ></div>
-  {/each}
 
   <div class="summons-title reveal">
     <p class="summons-eyebrow">The Court of Suspicion presents</p>
@@ -82,11 +75,6 @@
   </div>
 
   <section class="dossier reveal" aria-label="The case dossier">
-    <i class="dossier-corner tl"></i>
-    <i class="dossier-corner tr"></i>
-    <i class="dossier-corner bl"></i>
-    <i class="dossier-corner br"></i>
-
     <div class="dossier-head">
       <span class="dossier-id">Case &numero;&nbsp;0426 &middot; Docket&nbsp;AA-XII</span>
       <span class="dossier-date"
@@ -196,35 +184,6 @@
     pointer-events: none;
   }
 
-  .steam-shaft {
-    position: absolute;
-    bottom: 0;
-    width: 3px;
-    background: linear-gradient(
-      to top,
-      rgba(255, 240, 220, 0),
-      rgba(255, 240, 220, 0.18) 50%,
-      rgba(255, 240, 220, 0)
-    );
-    filter: blur(3px);
-    animation: steam 6s ease-in infinite;
-    pointer-events: none;
-  }
-
-  @keyframes steam {
-    0% {
-      transform: translateY(0) scaleY(1);
-      opacity: 0;
-    }
-    20% {
-      opacity: 0.6;
-    }
-    100% {
-      transform: translateY(-100vh) scaleY(1.2);
-      opacity: 0;
-    }
-  }
-
   .summons-title {
     position: relative;
     z-index: 5;
@@ -287,7 +246,6 @@
       0 0 0 1px rgba(0, 0, 0, 0.6) inset,
       0 40px 100px rgba(0, 0, 0, 0.75),
       0 0 80px rgba(210, 58, 42, 0.06);
-    transform: rotate(-0.6deg);
   }
 
   .dossier::before {
@@ -296,41 +254,6 @@
     inset: 12px;
     border: 1px solid rgba(233, 228, 216, 0.1);
     pointer-events: none;
-  }
-
-  /* Printer's marks — registration marks at the dossier corners.
-     38×38 brass-dim, flush with the frame. Understated, not alarmed. */
-  .dossier-corner {
-    position: absolute;
-    width: 38px;
-    height: 38px;
-    border: 1px solid var(--color-brass-dim);
-    pointer-events: none;
-  }
-
-  .dossier-corner.tl {
-    top: -1px;
-    left: -1px;
-    border-right: none;
-    border-bottom: none;
-  }
-  .dossier-corner.tr {
-    top: -1px;
-    right: -1px;
-    border-left: none;
-    border-bottom: none;
-  }
-  .dossier-corner.bl {
-    bottom: -1px;
-    left: -1px;
-    border-right: none;
-    border-top: none;
-  }
-  .dossier-corner.br {
-    bottom: -1px;
-    right: -1px;
-    border-left: none;
-    border-top: none;
   }
 
   .dossier-head {
@@ -364,35 +287,6 @@
     line-height: 1.25;
     margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
     text-wrap: balance;
-  }
-
-  /* Giant serif quotation marks framing the claim. Decorative — only
-     the live claim gets them, not loading/error placeholders. */
-  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::before,
-  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::after {
-    position: absolute;
-    font-family: var(--font-display);
-    font-style: normal;
-    font-size: 72px;
-    line-height: 1;
-    color: var(--color-bone-dim);
-    pointer-events: none;
-  }
-
-  /* Quote glyphs hang outside the claim block. Clamp the negative offset
-     so on narrow viewports they don't push past the dossier edge and (now
-     that the summons shell is `overflow: hidden`) get silently clipped at
-     the page boundary instead of staying visible. */
-  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::before {
-    content: '\201C';
-    top: 18px;
-    left: clamp(-36px, -4vw, -12px);
-  }
-
-  .dossier-claim:not(.dossier-claim-loading):not(.dossier-claim-error)::after {
-    content: '\201D';
-    bottom: 18px;
-    right: clamp(-36px, -4vw, -12px);
   }
 
   .dossier-claim-loading {
