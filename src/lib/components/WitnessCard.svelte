@@ -167,11 +167,16 @@
     transform: rotate(-8deg) scale(1);
   }
 
-  /* Card exits — proof rises, objection falls right, dismiss drains. */
+  /* Card exits — proof rises, objection falls right, dismiss drains.
+     The card dims to 0.4 instead of disappearing entirely so the stamp
+     stays visible during the LLM round-trip (typically 2–5s after the
+     360ms exit transition completes). When the API resolves and the
+     parent advances the pointer, this component is destroyed and the
+     next witness pops in. */
   .exit-proof,
   .exit-objection,
   .exit-dismiss {
-    opacity: 0;
+    opacity: 0.4;
   }
 
   .exit-proof {
