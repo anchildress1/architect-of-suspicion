@@ -51,8 +51,20 @@ changes, repeat the measurement instead of guessing.
 
 Tag width is 200px (set in CSS, not data). When the tag sits to the left
 of the dot, give it room: pick a `tag.x` that leaves the tag visually
-clear of the dot. The leader auto-routes from `dot` to the closest
-horizontal tag edge.
+clear of the dot.
+
+The leader endpoint is approximated. The SVG layer uses a
+`viewBox="0 0 100 100"` (canvas percent), but the tag itself is sized in
+CSS pixels (200px wide, auto height). We approximate the tag size as
+`TAG_W = 16` and `TAG_H = 7` percent and route the leader to the
+midpoint of the tag's nearest edge (horizontal vs. vertical chosen by
+which axis the dot sits further along). This is a deliberate
+approximation: at smaller viewports the tag occupies a larger share of
+the canvas in percent, so the line can land slightly inside or just
+shy of the rendered tag edge. Acceptable trade for keeping the renderer
+simple. If a future redesign needs pixel-accurate routing, switch to
+`ResizeObserver`-based DOM measurement and convert back into the
+viewBox.
 
 ## Rendering
 
@@ -66,8 +78,9 @@ horizontal tag edge.
 - The tag's top-left is at `tag`. It has a fixed pixel width and
   auto height.
 - The leader is an SVG line in a `<svg viewBox="0 0 100 100">` that
-  shares the canvas — no manual scale math, the line stays correct as
-  the canvas resizes.
+  shares the canvas. The line endpoint at the dot is exact; the
+  endpoint at the tag uses a percent-based approximation of the tag's
+  rendered size (see "Pin table" above for the trade).
 
 ## Tweaking the layout
 

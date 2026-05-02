@@ -31,14 +31,17 @@
   {:else}
     <ol class="nu-list">
       {#each upcoming as { card, originalIndex }, i (card.objectID)}
-        <li class="nu-item" class:nu-item-current={originalIndex === currentIndex}>
+        {@const isCurrent = originalIndex === currentIndex}
+        <li class="nu-item" class:nu-item-current={isCurrent}>
           <button
             class="nu-pick"
-            onclick={() => onJump(originalIndex)}
-            aria-label={originalIndex === currentIndex
+            type="button"
+            onclick={isCurrent ? undefined : () => onJump(originalIndex)}
+            disabled={isCurrent}
+            aria-current={isCurrent ? 'true' : undefined}
+            aria-label={isCurrent
               ? `Currently called: ${card.title}`
               : `Call witness: ${card.title}`}
-            aria-current={originalIndex === currentIndex ? 'true' : undefined}
           >
             <span class="nu-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
             <span class="nu-text">{card.title}</span>
