@@ -170,7 +170,16 @@ Generates the cover letter from collected evidence.
 }
 ```
 
-**Server-side:** verifies the capability token, fetches all picks for the session from `suspicion.picks`, retrieves full card data for each, passes to Claude. Persists `cover_letter` and `architect_closing` back onto the session row so a refresh after a sessionStorage flush still surfaces the verdict.
+**Server-side:** verifies the capability token, fetches the verdict-matching
+hireable reading from `suspicion.claims` (`guilty_reading` for Accuse,
+`not_guilty_reading` for Pardon) so the prompt has a recruiter-safe trait
+anchor (AGENTS.md Invariants #8 and #12). Then loads all picks for the
+session from `suspicion.picks`, retrieves full card data for each, and passes
+the trio (claim text, ruled evidence, anchor reading) to Claude. Persists
+`cover_letter` and `architect_closing` back onto the session row so a refresh
+after a sessionStorage flush still surfaces the verdict. If the readings row
+is missing or unreadable the route returns 500 — the letter prompt is never
+asked to invent its own framing.
 
 **Response:**
 
@@ -240,6 +249,13 @@ CREATE TABLE suspicion.picks (
 ### `suspicion.claims` and `suspicion.claim_cards`
 
 Populated by the offline claim engine (`scripts/seed-claims`) via the `replace_claim_seed` RPC (`SECURITY DEFINER`, granted to `service_role` only). At runtime the app reads these tables but never writes to them.
+
+`suspicion.claims` carries `guilty_reading` and `not_guilty_reading` — both
+NOT NULL with non-empty CHECK constraints. They're the hireable working-style
+traits each verdict resolves to; the runtime cover letter prompt anchors on
+the verdict-matching one so an Accuse outcome surfaces a recruiter-safe trait
+instead of a generic condemnation. See PRD.md §"Cover Letter" and Pass 2 of
+[`CLAIM-ENGINE-PRD.md`](CLAIM-ENGINE-PRD.md).
 
 ```sql
 CREATE TABLE suspicion.claim_cards (

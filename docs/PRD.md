@@ -212,9 +212,25 @@ in editorial-noir register, signed "The Architect, Presiding Magistrate."
 The cover letter:
 
 - References only cards the player ruled on
-- Highlights themes across the ruled evidence
-- Closes with a wax seal (Accused / Pardoned)
+- Highlights themes across the ruled evidence — Proof and Objection treated as
+  one coherent professional pattern, not a tally of wins and losses
+- Anchors on the verdict-matching hireable trait persisted on the claim
+  (`suspicion.claims.guilty_reading` for Accuse, `not_guilty_reading` for
+  Pardon — produced by Pass 2 of the claim engine)
+- Closes with the verdict label (Accused / Pardoned) — gameplay framing only;
+  the brief itself remains a recruiter-safe character assessment under either
+  outcome
 - Should be memorable and unlike any cover letter the reader has seen
+
+**Recruiter-safety contract.** This is a public artifact a hiring manager
+will read. The verdict is gameplay framing, not moral judgment. Both Accuse
+and Pardon resolve to a hireable working-style trait. The brief NEVER indicts
+competence, integrity, ethics, judgment, work ethic, or basic professionalism.
+This is enforced in three places: Pass 2 of the claim engine refuses to
+generate claims that fail the dual-hireability test (`scripts/seed-claims/pass2-claims.ts`),
+the runtime prompt locks the trait-anchored framing in
+(`src/lib/server/prompts/coverLetter.ts`), and AGENTS.md Invariants #8 and #12
+are the source of truth for AI agents touching this code.
 
 ### Resume
 

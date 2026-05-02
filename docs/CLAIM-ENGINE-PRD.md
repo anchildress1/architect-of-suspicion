@@ -62,7 +62,12 @@ The solution: don't change the cards in `public.cards`. Instead, generate claim-
 
 Casting wide here is intentional — Pass 3 will rank and select the best 5.
 
-**Output:** 15 claim strings, each with a brief rationale explaining which tensions it targets.
+**Output:** 15 candidate claims. For each: the claim text, a rationale citing
+the tensions targeted, and **two hireable readings** — `guilty_reading` and
+`not_guilty_reading` — each one sentence describing the working-style trait a
+hiring manager would respect under that verdict. Both readings are persisted
+to `suspicion.claims` so the runtime cover letter prompt can anchor on the
+verdict-matching trait instead of inventing one from claim text alone.
 
 **Model:** GPT 5.4 (`gpt-5.4`) with reasoning_effort=medium. Different provider than Pass 1 (Anthropic) — broadens model diversity across the pipeline.
 
@@ -114,6 +119,10 @@ CREATE TABLE suspicion.claims (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   claim_text text NOT NULL,
   rationale text,
+  -- Hireable working-style trait the verdict surfaces. Both required so the
+  -- runtime cover letter prompt always has a verdict-matching anchor.
+  guilty_reading text NOT NULL CHECK (length(btrim(guilty_reading)) > 0),
+  not_guilty_reading text NOT NULL CHECK (length(btrim(not_guilty_reading)) > 0),
   room_coverage smallint NOT NULL,
   total_eligible_cards smallint NOT NULL,
   created_at timestamptz DEFAULT now()
@@ -128,6 +137,11 @@ CREATE TABLE suspicion.claim_cards (
   PRIMARY KEY (claim_id, card_id)
 );
 ```
+
+The two reading columns are populated by Pass 2 (the model already produces
+them as part of the dual-hireability self-check) and consumed by the runtime
+cover letter prompt — see PRD.md §"Cover Letter" and AGENTS.md Invariant #12.
+The `replace_claim_seed` RPC enforces non-empty values on every insert.
 
 ### Impact on Game Runtime
 
