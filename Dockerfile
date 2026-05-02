@@ -23,5 +23,4 @@ ENV PORT=8080
 ENV HOST=0.0.0.0
 USER node
 EXPOSE 8080
-USER node
 CMD ["node", "build"]
