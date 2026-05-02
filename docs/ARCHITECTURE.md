@@ -1,80 +1,67 @@
 # Architect of Suspicion — Technical Architecture
 
-**Status:** Draft v2
-**Date:** 2026-04-14
+**Status:** Draft v3 (post-redesign, capability-token sessions)
+**Date:** 2026-05-01
+
+The stack overview, the runtime topology diagram, the deploy command, and the runtime env vars all live in [`README.md`](../README.md). This doc covers what the README intentionally doesn't: the server route contracts, the database schema, RLS, the session capability-token scheme, the project structure, and decisions worth recording for anyone who comes back to this codebase a year from now.
 
 ---
 
-## Stack Decision
+## Decisions worth recording
 
-This is a greenfield project. The stack is chosen for this project's needs, not inherited from Legacy Smelter.
+- **No Firebase.** SvelteKit is full-stack; Firebase Hosting forces the SPA shape and would require Cloud Functions as a separate backend. Cloud Run lets SvelteKit run end-to-end.
+- **No Algolia.** Supabase is the data source. The game queries by category with simple `WHERE` clauses; a downstream search index would just be another service to keep alive.
+- **SSR is non-negotiable.** Recruiters and indexers need real meta tags on the first byte, not a hydrated blank div.
+- **Polka + compression in front of adapter-node.** `scripts/server.js` adds gzip/br and graceful shutdown for Cloud Run without forking the SvelteKit adapter.
+- **Capability tokens, not auth.** The site is anonymous, but `session_id` alone is a guessable identifier. Tokens add possession-proof without introducing accounts.
 
-### Frontend + Backend
+---
 
-| Layer     | Choice                                      | Rationale                                                                                         |
-| --------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Framework | **SvelteKit**                               | Full-stack framework — handles SSR for SEO, server routes for API, and reactive UI for game state |
-| Styling   | **Tailwind CSS v4**                         | Utility-first, custom design tokens for industrial steampunk aesthetic                            |
-| AI Model  | **Claude SDK** (Anthropic)                  | Selected after model contest — best narrative voice and evaluation consistency                    |
-| Database  | **Supabase** (`supascribe-notes` project)   | Existing card index (288 non-deleted cards), PostgreSQL with RLS                                  |
-| Deploy    | **Cloud Run** on GCP project `anchildress1` | Container deploy, GCP DNS already mapped                                                          |
+## Server routes
 
-SvelteKit handles both frontend and server routes. No separate API service. Server routes call Supabase and Claude SDK directly. This replaces the previous FastAPI + Cloud Run (2 services) design.
+All server routes live under `src/routes/api/` and run server-side only. State-changing routes verify the session capability token (see [Session capability tokens](#session-capability-tokens)) before reading or writing.
 
-### Why Not Firebase
+Shared helpers live in `src/lib/server/`:
 
-SvelteKit is a full-stack framework with SSR, server routes, and adapters. Firebase Hosting is for static SPAs — it would require hobbling SvelteKit's server-side capabilities and bolting on Cloud Functions as a separate backend. Cloud Run lets SvelteKit be SvelteKit.
+- `supabase.ts` — Supabase client constructed with the secret key
+- `claude.ts` — Anthropic SDK client + prompt orchestration
+- `cards.ts`, `claims.ts` — typed Supabase queries
+- `rateLimit.ts` — IP-based per-route guard
+- `validation.ts` — UUID checks, JSON body size limits
+- `sessionCapability.ts` — mint/verify capability tokens, set/clear cookies
 
-### Why Not Algolia
+### Summons (landing page)
 
-Supabase IS the data source. The cards live in `public.cards` with 276 entries. Algolia was a downstream search index — unnecessary when the game queries by category with a simple `WHERE` clause. One fewer service to maintain.
+`src/routes/+page.server.ts` picks a claim during SSR via `pickRandomClaim()` so the dossier renders on the first byte without a client fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page returns `{ claim: null }` and renders a muted "docket unavailable" state — no browser console errors.
 
-### Why SSR
+### `POST /api/sessions`
 
-Portfolio piece needs SEO. Recruiters and AI agents need to find it under Ashley's name. Server-rendered HTML with real meta tags beats a blank div that hydrates after JS loads.
+Creates a new game session for a claim. Mints a capability token, stores its SHA-256 hash on the session row, and sets the token + session cookies on the response.
 
-## Hosting & Domain
+**Request:**
 
-- **GCP Project:** `anchildress1`
-- **Domain:** Routed via GCP DNS (already configured)
-- **Cloud Run Service:** Single container running SvelteKit (adapter-node)
-- **Dockerfile:** Node.js runtime, `pnpm run build`, serve via adapter-node
-
-## Data Flow
-
-```
-┌─────────────┐     ┌──────────────────┐
-│   Browser    │────▶│    Cloud Run     │
-│  (Player)    │     │   (SvelteKit)    │
-└──────────────┘     └──────┬───────────┘
-                            │
-                    ┌───────┴───────┐
-                    │               │
-                    ▼               ▼
-             ┌───────────┐   ┌───────────┐
-             │  Supabase  │   │ Claude SDK │
-             │ (supascribe │   │ (Anthropic)│
-             │   -notes)  │   │            │
-             └───────────┘   └───────────┘
+```json
+{ "claim_id": "uuid" }
 ```
 
-### Server Routes
+**Response:**
 
-All server routes live in `src/routes/api/` and run server-side only.
+```json
+{
+  "session_id": "uuid",
+  "claim_id": "uuid",
+  "claim_text": "...",
+  "attention": 50
+}
+```
 
-#### Summons (landing page)
+`attention` is the baseline (`BASELINE_ATTENTION` from `$lib/attention`). Subsequent state-changing routes require both the session cookie and the capability token cookie.
 
-The claim is picked during SSR by `src/routes/+page.server.ts` via
-`pickRandomClaim()`, so the dossier renders on the first byte with no client
-fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page
-returns `{ claim: null }` and renders a muted "docket unavailable" state —
-no browser console errors.
+### `GET /api/cards`
 
-#### `GET /api/cards`
+Returns the witness deck for the active claim, restricted to one chamber category and excluding any cards already ruled.
 
-Fetches the witness deck for the active claim, restricted to one chamber category.
-
-**Query params:** `claim_id` (required, uuid), `category` (required), `exclude` (comma-separated objectIDs of already-ruled cards)
+**Query params:** `claim_id` (uuid, required), `category` (required, must be a playable room), `exclude` (comma-separated UUIDs)
 
 **Response:**
 
@@ -92,11 +79,9 @@ Fetches the witness deck for the active claim, restricted to one chamber categor
 }
 ```
 
-Cards arrive in **Witness mode order**: ascending `ambiguity * surprise`
-(`weight`). The runtime never sees `fact`, raw `ai_score`, `ambiguity`, or
-`surprise` separately.
+Cards arrive in **Witness mode order**: ascending `ambiguity * surprise` (`weight`). The runtime never sees `fact`, raw `ai_score`, `ambiguity`, or `surprise` separately.
 
-**Query (joined via Supabase client):**
+**Underlying query (Supabase client, joined):**
 
 ```sql
 SELECT cc.card_id, cc.ambiguity, cc.surprise, cc.rewritten_blurb,
@@ -110,11 +95,9 @@ WHERE cc.claim_id = :claim_id
 ORDER BY (cc.ambiguity * cc.surprise) ASC;
 ```
 
-#### `POST /api/evaluate`
+### `POST /api/evaluate`
 
-Records a witness ruling. Reads the **pre-seeded** directional score from
-`suspicion.claim_cards`. Calls Claude only for the in-character reaction —
-the runtime AI never produces a score.
+Records a witness ruling. Reads the **pre-seeded** directional score from `suspicion.claim_cards`; calls Claude only for the in-character reaction. The runtime AI never produces a score.
 
 **Request:**
 
@@ -127,20 +110,17 @@ the runtime AI never produces a score.
 }
 ```
 
-`classification` ∈ `{"proof", "objection", "dismiss"}`. Dismiss = struck from
-record (no contribution to attention, no appearance in cover letter).
+`classification` ∈ `{"proof", "objection", "dismiss"}`. Dismiss strikes the witness from the record — no contribution to attention, no appearance in the cover letter.
 
-**Server-side:**
+**Server-side flow:**
 
-1. Reads the current `attention` from `suspicion.sessions`.
-2. Reads `ai_score` from `suspicion.claim_cards` for `(claim_id, card_id)`.
-3. Reads full card (with `fact`) from `public.cards` for the reaction prompt.
-4. Calls Claude for reaction text.
-5. Writes pick to `suspicion.picks` (with the pre-seeded `ai_score` copied,
-   or `0` for Dismiss) **before** returning the response. The unique
-   `(session_id, card_id)` constraint rejects re-rulings with `409`.
-6. Computes the new smoothed `attention` via `applyAttentionDelta`, persists
-   it on the session, and returns the post-smoothing integer.
+1. Verify the capability token against `suspicion.sessions.session_token_hash` for the supplied `session_id`.
+2. Read the current `attention` from `suspicion.sessions`.
+3. Read `ai_score` from `suspicion.claim_cards` for `(claim_id, card_id)`.
+4. Read the full card (with `fact`) from `public.cards` for the reaction prompt.
+5. Call Claude for reaction text.
+6. Insert the pick into `suspicion.picks` (with the pre-seeded `ai_score` copied — `0` for Dismiss) **before** returning the response. The unique `(session_id, card_id)` constraint rejects re-rulings with `409`.
+7. Compute the new smoothed `attention` via `applyAttentionDelta`, persist it on the session, and return the post-smoothing integer.
 
 **Response:**
 
@@ -152,14 +132,11 @@ record (no contribution to attention, no appearance in cover letter).
 }
 ```
 
-`attention` is the integer `[0, 100]` the needle should read. The raw
-`ai_score` magnitude never crosses the wire — Invariant #2. The
-`reaction_fallback` flag lets the UI show a subdued state when Claude was
-unreachable instead of pretending the Architect spoke.
+`attention` is the integer `[0, 100]` the needle should read. The raw `ai_score` magnitude never crosses the wire — Invariant #2 in `AGENTS.md`. The `reaction_fallback` flag lets the UI show a subdued state when Claude was unreachable instead of pretending the Architect spoke.
 
-#### `POST /api/narrate`
+### `POST /api/narrate`
 
-Returns Architect dialogue based on current game state. Used for room entry, idle, and non-card-pick moments.
+Returns Architect dialogue for room-entry, idle, and other non-card moments.
 
 **Request:**
 
@@ -176,12 +153,10 @@ Returns Architect dialogue based on current game state. Used for room entry, idl
 **Response:**
 
 ```json
-{
-  "dialogue": "The Gallery remembers what you choose to overlook."
-}
+{ "dialogue": "The Gallery remembers what you choose to overlook." }
 ```
 
-#### `POST /api/generate-letter`
+### `POST /api/generate-letter`
 
 Generates the cover letter from collected evidence.
 
@@ -195,7 +170,7 @@ Generates the cover letter from collected evidence.
 }
 ```
 
-**Server-side:** Fetches all picks for session from `suspicion.picks`, retrieves full card data for each, passes to Claude SDK.
+**Server-side:** verifies the capability token, fetches all picks for the session from `suspicion.picks`, retrieves full card data for each, passes to Claude. Persists `cover_letter` and `architect_closing` back onto the session row so a refresh after a sessionStorage flush still surfaces the verdict.
 
 **Response:**
 
@@ -206,49 +181,67 @@ Generates the cover letter from collected evidence.
 }
 ```
 
-### Card Retrieval Strategy (Witness Mode)
+### Card retrieval (Witness mode)
 
-The full witness deck for a chamber is fetched server-side via the room's
-`+page.server.ts` load function and rendered client-side as a single exhibit
-on stage with the queue down the right rail. Exhibits are dealt in order of
-ascending `ambiguity * surprise` so the case warms up.
+The full witness deck for a chamber is fetched server-side via the room's `+page.server.ts` load function and rendered client-side as a single exhibit on stage with the queue down the right rail. Exhibits are dealt in ascending `ambiguity * surprise` so the case warms up.
 
-The client tracks ruled card IDs and passes them via `?exclude=…` so the deck
-re-loads cleanly on refresh.
+The client tracks ruled card IDs and passes them via `?exclude=…` so the deck reloads cleanly on refresh.
+
+---
 
 ## Database
 
 ### Schemas
 
-- **`public`** — existing cards table. Read-only. Do not modify.
-- **`suspicion`** — game tables. Created via migrations in `supabase/migrations/`.
+- **`public`** — existing cards table. Read-only. Never modified by this app.
+- **`suspicion`** — game tables. Migrations in `supabase/migrations/`.
+- **`accusations`** — legacy, dropped in the very first `suspicion` migration.
 
-### `suspicion` Schema
+### `suspicion.sessions`
+
+One row per playthrough. Columns added across migrations: `claim_id` (FK to `suspicion.claims`, `ON DELETE SET NULL`), `attention` (smoothed 0–100 needle value, default `50`), `cover_letter` and `architect_closing` (persisted verdict text), `session_token_hash` (SHA-256 hex of the capability token, NOT NULL).
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS suspicion;
-
 CREATE TABLE suspicion.sessions (
   session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   claim_text text NOT NULL,
+  claim_id uuid REFERENCES suspicion.claims(id) ON DELETE SET NULL,
   verdict text CHECK (verdict IN ('accuse', 'pardon')),
+  attention smallint NOT NULL DEFAULT 50
+            CHECK (attention >= 0 AND attention <= 100),
+  cover_letter text,
+  architect_closing text,
+  session_token_hash text NOT NULL
+            CHECK (session_token_hash ~ '^[0-9a-f]{64}$'),
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+```
 
+### `suspicion.picks`
+
+One row per witness ruling. Classification now includes `'dismiss'`. A unique `(session_id, card_id)` constraint enforces classification permanence (Invariant #7 in `AGENTS.md`) at the database level.
+
+```sql
 CREATE TABLE suspicion.picks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL REFERENCES suspicion.sessions(session_id),
   card_id uuid NOT NULL,
-  classification text NOT NULL CHECK (classification IN ('proof', 'objection', 'dismiss')),
-  ai_score numeric(3,2) NOT NULL CHECK (ai_score >= -1.0 AND ai_score <= 1.0),
+  classification text NOT NULL
+            CHECK (classification IN ('proof', 'objection', 'dismiss')),
+  ai_score numeric(3,2) NOT NULL
+            CHECK (ai_score >= -1.0 AND ai_score <= 1.0),
   ai_reaction_text text NOT NULL,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  UNIQUE (session_id, card_id)
 );
+```
 
--- Pre-seeded by the claim engine (scripts/seed-claims). At runtime only the
--- runtime READS this table; writes happen through the service-role-only
--- replace_claim_seed RPC.
+### `suspicion.claims` and `suspicion.claim_cards`
+
+Populated by the offline claim engine (`scripts/seed-claims`) via the `replace_claim_seed` RPC (`SECURITY DEFINER`, granted to `service_role` only). At runtime the app reads these tables but never writes to them.
+
+```sql
 CREATE TABLE suspicion.claim_cards (
   claim_id uuid NOT NULL REFERENCES suspicion.claims(id) ON DELETE CASCADE,
   card_id  uuid NOT NULL REFERENCES public.cards("objectID"),
@@ -261,131 +254,138 @@ CREATE TABLE suspicion.claim_cards (
 );
 ```
 
-### RLS Policies
+The 4-pass pipeline that fills these tables is documented in [`CLAIM-ENGINE-PRD.md`](CLAIM-ENGINE-PRD.md).
 
-- `suspicion.sessions`: anon can INSERT (create session) and UPDATE verdict only
-- `suspicion.picks`: anon can INSERT only
-- `public.cards`: anon can SELECT only (already configured)
-- No DELETE on any `suspicion` table from anon
-- Secret key (`sb_secret_...`) used for server-side operations
+### RLS
 
-## Security Considerations
+- `suspicion.sessions`: anon may INSERT and UPDATE (column-level grants restrict anon writes to `verdict`, `updated_at`)
+- `suspicion.picks`: anon may INSERT only; reads go through server routes using the secret key
+- `public.cards`: anon may SELECT only (already configured at the project level)
+- No DELETE policies on any `suspicion` table from anon
+- `service_role` has full access on the schema; server routes use the secret key
 
-- **API keys:** Claude SDK key server-side only (Cloud Run env vars)
-- **Supabase:** Server routes use secret key (`sb_secret_...`). Client never talks to Supabase directly. Legacy `service_role` keys are deprecated — use the new secret key format.
-- **Rate limiting:** Basic IP-based rate limiting on server routes
-- **No auth:** No user accounts. No Supabase Auth. Anonymous sessions only.
-- **`fact` field protection:** The `fact` field is the core game mechanic. It must never appear in client responses. Server fetches full card data for evaluation; client receives `objectID`, `title`, `blurb`, `category`, `signal` only.
-- **Input validation:** All server routes validate input before processing
+---
 
-## Environment Configuration
+## Security
+
+### Session capability tokens
+
+`session_id` alone is not sufficient to mutate game state. On `POST /api/sessions` the server mints a high-entropy random token, stores its SHA-256 hash on the session row (`session_token_hash`), and sets two cookies on the response: the session id and the raw token. State-changing routes (`/api/evaluate`, `/api/generate-letter`) recompute the SHA-256 of the presented token and require an exact hex match against the stored hash before doing any work. Pre-existing sessions without a hash were deleted in the migration that introduced the column — there is no backwards-compatibility path.
+
+### Other controls
+
+- **API keys** are server-side only (Cloud Run env vars). Claude SDK keys never reach the client.
+- **Supabase access** uses the new `sb_secret_…` key format. Legacy `service_role` keys are deprecated. The browser never talks to Supabase directly.
+- **Rate limiting** is IP-based at the route level (`src/lib/server/rateLimit.ts`).
+- **No auth.** No user accounts, no Supabase Auth. Anonymous sessions only — capability tokens are a possession-proof scheme, not an identity scheme.
+- **`fact` field protection** is the core game mechanic. The full `fact` text is only ever read inside `/api/evaluate` for the reaction prompt; the client receives `objectID`, `title`, `blurb`, `category`, `weight` only.
+- **Input validation** at every server route: UUID checks, JSON body size limits, category allowlists.
+
+---
+
+## Claim-engine environment
+
+The runtime env vars (`SUPABASE_*`, `ANTHROPIC_API_KEY`, rate-limit knobs) are documented in the README. The offline claim engine adds these (only needed when running `scripts/seed-claims`):
 
 ```
-# Supabase
-SUPABASE_URL=<supascribe-notes project url>
-SUPABASE_SECRET_KEY=<sb_secret_... key>
+OPENAI_API_KEY=<key>
+GEMINI_API_KEY=<key>
 
-# Claude SDK
-ANTHROPIC_API_KEY=<key>
+# Per-pass model overrides — defaults in scripts/seed-claims/config.ts
+CLAIM_ENGINE_PASS1_MODEL=gpt-5.2
+CLAIM_ENGINE_PASS2_MODEL=gemini-3.1-pro-preview
+CLAIM_ENGINE_PASS3_MODEL=claude-haiku-4-5
+CLAIM_ENGINE_PASS4_MODEL=gpt-5-mini
 
-# Rate Limiting
-API_RATE_LIMIT_MAX_REQUESTS=30
-API_RATE_LIMIT_WINDOW_MS=60000
+# Pipeline tuning
+CLAIM_ENGINE_GENERATE_CLAIMS=15   # Pass 2 candidate count
+CLAIM_ENGINE_SELECT_CLAIMS=5      # Pass 3 top-N to rewrite
+CLAIM_ENGINE_TOP_CARDS=50         # Max cards per claim pool (Pass 3)
+CLAIM_ENGINE_CARD_FLOOR=3         # Min ambiguity+surprise to stay in pool
+CLAIM_ENGINE_SCORE_BATCH=50       # Cards per Pass 3 scoring call
+CLAIM_ENGINE_MIN_TOTAL_CARDS=30   # Survival floor: rewritten cards per claim
+CLAIM_ENGINE_MIN_ROOMS=5          # Survival floor: distinct rooms per claim
+CLAIM_ENGINE_DRY_RUN=false
 ```
 
-## Project Structure
+See [`CLAIM-ENGINE-PRD.md`](CLAIM-ENGINE-PRD.md) for what each pass does with these.
+
+---
+
+## Project structure
 
 ```
 architect-of-suspicion/
 ├── src/
 │   ├── routes/
 │   │   ├── +page.svelte              # Claim intro
+│   │   ├── +page.server.ts           # SSR claim pick
 │   │   ├── +layout.svelte            # Root layout (background, Architect panel)
-│   │   ├── mansion/
-│   │   │   └── +page.svelte          # Room selection grid
+│   │   ├── +error.svelte             # Error boundary
+│   │   ├── mansion/+page.svelte      # Chamber selection grid
 │   │   ├── room/[slug]/
-│   │   │   ├── +page.svelte          # Room view with cards
-│   │   │   └── +page.server.ts       # Load cards for room
-│   │   ├── verdict/
-│   │   │   └── +page.svelte          # Verdict + cover letter + resume
-│   │   ├── attic/
-│   │   │   └── +page.svelte          # How to Play, Bio, Credits
+│   │   │   ├── +page.svelte          # Witness stage + queue
+│   │   │   └── +page.server.ts       # Load deck for chamber
+│   │   ├── verdict/+page.svelte      # Accuse/Pardon, cover letter, resume
+│   │   ├── attic/+page.svelte        # How to Play, bio, credits
 │   │   └── api/
-│   │       ├── cards/+server.ts       # GET /api/cards
-│   │       ├── evaluate/+server.ts    # POST /api/evaluate
-│   │       ├── narrate/+server.ts     # POST /api/narrate
-│   │       └── generate-letter/+server.ts  # POST /api/generate-letter
+│   │       ├── sessions/+server.ts        # POST  /api/sessions
+│   │       ├── cards/+server.ts           # GET   /api/cards
+│   │       ├── evaluate/+server.ts        # POST  /api/evaluate
+│   │       ├── narrate/+server.ts         # POST  /api/narrate
+│   │       └── generate-letter/+server.ts # POST  /api/generate-letter
 │   ├── lib/
 │   │   ├── server/
-│   │   │   ├── supabase.ts            # Supabase client (service role)
+│   │   │   ├── supabase.ts            # Supabase client (secret key)
 │   │   │   ├── claude.ts              # Claude SDK client
-│   │   │   └── prompts/               # AI prompt templates
+│   │   │   ├── cards.ts               # fetchClaimDeck etc.
+│   │   │   ├── claims.ts              # getClaimById, pickRandomClaim
+│   │   │   ├── sessionCapability.ts   # mint/verify capability tokens + cookies
+│   │   │   ├── rateLimit.ts           # Per-IP route guard
+│   │   │   ├── validation.ts          # UUID checks, JSON body limits
+│   │   │   └── prompts/               # Claude prompt templates
 │   │   ├── components/
-│   │   │   ├── ArchitectPanel.svelte  # Left rail: meter + claim + feed + tally + render link
-│   │   │   ├── AttentionMeter.svelte  # Needle gauge — Drifting / Watching / Interested / Riveted
+│   │   │   ├── ArchitectPanel.svelte  # Left rail: meter + claim + feed + tally
+│   │   │   ├── AttentionMeter.svelte  # Needle gauge — Drifting → Riveted
 │   │   │   ├── ArchitectFeed.svelte   # action / reaction / narration entries
 │   │   │   ├── EvidenceTally.svelte   # Proof / Objection / Struck counts
 │   │   │   ├── WitnessCard.svelte     # The exhibit on stage (with stamps)
-│   │   │   ├── WitnessQueue.svelte    # Right-rail queue of remaining exhibits
+│   │   │   ├── WitnessQueue.svelte    # Right-rail queue
 │   │   │   ├── CoverLetter.svelte     # Sealed editorial-noir letter
 │   │   │   ├── Resume.svelte          # Static resume
 │   │   │   └── MobileGate.svelte      # <768px notice
-│   │   ├── stores/
-│   │   │   └── gameState.svelte.ts    # Central game state + Architect attention
-│   │   ├── attention.ts               # Smoothed attention meter math
-│   │   ├── types.ts                   # Game state, claim/card types
-│   │   └── rooms.ts                   # Chamber-to-category mapping + grid positions
-│   └── app.css                        # Tailwind + design tokens
-├── supabase/
-│   └── migrations/                    # suspicion schema DDL
-├── static/
-│   └── backgrounds/                   # Room images ({room-name}.webp)
-├── docs/
-│   ├── PRD.md
-│   ├── ARCHITECTURE.md
-│   └── SPRINT-PLAN.md
+│   │   ├── stores/                    # Svelte 5 runes-based game state
+│   │   ├── attention.ts               # Smoothed attention math + baseline
+│   │   ├── narrate.ts                 # Client-side narrate orchestration
+│   │   ├── mansionPins.ts             # Authoritative pin coordinates
+│   │   ├── rooms.ts                   # Chamber → category mapping + grid
+│   │   └── types.ts                   # Game state, claim/card types
+│   └── app.css                        # Tailwind v4 + design tokens
+├── scripts/
+│   ├── server.js                      # Polka + compression production server
+│   └── seed-claims/                   # 4-pass claim engine
+├── supabase/migrations/               # suspicion schema DDL (chronological)
+├── static/backgrounds/                # Chamber images ({slug}.webp)
+├── docs/                              # PRD, this doc, claim engine, sprint plan
 ├── Dockerfile
-├── .env.example
-├── AGENTS.md
-├── svelte.config.js                   # adapter-node for Cloud Run
+├── lefthook.yml
+├── svelte.config.js                   # adapter-node
 ├── vite.config.ts
-├── tsconfig.json
-└── lefthook.yml
+└── tsconfig.json
 ```
 
-## Testing Strategy
+---
 
-- **Unit tests:** Vitest for game logic (state transitions, card filtering)
-- **Server route tests:** Mock Supabase + Claude SDK, test request/response contracts
-- **No E2E for now:** Unit and server route tests provide sufficient coverage at this stage
-- **AI evaluation testing:** Same card evaluated from multiple angles to verify score convergence
+## Testing thresholds
 
-## Deployment
+- **Vitest** for unit + server-route integration tests; coverage thresholds enforced in `vite.config.ts` (≥90% statements, ≥80% branches, ≥95% functions, ≥90% lines on `.ts` files).
+- Test files are colocated: `*.test.ts` next to the module they test.
+- Server-route tests **mock** the Supabase client and Claude SDK — never hit real services.
+- `.svelte` components are exercised by Lighthouse CI today (Playwright E2E is on the roadmap).
+- Lighthouse CI thresholds: desktop perf ≥0.9, mobile perf ≥0.75, a11y / best-practices / SEO = 1.0.
 
-```bash
-# Build
-pnpm run build
-
-# Docker
-docker build -t architect-of-suspicion .
-docker push gcr.io/anchildress1/architect-of-suspicion
-
-# Deploy
-gcloud run deploy architect-of-suspicion \
-  --image gcr.io/anchildress1/architect-of-suspicion \
-  --region us-central1 \
-  --allow-unauthenticated
-```
+---
 
 ## Invariants
 
-1. The `fact` field never reaches the client
-2. The raw `ai_score` from `suspicion.claim_cards` never reaches the client — only the smoothed attention value
-3. Score is `-1.0` to `1.0`, **pre-seeded** in `suspicion.claim_cards.ai_score`. Runtime AI never scores.
-4. Every pick is logged to `suspicion.picks` before client response
-5. The cover letter references only **ruled** evidence (proof + objection); dismissed exhibits are excluded
-6. The cover letter is written in The Architect's editorial-noir voice
-7. The resume is static content, not AI-generated
-8. Chamber names and grid positions match background images exactly
-9. `public.cards` schema is never modified
-10. About category cards are excluded from gameplay
+The full invariant list lives in [`AGENTS.md`](../AGENTS.md#invariants). Anything in this doc that disagrees with `AGENTS.md` is a bug here.
