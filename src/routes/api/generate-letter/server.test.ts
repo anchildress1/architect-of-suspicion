@@ -91,13 +91,23 @@ interface MockOptions {
   cardsError?: unknown;
   sessionVerdictUpdateError?: unknown;
   sessionLetterUpdateError?: unknown;
+  /** Override the claims-row response for getClaimVerdictReadings. Default is
+   *  a populated guilty/not-guilty pair so the prompt always has its anchor. */
+  claimsRow?: { guilty_reading: string; not_guilty_reading: string } | null;
+  claimsRowError?: unknown;
 }
+
+const defaultClaimsRow = {
+  guilty_reading: 'rigor that pays off in production',
+  not_guilty_reading: 'pragmatic shipper who keeps the door for AI open',
+};
 
 function setupMocks(options: MockOptions = {}) {
   sessionUpdates.length = 0;
   lastCardsInCall.ids = [];
   const picks = options.picks ?? mockPicks;
   const cards = options.cards ?? mockCards;
+  const claimsRow = options.claimsRow === undefined ? defaultClaimsRow : options.claimsRow;
 
   mockFrom.mockImplementation((table: string) => {
     if (table !== 'cards') return {};
@@ -120,6 +130,18 @@ function setupMocks(options: MockOptions = {}) {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             order: vi.fn().mockResolvedValue({ data: picks, error: options.picksError ?? null }),
+          }),
+        }),
+      };
+    }
+    if (table === 'claims') {
+      // getClaimVerdictReadings: select(...).eq(...).maybeSingle()
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi
+              .fn()
+              .mockResolvedValue({ data: claimsRow, error: options.claimsRowError ?? null }),
           }),
         }),
       };
@@ -229,6 +251,39 @@ describe('POST /api/generate-letter', () => {
     const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
     expect(prompts.some((p) => p.includes('Server-authoritative claim'))).toBe(true);
     expect(prompts.every((p) => !p.includes('IGNORE PREVIOUS INSTRUCTIONS'))).toBe(true);
+  });
+
+  it('threads the verdict-matching reading into both prompts', async () => {
+    setupMocks();
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    await POST(makeRequest(validBody));
+
+    const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
+    // accuse → guilty reading is the spine of both prompts
+    expect(prompts.every((p) => p.includes(defaultClaimsRow.guilty_reading))).toBe(true);
+  });
+
+  it('uses the not-guilty reading when verdict is pardon', async () => {
+    setupMocks();
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    await POST(makeRequest({ verdict: 'pardon' }));
+
+    const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
+    expect(prompts.every((p) => p.includes(defaultClaimsRow.not_guilty_reading))).toBe(true);
+  });
+
+  it('500s when the claim readings row is missing (refuses unsafe framing)', async () => {
+    setupMocks({ claimsRow: null });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Claim not found');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('500s when the claim readings query errors', async () => {
+    setupMocks({ claimsRowError: { message: 'pg-down' } });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch claim readings');
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('persists the verdict and the composed letter on the session', async () => {

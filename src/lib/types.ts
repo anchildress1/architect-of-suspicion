@@ -12,6 +12,17 @@ export interface Claim {
   text: string;
 }
 
+/** Hireable working-style readings persisted on suspicion.claims. The cover
+ *  letter prompt anchors on the verdict-matching reading so an Accuse outcome
+ *  surfaces a recruiter-safe trait instead of a generic condemnation. Server
+ *  side only — never serialized to the client. */
+export interface ClaimVerdictReadings {
+  /** Hireable trait the `accuse` verdict surfaces. */
+  guilty: string;
+  /** Hireable trait the `pardon` verdict surfaces. */
+  notGuilty: string;
+}
+
 /** A claim_cards row joined with the player-visible card fields.
  *  `blurb` is the rewritten claim-specific blurb from Pass 4 — it pulls the
  *  reader two ways without revealing the direction. */

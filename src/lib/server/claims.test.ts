@@ -9,7 +9,7 @@ vi.mock('$lib/server/supabase', () => ({
   }),
 }));
 
-import { getClaimById, pickRandomClaim } from './claims';
+import { getClaimById, getClaimVerdictReadings, pickRandomClaim } from './claims';
 
 interface CountResult {
   count: number | null;
@@ -194,5 +194,71 @@ describe('getClaimById', () => {
 
     expect(claim).toBeNull();
     expect(error).toBe('Failed to fetch claim');
+  });
+});
+
+describe('getClaimVerdictReadings', () => {
+  const mockSelect = vi.fn();
+  const mockEq = vi.fn();
+  const mockMaybeSingle = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function setupRow(
+    row: { guilty_reading: string; not_guilty_reading: string } | null,
+    err: unknown = null,
+  ) {
+    mockMaybeSingle.mockResolvedValue({ data: row, error: err });
+    mockEq.mockReturnValue({ maybeSingle: mockMaybeSingle });
+    mockSelect.mockReturnValue({ eq: mockEq });
+    mockSchema.mockReturnValue({ from: mockSchemaFrom });
+    mockSchemaFrom.mockReturnValue({ select: mockSelect });
+  }
+
+  it('uses the suspicion schema', async () => {
+    setupRow({ guilty_reading: 'g', not_guilty_reading: 'n' });
+    await getClaimVerdictReadings('abc');
+    expect(mockSchema).toHaveBeenCalledWith('suspicion');
+  });
+
+  it('selects only the reading columns (no fact, no ai_score)', async () => {
+    setupRow({ guilty_reading: 'g', not_guilty_reading: 'n' });
+    await getClaimVerdictReadings('abc');
+    expect(mockSelect).toHaveBeenCalledWith('guilty_reading, not_guilty_reading');
+  });
+
+  it('returns both readings on a hit, mapped to camelCase', async () => {
+    setupRow({
+      guilty_reading: 'rigor that pays off in production',
+      not_guilty_reading: 'ships pragmatically when 80% is enough',
+    });
+
+    const { readings, error } = await getClaimVerdictReadings('abc');
+
+    expect(error).toBeNull();
+    expect(readings).toEqual({
+      guilty: 'rigor that pays off in production',
+      notGuilty: 'ships pragmatically when 80% is enough',
+    });
+  });
+
+  it('returns Claim not found when the row is missing', async () => {
+    setupRow(null);
+
+    const { readings, error } = await getClaimVerdictReadings('missing');
+
+    expect(readings).toBeNull();
+    expect(error).toBe('Claim not found');
+  });
+
+  it('returns Failed to fetch claim readings on query error', async () => {
+    setupRow(null, { message: 'pg-down' });
+
+    const { readings, error } = await getClaimVerdictReadings('xyz');
+
+    expect(readings).toBeNull();
+    expect(error).toBe('Failed to fetch claim readings');
   });
 });

@@ -2,10 +2,11 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
+import { getClaimVerdictReadings } from '$lib/server/claims';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildCoverLetterPrompt, buildClosingLinePrompt } from '$lib/server/prompts/coverLetter';
 import { rateLimitGuard } from '$lib/server/rateLimit';
-import type { Classification, FullCard, Verdict } from '$lib/types';
+import type { Classification, ClaimVerdictReadings, FullCard, Verdict } from '$lib/types';
 import { loadSessionCapability } from '$lib/server/sessionCapability';
 import { parseJsonBodyWithLimit } from '$lib/server/validation';
 
@@ -77,6 +78,7 @@ async function generateLetter(
   claimText: string,
   verdict: Verdict,
   evidence: Array<{ card: FullCard; classification: Exclude<Classification, 'dismiss'> }>,
+  readings: ClaimVerdictReadings,
 ): Promise<{ coverLetter: string; architectClosing: string; ok: boolean }> {
   try {
     const client = getClaudeClient();
@@ -88,13 +90,18 @@ async function generateLetter(
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: ARCHITECT_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: buildCoverLetterPrompt(claimText, verdict, evidence) }],
+        messages: [
+          {
+            role: 'user',
+            content: buildCoverLetterPrompt(claimText, verdict, evidence, readings),
+          },
+        ],
       }),
       client.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 200,
         system: ARCHITECT_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: buildClosingLinePrompt(verdict) }],
+        messages: [{ role: 'user', content: buildClosingLinePrompt(verdict, readings) }],
       }),
     ]);
 
@@ -123,6 +130,15 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
   const { verdict } = await parseRequest(request);
   const session = await loadSessionCapability(cookies);
+
+  // Anchor the letter on the verdict-matching hireable trait. The DB
+  // enforces NOT NULL + non-empty on both readings, so a missing row here
+  // means the claim was deleted between session creation and verdict —
+  // refuse rather than let the prompt invent an unsafe framing.
+  const { readings, error: readingsErr } = await getClaimVerdictReadings(session.claimId);
+  if (readingsErr || !readings) {
+    error(500, readingsErr ?? 'Failed to fetch claim readings');
+  }
 
   const ruledPicks = await loadRuledPicks(session.sessionId);
   const cards = await loadCardsById(ruledPicks.map((p) => p.card_id));
@@ -154,6 +170,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
     session.claimText,
     verdict,
     evidence,
+    readings,
   );
 
   const { error: letterError } = await suspicion
