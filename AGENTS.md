@@ -21,7 +21,7 @@ Do not duplicate information from those docs here.
 5. Score is `-1.0` to `1.0` and is **pre-seeded by the claim engine in `suspicion.claim_cards.ai_score`**. The runtime AI never produces a score
 6. The Architect's reaction prose never reveals per-pick correctness or any numeric magnitude
 7. Classification is permanent within a session — no undo
-8. The cover letter stays in The Architect's editorial-noir voice, references only **ruled** evidence (Proof + Objection — dismissed exhibits are excluded)
+8. The cover letter stays in The Architect's editorial-noir voice, references only **ruled** evidence (Proof + Objection — dismissed exhibits are excluded), and reads as recruiter-safe under either verdict — both Accuse and Pardon must resolve to a hireable working-style trait
 9. Chamber names, slugs, and grid positions match background image filenames exactly — do not rename or reorder
 10. The `About` category is excluded from gameplay
 11. No authentication — anonymous sessions only, no Supabase Auth
