@@ -62,13 +62,6 @@
 
 <main class="summons noise" aria-label="The summons">
   <div class="ember-floor" aria-hidden="true"></div>
-  {#each [12, 28, 44, 60, 76, 88] as left, i (left)}
-    <div
-      class="steam-shaft"
-      style="left: {left}%; animation-delay: {i * 0.8}s; animation-duration: {5 + (i % 3)}s"
-      aria-hidden="true"
-    ></div>
-  {/each}
 
   <div class="summons-title reveal">
     <p class="summons-eyebrow">The Court of Suspicion presents</p>
@@ -82,11 +75,6 @@
   </div>
 
   <section class="dossier reveal" aria-label="The case dossier">
-    <i class="dossier-corner tl"></i>
-    <i class="dossier-corner tr"></i>
-    <i class="dossier-corner bl"></i>
-    <i class="dossier-corner br"></i>
-
     <div class="dossier-head">
       <span class="dossier-id">Case &numero;&nbsp;0426 &middot; Docket&nbsp;AA-XII</span>
       <span class="dossier-date"
@@ -97,7 +85,7 @@
     <p class="dossier-eyebrow">The Claim, entered into evidence</p>
 
     {#if data.claim}
-      <h2 class="dossier-claim transition-claim">&ldquo;{data.claim.text}&rdquo;</h2>
+      <h2 class="dossier-claim transition-claim">{data.claim.text}</h2>
     {:else if loadingClaim}
       <h2 class="dossier-claim dossier-claim-loading">
         &hellip;the docket is being read aloud&hellip;
@@ -116,22 +104,40 @@
       <span class="dossier-sep" aria-hidden="true"></span>
       <div class="dossier-meta-right">
         <p class="dossier-field">Filed by</p>
-        <p class="dossier-value dossier-value-italic">Anonymous</p>
+        <p class="dossier-value">Anonymous</p>
       </div>
     </div>
 
     <p class="dossier-intro">
-      The doors are bolted. The gallery has assembled. Nine chambers stand between you and a verdict
-      &mdash; each holds witnesses, nothing more. You will pick. You will rule. And I, the
-      Architect, will be watching.
+      The doors are bolted. The gallery has assembled. Witnesses await &mdash; you will pick, you
+      will rule. And I, the Architect, will be watching.
     </p>
 
     <div class="dossier-cta">
       <button class="lever-btn" disabled={entering || !data.claim} onclick={enterMansion}>
-        {entering ? 'Bolting the doors&hellip;' : 'Enter the Mansion'}
+        <svg
+          class="lever-btn-key"
+          width="22"
+          height="22"
+          viewBox="0 0 22 22"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+        >
+          <circle cx="6" cy="11" r="4" />
+          <circle cx="6" cy="11" r="1.4" fill="currentColor" stroke="none" />
+          <line x1="10" y1="11" x2="19" y2="11" />
+          <line x1="15" y1="11" x2="15" y2="13.5" />
+          <line x1="18" y1="11" x2="18" y2="14" />
+        </svg>
+        <span class="lever-btn-label">
+          {entering ? 'Bolting the doors…' : 'Enter the Mansion'}
+        </span>
       </button>
       <p class="dossier-meta-text">
-        9 chambers &middot; verdict required <br />
+        Verdict required <br />
         no accounts &middot; no timer
       </p>
     </div>
@@ -145,12 +151,18 @@
 <style>
   .summons {
     position: relative;
-    min-height: 100vh;
+    /* Same viewport-locked pattern as the chamber and mansion shells —
+       no page-level scroll. The dossier is sized with fluid clamps below
+       so it fits inside `100dvh` on a typical laptop without overflow. */
+    height: 100dvh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    /* Vertical padding scales with viewport height so short laptops don't
+       fight the dossier for room while wide displays still feel airy. */
+    padding: clamp(0.75rem, 2vh, 2rem) 2rem;
     background:
       radial-gradient(ellipse 60% 40% at 50% 55%, #1a1420 0%, transparent 70%),
       radial-gradient(ellipse at 50% 100%, rgba(210, 58, 42, 0.18), transparent 55%),
@@ -172,55 +184,28 @@
     pointer-events: none;
   }
 
-  .steam-shaft {
-    position: absolute;
-    bottom: 0;
-    width: 3px;
-    background: linear-gradient(
-      to top,
-      rgba(255, 240, 220, 0),
-      rgba(255, 240, 220, 0.18) 50%,
-      rgba(255, 240, 220, 0)
-    );
-    filter: blur(3px);
-    animation: steam 6s ease-in infinite;
-    pointer-events: none;
-  }
-
-  @keyframes steam {
-    0% {
-      transform: translateY(0) scaleY(1);
-      opacity: 0;
-    }
-    20% {
-      opacity: 0.6;
-    }
-    100% {
-      transform: translateY(-100vh) scaleY(1.2);
-      opacity: 0;
-    }
-  }
-
   .summons-title {
     position: relative;
     z-index: 5;
     text-align: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: clamp(1rem, 2.5vh, 2.5rem);
   }
 
   .summons-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.65rem;
-    letter-spacing: 0.32em;
+    font-size: 12px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-bottom: 1rem;
+    margin-bottom: clamp(0.5rem, 1.2vh, 1rem);
   }
 
   .summons-headline {
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(2.5rem, 6vw, 4.25rem);
+    /* Fluid clamp that respects height too — keeps the marquee from
+       hogging the viewport on short laptops. */
+    font-size: clamp(2rem, 4vw + 2vh, 4.25rem);
     color: var(--color-bone);
     line-height: 1;
     text-shadow: 0 4px 40px rgba(210, 58, 42, 0.18);
@@ -228,18 +213,17 @@
 
   .summons-amp {
     font-style: italic;
-    font-size: 0.75em;
-    color: var(--color-brass-dim);
+    color: var(--color-ember);
     padding: 0 0.2em;
   }
 
   .summons-sub {
     font-family: var(--font-readout);
-    font-size: 0.68rem;
-    letter-spacing: 0.22em;
+    font-size: 12px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-paper-dim);
-    margin-top: 1.1rem;
+    margin-top: clamp(0.5rem, 1.4vh, 1.1rem);
   }
 
   .summons-sub .dot {
@@ -252,14 +236,16 @@
     position: relative;
     z-index: 5;
     width: min(100%, 640px);
-    padding: 44px 52px 56px;
+    /* Vertical padding scales with viewport height so the box stays
+       inside `100dvh` on short laptops — horizontal padding is preserved
+       so the typography breathing room doesn't change. */
+    padding: clamp(1.25rem, 3vh, 2.75rem) clamp(1.5rem, 5vw, 3.25rem) clamp(1.5rem, 3.5vh, 3.5rem);
     background: linear-gradient(180deg, #161922 0%, #0e1118 100%);
     border: 1px solid rgba(233, 228, 216, 0.25);
     box-shadow:
       0 0 0 1px rgba(0, 0, 0, 0.6) inset,
       0 40px 100px rgba(0, 0, 0, 0.75),
       0 0 80px rgba(210, 58, 42, 0.06);
-    transform: rotate(-0.6deg);
   }
 
   .dossier::before {
@@ -270,68 +256,36 @@
     pointer-events: none;
   }
 
-  .dossier-corner {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border: 1px solid rgba(210, 58, 42, 0.4);
-    pointer-events: none;
-  }
-
-  .dossier-corner.tl {
-    top: 6px;
-    left: 6px;
-    border-right: none;
-    border-bottom: none;
-  }
-  .dossier-corner.tr {
-    top: 6px;
-    right: 6px;
-    border-left: none;
-    border-bottom: none;
-  }
-  .dossier-corner.bl {
-    bottom: 6px;
-    left: 6px;
-    border-right: none;
-    border-top: none;
-  }
-  .dossier-corner.br {
-    bottom: 6px;
-    right: 6px;
-    border-left: none;
-    border-top: none;
-  }
-
   .dossier-head {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1.7rem;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px dashed rgba(233, 228, 216, 0.2);
+    margin-bottom: clamp(0.75rem, 2vh, 1.7rem);
+    padding-bottom: clamp(0.5rem, 1vh, 0.85rem);
+    border-bottom: 1px solid rgba(233, 228, 216, 0.18);
     font-family: var(--font-readout);
-    font-size: 0.62rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
 
   .dossier-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
-    margin-bottom: 0.6rem;
+    margin-bottom: clamp(0.4rem, 0.8vh, 0.6rem);
   }
 
   .dossier-claim {
+    position: relative;
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-size: clamp(1.4rem, 1.5vw + 1.5vh, 2.4rem);
     color: var(--color-bone);
     line-height: 1.25;
-    margin-bottom: 1.8rem;
+    margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
     text-wrap: balance;
   }
 
@@ -349,8 +303,8 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.8rem;
-    padding-bottom: 1.4rem;
+    margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
+    padding-bottom: clamp(0.7rem, 1.5vh, 1.4rem);
     border-bottom: 1px solid rgba(233, 228, 216, 0.1);
   }
 
@@ -367,8 +321,8 @@
 
   .dossier-field {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -380,17 +334,12 @@
     margin-top: 0.2rem;
   }
 
-  .dossier-value-italic {
-    font-style: italic;
-    opacity: 0.85;
-  }
-
   .dossier-intro {
     font-family: var(--font-body);
     font-size: 0.92rem;
     color: var(--color-paper-dim);
-    line-height: 1.7;
-    margin-bottom: 1.8rem;
+    line-height: 1.6;
+    margin-bottom: clamp(0.9rem, 2vh, 1.8rem);
     text-wrap: pretty;
   }
 
@@ -402,26 +351,51 @@
   }
 
   .lever-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.1rem;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--color-bone);
-    background: linear-gradient(180deg, rgba(210, 58, 42, 0.18), rgba(138, 31, 20, 0.18));
-    border: 1px solid rgba(210, 58, 42, 0.55);
-    padding: 0.7rem 1.6rem;
+    background: linear-gradient(180deg, #2a2417 0%, #14110a 100%);
+    border: 1px solid var(--color-bone-dim);
+    padding: 0.85rem 1.4rem;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition:
+      box-shadow var(--motion-base) var(--ease-out),
+      border-color var(--motion-base) var(--ease-out),
+      color var(--motion-base) var(--ease-out);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 8px 24px rgba(210, 58, 42, 0.18);
+      inset 0 1px 0 rgba(255, 230, 170, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 6px 20px rgba(0, 0, 0, 0.6);
+  }
+
+  .lever-btn-key {
+    flex-shrink: 0;
+    color: var(--color-brass-key);
+    transition: color var(--motion-base) var(--ease-out);
+  }
+
+  .lever-btn-label {
+    display: inline-block;
   }
 
   .lever-btn:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(210, 58, 42, 0.32), rgba(138, 31, 20, 0.28));
-    border-color: var(--color-ember);
+    border-color: var(--color-brass-key-glow);
+    /* The 0.25 alpha glow uses the brass-key-glow hex (#f0c24d). */
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 12px 32px rgba(210, 58, 42, 0.32);
+      inset 0 1px 0 rgba(255, 230, 170, 0.32),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 6px 20px rgba(0, 0, 0, 0.6),
+      0 0 24px rgba(240, 194, 77, 0.25);
+  }
+
+  .lever-btn:hover:not(:disabled) .lever-btn-key {
+    color: var(--color-brass-key-glow);
   }
 
   .lever-btn:disabled {
@@ -431,7 +405,7 @@
 
   .dossier-meta-text {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -442,7 +416,7 @@
   .dossier-error {
     margin-top: 1rem;
     font-family: var(--font-readout);
-    font-size: 0.65rem;
+    font-size: 12px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-ember);

@@ -72,15 +72,20 @@ describe('buildCoverLetterPrompt', () => {
     expect(prompt).toContain('Dismissed exhibits have been struck from the record');
   });
 
-  it('instructs to write a character reference, not a job application', () => {
+  it('instructs to write a verdict brief, not a job application', () => {
     const prompt = buildCoverLetterPrompt('Test claim', 'accuse', []);
-    expect(prompt).toContain('character reference');
+    expect(prompt).toContain('verdict brief');
     expect(prompt).toContain('NOT a job application');
   });
 
   it('requests plain text response (no JSON wrapping)', () => {
     const prompt = buildCoverLetterPrompt('Test claim', 'accuse', []);
-    expect(prompt).toContain('ONLY the letter text');
+    expect(prompt).toContain('ONLY the brief text');
+  });
+
+  it('forbids Victorian / steampunk vocabulary', () => {
+    const prompt = buildCoverLetterPrompt('Test claim', 'accuse', []);
+    expect(prompt).toContain('NEVER use Victorian or steampunk vocabulary');
   });
 });
 

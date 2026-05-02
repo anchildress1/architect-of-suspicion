@@ -39,12 +39,12 @@
       <p class="letter-from-sub">Software Engineer &middot; Architect of Systems</p>
     </div>
     <div class="letter-meta">
-      Sealed &middot; {new Date().toLocaleDateString(undefined, {
+      Filed &middot; {new Date().toLocaleDateString(undefined, {
         month: 'long',
         year: 'numeric',
       })}<br />
       Case &numero;&nbsp;0426<br />
-      By the Architect's hand
+      Architect of record
     </div>
   </header>
 
@@ -58,13 +58,12 @@
 
   <footer class="letter-sign">
     <div>
-      <p class="letter-closing">Yours, {isAccuse ? 'without remorse' : 'in good faith'},</p>
       <p class="letter-signature">The Architect</p>
       <p class="letter-role">Magistrate, Case 0426 &middot; ashleychildress.dev</p>
     </div>
-    <div class="wax-seal" data-verdict={verdict}>
-      <span class="wax-word">{stampWord}</span>
-      <span class="wax-year">MMXXVI</span>
+    <div class="verdict-stamp" data-verdict={verdict}>
+      <span class="verdict-stamp-word">{stampWord}</span>
+      <span class="verdict-stamp-year">2026</span>
     </div>
   </footer>
 
@@ -73,19 +72,23 @@
   {/if}
 
   <button class="letter-copy" type="button" onclick={copyToClipboard} aria-live="polite">
-    {copied ? 'Copied to clipboard' : 'Copy letter text'}
+    {copied ? 'Copied to clipboard' : 'Copy verdict text'}
   </button>
 </article>
 
 <style>
+  /* Industrial verdict brief — dark instrument-panel surface, the same
+     ink + bone palette as the dossier and chamber rails. No bone paper,
+     no wax seal, no italic letter face. */
   .letter {
     position: relative;
-    background: linear-gradient(180deg, #f4efe1 0%, #e9e4d8 100%);
-    color: var(--color-paper-ink);
+    background: linear-gradient(180deg, #161922 0%, #0e1118 100%);
+    color: var(--color-bone);
     padding: clamp(2rem, 5vw, 4rem) clamp(2rem, 6vw, 4.5rem);
+    border: 1px solid rgba(233, 228, 216, 0.18);
     box-shadow:
       0 30px 80px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(58, 58, 66, 0.18);
+      inset 0 1px 0 rgba(233, 228, 216, 0.04);
     user-select: text;
     overflow: hidden;
   }
@@ -94,7 +97,7 @@
     content: '';
     position: absolute;
     inset: 14px;
-    border: 1px solid rgba(58, 58, 66, 0.2);
+    border: 1px solid rgba(233, 228, 216, 0.08);
     pointer-events: none;
   }
 
@@ -102,59 +105,59 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 1px solid rgba(58, 58, 66, 0.25);
+    border-bottom: 1px solid rgba(233, 228, 216, 0.12);
     padding-bottom: 1.4rem;
     margin-bottom: 1.4rem;
   }
 
   .letter-from {
     font-family: var(--font-display);
-    font-style: italic;
     font-size: 1.7rem;
     line-height: 1;
+    color: var(--color-bone);
   }
 
   .letter-from-sub {
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.18em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.6);
+    color: var(--color-brass-dim);
     margin-top: 0.35rem;
   }
 
   .letter-meta {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.6);
+    color: var(--color-brass-dim);
     text-align: right;
     line-height: 1.5;
   }
 
   .letter-claim {
-    font-family: var(--font-letter);
+    font-family: var(--font-display);
     font-style: italic;
     font-size: clamp(1.1rem, 2vw, 1.4rem);
-    color: rgba(20, 20, 26, 0.78);
-    border-left: 3px solid rgba(210, 58, 42, 0.55);
+    color: var(--color-paper);
+    border-left: 2px solid var(--color-ember);
     padding-left: 1rem;
     margin-bottom: 2rem;
     line-height: 1.5;
   }
 
   .letter-body p {
-    font-family: var(--font-letter);
-    font-size: clamp(1rem, 1.6vw, 1.18rem);
-    line-height: 1.78;
+    font-family: var(--font-body);
+    font-size: clamp(0.95rem, 1.4vw, 1.05rem);
+    line-height: 1.7;
     margin-bottom: 1.2rem;
     text-wrap: pretty;
     opacity: 0;
-    animation: paperFade 600ms cubic-bezier(0.2, 0, 0, 1) forwards;
+    animation: briefFade 600ms cubic-bezier(0.2, 0, 0, 1) forwards;
   }
 
-  @keyframes paperFade {
+  @keyframes briefFade {
     from {
       opacity: 0;
       transform: translateY(6px);
@@ -171,75 +174,65 @@
     align-items: flex-end;
     margin-top: 2.4rem;
     padding-top: 1.6rem;
-    border-top: 1px solid rgba(58, 58, 66, 0.22);
-  }
-
-  .letter-closing {
-    font-family: var(--font-letter);
-    font-style: italic;
-    font-size: 1.05rem;
+    border-top: 1px solid rgba(233, 228, 216, 0.12);
   }
 
   .letter-signature {
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: 2rem;
+    font-size: 1.7rem;
     line-height: 1;
-    margin-top: 0.4rem;
+    color: var(--color-bone);
   }
 
   .letter-role {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.16em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(20, 20, 26, 0.6);
+    color: var(--color-brass-dim);
     margin-top: 0.5rem;
   }
 
-  .wax-seal {
-    width: 92px;
-    height: 92px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #e85946, #8a1f14 70%);
+  /* Verdict stamp — square, bordered, mono. Matches the verdict page's
+     sealed-stamp aesthetic. No wax, no rotation, no radial gradient. */
+  .verdict-stamp {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #fff5ed;
-    box-shadow:
-      0 4px 12px rgba(58, 12, 6, 0.4),
-      inset 0 -4px 10px rgba(58, 12, 6, 0.4);
-    transform: rotate(-6deg);
-    flex-shrink: 0;
+    gap: 0.25rem;
+    padding: 0.65rem 1.1rem;
+    border: 2px solid var(--color-ember);
+    color: var(--color-ember);
+    background: rgba(11, 11, 13, 0.55);
   }
 
-  .wax-seal[data-verdict='pardon'] {
-    background: radial-gradient(circle at 30% 30%, #d6d0c0, #6b6457 70%);
-    color: #1a1a1e;
+  .verdict-stamp[data-verdict='pardon'] {
+    border-color: var(--color-bone);
+    color: var(--color-bone);
   }
 
-  .wax-word {
+  .verdict-stamp-word {
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: 0.95rem;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     line-height: 1;
   }
 
-  .wax-year {
+  .verdict-stamp-year {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.18em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    margin-top: 0.25rem;
     opacity: 0.85;
   }
 
   .letter-closing-line {
-    font-family: var(--font-letter);
-    font-style: italic;
-    font-size: 1rem;
-    color: rgba(20, 20, 26, 0.7);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--color-paper-dim);
     margin-top: 1.6rem;
     text-align: right;
   }
@@ -249,32 +242,46 @@
     top: 1rem;
     right: 1rem;
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     background: transparent;
-    border: 1px solid rgba(20, 20, 26, 0.3);
-    color: rgba(20, 20, 26, 0.6);
+    border: 1px solid rgba(233, 228, 216, 0.3);
+    color: var(--color-brass-dim);
     padding: 0.4rem 0.7rem;
     cursor: pointer;
     transition: all 0.25s ease;
   }
 
   .letter-copy:hover {
-    background: rgba(20, 20, 26, 0.08);
-    border-color: rgba(20, 20, 26, 0.55);
-    color: rgba(20, 20, 26, 0.9);
+    background: rgba(233, 228, 216, 0.06);
+    border-color: var(--color-bone);
+    color: var(--color-bone);
   }
 
   @media print {
-    .letter-copy,
-    .wax-seal {
+    .letter-copy {
       display: none;
     }
 
     .letter {
       box-shadow: none;
       background: white;
+      color: #14141a;
+      border-color: #14141a;
+    }
+
+    .letter-from,
+    .letter-signature,
+    .letter-claim {
+      color: #14141a;
+    }
+
+    .letter-from-sub,
+    .letter-meta,
+    .letter-role,
+    .letter-closing-line {
+      color: #4a4a52;
     }
   }
 </style>

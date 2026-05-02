@@ -10,48 +10,59 @@
 
   let { deck, rulings, currentIndex, onJump }: Props = $props();
 
-  const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
-
-  function markFor(card: ClaimCardEntry, idx: number): string {
-    const ruling = rulings[card.objectID];
-    if (ruling === 'proof') return '●';
-    if (ruling === 'objection') return '◆';
-    if (ruling === 'dismiss') return '—';
-    if (idx === currentIndex) return '▶';
-    return '○';
-  }
+  // All remaining witnesses in stable deck order. Position N stays the same
+  // card until it's ruled, at which point it drops out and later cards shift
+  // up. Container scrolls if the list outgrows the rail.
+  const upcoming = $derived(
+    deck
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ card }) => !rulings[card.objectID]),
+  );
 </script>
 
-<aside class="witness-queue" aria-label="The witness queue">
-  <header class="queue-head">
-    <span class="queue-title">The Queue</span>
-    <span class="queue-count">{remaining} remaining</span>
+<aside class="next-up" aria-label="Next up — pick a witness">
+  <header class="nu-head">
+    <span class="nu-title">Next Up</span>
+    <span class="nu-count">{upcoming.length} remaining</span>
   </header>
 
-  <ol class="queue-list">
-    {#each deck as card, i (card.objectID)}
-      {@const ruling = rulings[card.objectID]}
-      <li
-        class="queue-item"
-        class:queue-item-current={i === currentIndex && !ruling}
-        class:queue-item-done={ruling}
-        data-ruling={ruling ?? 'pending'}
-      >
-        <button
-          class="queue-jump"
-          onclick={() => onJump(i)}
-          aria-label="Call exhibit {i + 1}: {card.title}"
-        >
-          <span class="queue-mark" aria-hidden="true">{markFor(card, i)}</span>
-          <span class="queue-text">{card.title}</span>
-        </button>
-      </li>
-    {/each}
-  </ol>
+  {#if upcoming.length === 0}
+    <p class="nu-empty">All witnesses called.</p>
+  {:else}
+    <ol class="nu-list">
+      {#each upcoming as { card, originalIndex }, i (card.objectID)}
+        {@const isCurrent = originalIndex === currentIndex}
+        <li class="nu-item" class:nu-item-current={isCurrent}>
+          <button
+            class="nu-pick"
+            type="button"
+            onclick={isCurrent ? undefined : () => onJump(originalIndex)}
+            disabled={isCurrent}
+            aria-current={isCurrent ? 'true' : undefined}
+            aria-label={isCurrent
+              ? `Currently called: ${card.title}`
+              : `Call witness: ${card.title}`}
+          >
+            <span class="nu-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <span class="nu-text">{card.title}</span>
+          </button>
+        </li>
+      {/each}
+    </ol>
+  {/if}
 </aside>
 
 <style>
-  .witness-queue {
+  .next-up {
+    /* Explicit position + z-index so the picker stays above the chamber-bg
+       and chamber-overlay even if their pointer-events guards regress. */
+    position: relative;
+    z-index: 5;
+    /* Pinned to the named "queue" area in chamber-main's grid-template-areas
+       (`'head queue' / 'stage queue'`). Without this, auto-placement would
+       drop the queue into row 1 column 2 only and starve the stage row of
+       its 1fr allocation, collapsing the witness card off-screen. */
+    grid-area: queue;
     width: 280px;
     flex-shrink: 0;
     display: flex;
@@ -59,28 +70,42 @@
     background: rgba(11, 11, 13, 0.8);
     border-left: 1px solid rgba(233, 228, 216, 0.08);
     backdrop-filter: blur(12px);
+    /* The rail is a grid child of `.chamber-main`. Without min-height: 0,
+       a long deck pushes the 1fr row past its allocation and the chamber
+       stage (and its centered witness card) gets shoved out of view. The
+       internal nu-list scroll only kicks in once the rail itself is bounded. */
+    min-height: 0;
   }
 
-  .queue-head {
+  .nu-head {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
     padding: 1rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.08);
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
-  .queue-title {
+  .nu-title {
     color: var(--color-bone);
   }
 
-  .queue-count {
-    color: var(--color-brass-dim);
+  .nu-count {
+    color: var(--color-brass);
   }
 
-  .queue-list {
+  .nu-empty {
+    padding: 1.5rem 1rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--color-paper-dim);
+    text-align: center;
+  }
+
+  .nu-list {
     flex: 1;
     overflow-y: auto;
     list-style: none;
@@ -90,78 +115,76 @@
     scrollbar-color: rgba(233, 228, 216, 0.18) transparent;
   }
 
-  .queue-item {
-    border-bottom: 1px solid rgba(233, 228, 216, 0.04);
+  .nu-item + .nu-item {
+    border-top: 1px solid rgba(233, 228, 216, 0.06);
   }
 
-  .queue-jump {
+  .nu-pick {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 0.55rem;
-    align-items: center;
+    column-gap: 0.75rem;
+    align-items: start;
     width: 100%;
-    padding: 0.55rem 1rem;
+    padding: 0.85rem 1rem;
     background: none;
     border: none;
+    border-left: 2px solid transparent;
     text-align: left;
     cursor: pointer;
-    color: var(--color-paper-dim);
-    transition: all 0.2s ease;
+    transition:
+      background var(--motion-snap) var(--ease-out),
+      border-color var(--motion-snap) var(--ease-out);
   }
 
-  .queue-jump:hover {
+  .nu-pick:hover {
     background: rgba(233, 228, 216, 0.05);
-    color: var(--color-bone);
+    border-left-color: var(--color-cyan-ink);
   }
 
-  .queue-mark {
-    font-family: var(--font-readout);
-    font-size: 0.65rem;
-    color: var(--color-brass-dim);
-    width: 1ch;
-    text-align: center;
+  .nu-pick:focus-visible {
+    outline: 2px solid var(--color-bone);
+    outline-offset: -2px;
   }
 
-  .queue-text {
+  .nu-item-current .nu-pick {
+    background: rgba(210, 58, 42, 0.06);
+    border-left-color: var(--color-ember);
+    cursor: default;
+  }
+
+  .nu-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--color-brass);
+    padding-top: 0.15rem;
+  }
+
+  .nu-item-current .nu-num {
+    color: var(--color-ember);
+  }
+
+  .nu-text {
+    min-width: 0;
     font-family: var(--font-body);
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     line-height: 1.35;
+    color: var(--color-bone);
     text-wrap: balance;
   }
 
-  .queue-item-current .queue-jump {
-    background: rgba(233, 228, 216, 0.08);
-    color: var(--color-bone);
-  }
-
-  .queue-item-current .queue-mark {
-    color: var(--color-bone);
-  }
-
-  .queue-item-done .queue-jump {
-    color: var(--color-brass-dim);
-  }
-
-  .queue-item[data-ruling='proof'] .queue-mark {
-    color: var(--color-bone);
-  }
-
-  .queue-item[data-ruling='objection'] .queue-mark {
-    color: var(--color-cyan-ink);
-  }
-
-  .queue-item[data-ruling='dismiss'] .queue-mark {
-    color: var(--color-brass-dim);
+  .nu-item-current .nu-text {
+    color: var(--color-paper);
   }
 
   @media (max-width: 1100px) {
-    .witness-queue {
-      width: 220px;
+    .next-up {
+      width: 240px;
     }
   }
 
   @media (max-width: 900px) {
-    .witness-queue {
+    .next-up {
       display: none;
     }
   }

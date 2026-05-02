@@ -44,8 +44,8 @@
 
   .mobile-gate-eyebrow {
     font-family: var(--font-readout);
-    font-size: 0.62rem;
-    letter-spacing: 0.3em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: 1rem;

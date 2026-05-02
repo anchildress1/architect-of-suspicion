@@ -1,37 +1,63 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { rooms } from '$lib/rooms';
+  import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/state';
+  import { rooms, roomsByGrid } from '$lib/rooms';
+  import { getMansionPin } from '$lib/mansionPins';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
 
-  // Pin coordinates expressed as percent of the house exterior image. Tuned
-  // to land each pin over the corresponding window/door in the artwork.
-  // `flip: true` means the leader/tag are drawn to the LEFT of the pin.
-  const PINS: Record<string, { x: number; y: number; flip: boolean; chamber: string }> = {
-    attic: { x: 12, y: 16, flip: false, chamber: 'I' },
-    gallery: { x: 48, y: 10, flip: false, chamber: 'II' },
-    'control-room': { x: 86, y: 20, flip: true, chamber: 'III' },
-    parlor: { x: 10, y: 50, flip: false, chamber: 'IV' },
-    'entry-hall': { x: 52, y: 44, flip: false, chamber: 'V' },
-    library: { x: 88, y: 54, flip: true, chamber: 'VI' },
-    workshop: { x: 14, y: 82, flip: false, chamber: 'VII' },
-    cellar: { x: 46, y: 76, flip: false, chamber: 'VIII' },
-    'back-hall': { x: 84, y: 86, flip: true, chamber: 'IX' },
-  };
+  let { data } = $props();
+
+  // ?debug=pins outlines every tag so the coords are easy to spot during
+  // artwork tuning. It also skips the session redirect below so the layout
+  // is inspectable without a real game in progress.
+  // See docs/mansion-pin-layout.md.
+  const debugPins = $derived(page.url.searchParams.get('debug') === 'pins');
+
+  // Per-room exhaustion: a chamber is "exhausted" once every card in its
+  // category has been ruled. Compares server-loaded category totals against
+  // the player's persisted evidence count for that category.
+  function isExhausted(category: string): boolean {
+    const total = data.categoryCounts[category];
+    if (!total || total === 0) return false;
+    const ruled = gameState.current.evidence.filter((e) => e.card.category === category).length;
+    return ruled >= total;
+  }
 
   let wanderNarrated = $state(false);
 
+  // Re-run +page.server.ts so categoryCounts reflect any deck drift since SSR
+  // (claim re-seed mid-session, soft-deletes, etc.). Without this, a chamber
+  // can stay marked "Closed · all ruled" — or fail to mark — for the rest of
+  // the session because the counts are frozen at first paint.
+  function refreshCounts() {
+    void invalidateAll();
+  }
+
   onMount(async () => {
+    // ?debug=pins lets the layout be inspected without spinning up a real
+    // game. Chambers won't be enterable but every dot, tag, and leader
+    // renders so the coords in docs/mansion-pin-layout.md can be checked.
     if (!gameState.current.sessionId || !gameState.current.claimId) {
-      // No session — bounce back to summons.
+      if (debugPins) return;
       window.location.href = '/';
       return;
     }
+    refreshCounts();
     if (!wanderNarrated && gameState.current.roomsVisited.length >= 2) {
       wanderNarrated = true;
       await requestNarration('wander', 'mansion');
     }
+  });
+
+  $effect(() => {
+    function onVisibility() {
+      if (document.visibilityState === 'visible') refreshCounts();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   });
 </script>
 
@@ -49,51 +75,155 @@
 
   <main class="mansion-main">
     <div class="board reveal">
-      <img
-        class="board-bg"
-        src="/backgrounds/house-exterior.webp"
-        alt="The mansion exterior at night, nine chambers visible"
-        draggable="false"
-      />
-      <div class="board-overlay" aria-hidden="true"></div>
+      <div class="board-canvas">
+        <img
+          class="board-bg"
+          src="/backgrounds/house-exterior.webp"
+          alt="The mansion exterior at night, nine chambers visible"
+          draggable="false"
+        />
+        <div class="board-overlay" aria-hidden="true"></div>
 
-      <header class="board-head">
-        <div>
+        <header class="board-head">
           <h1 class="board-title">The Mansion</h1>
-          <p class="board-sub">Nine chambers &middot; pick one to enter</p>
-        </div>
-        <p class="board-clock">
-          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &middot; chamber
-          clock
-        </p>
-      </header>
+          <p class="board-sub">Pick a chamber to enter</p>
+        </header>
 
-      {#each rooms as room (room.slug)}
-        {@const pin = PINS[room.slug]}
-        {@const visited = gameState.current.roomsVisited.includes(room.slug)}
-        {@const sealed = !room.isPlayable && room.slug !== 'attic'}
-        {#if pin}
-          <div
-            class="room-pin"
-            class:room-pin-flip={pin.flip}
-            class:room-pin-visited={visited}
-            class:room-pin-sealed={sealed}
-            style="left: {pin.x}%; top: {pin.y}%"
-          >
-            <span class="pin-dot" aria-hidden="true"></span>
-            <span class="pin-leader" aria-hidden="true"></span>
+        <!-- Narrow-viewport fallback. The pin overlay needs ≥1100px to
+             clear collisions; below that, render a 3×3 list so the layout
+             stays usable. CSS swaps which view is visible. -->
+        <ul class="board-list" aria-label="Chambers">
+          {#each roomsByGrid as room (room.slug)}
+            {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+            {@const exhausted = isExhausted(room.category)}
+            {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
+            {@const pin = getMansionPin(room.slug)}
+            <li
+              class="bl-item"
+              class:bl-item-visited={visited && !exhausted}
+              class:bl-item-sealed={sealed}
+              class:bl-item-exhausted={exhausted}
+            >
+              {#if sealed}
+                <div class="bl-link bl-link-sealed" aria-disabled="true">
+                  <p class="bl-row1">
+                    <span>Ch. {pin?.chamber ?? '—'}</span>
+                    <span class="bl-status">{exhausted ? '✓' : '— — —'}</span>
+                  </p>
+                  <p class="bl-name">{room.name}</p>
+                  <p class="bl-cat">{exhausted ? 'Closed · all ruled' : 'Sealed · no entry'}</p>
+                </div>
+              {:else if room.slug === 'attic'}
+                <a href="/attic" class="bl-link bl-link-meta">
+                  <p class="bl-row1">
+                    <span>Ch. {pin?.chamber ?? '—'}</span>
+                    <span class="bl-status">Meta</span>
+                  </p>
+                  <p class="bl-name">{room.name}</p>
+                  <p class="bl-cat">How to play · bio · credits</p>
+                </a>
+              {:else}
+                <a
+                  href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
+                  class="bl-link"
+                  aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
+                >
+                  <p class="bl-row1">
+                    <span>Ch. {pin?.chamber ?? '—'}</span>
+                    <span class="bl-status">{visited ? 'Resume' : 'Enter'}</span>
+                  </p>
+                  <p class="bl-name">{room.name}</p>
+                  <p class="bl-cat">{room.category}</p>
+                </a>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+
+        <!-- Pin overlay: each pin is a free-floating dot + tag joined by an
+             SVG leader. Coords come from $lib/mansionPins as canvas
+             percentages so a viewport resize keeps every pin on its
+             feature without any re-layout. The leader endpoint is the
+             midpoint of the tag's nearest edge, so a tag placed above,
+             below, left, or right of its dot gets a clean connector. -->
+        <svg
+          class="pin-leaders"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {#each rooms as room (room.slug)}
+            {@const pin = getMansionPin(room.slug)}
+            {#if pin}
+              {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+              {@const exhausted = isExhausted(room.category)}
+              {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
+              {@const TAG_W = 16}
+              {@const TAG_H = 7}
+              {@const dx = pin.dot.x - (pin.tag.x + TAG_W / 2)}
+              {@const dy = pin.dot.y - (pin.tag.y + TAG_H / 2)}
+              {@const horizontal = Math.abs(dx) >= Math.abs(dy)}
+              {@const endX = horizontal
+                ? dx > 0
+                  ? pin.tag.x + TAG_W
+                  : pin.tag.x
+                : pin.tag.x + TAG_W / 2}
+              {@const endY = horizontal
+                ? pin.tag.y + TAG_H / 2
+                : dy > 0
+                  ? pin.tag.y + TAG_H
+                  : pin.tag.y}
+              <line
+                x1={pin.dot.x}
+                y1={pin.dot.y}
+                x2={endX}
+                y2={endY}
+                class="leader-line"
+                class:leader-visited={visited && !exhausted}
+                class:leader-sealed={sealed}
+                class:leader-exhausted={exhausted}
+                vector-effect="non-scaling-stroke"
+              />
+            {/if}
+          {/each}
+        </svg>
+
+        {#each rooms as room (room.slug)}
+          {@const pin = getMansionPin(room.slug)}
+          {@const visited = gameState.current.roomsVisited.includes(room.slug)}
+          {@const exhausted = isExhausted(room.category)}
+          {@const sealed = (!room.isPlayable && room.slug !== 'attic') || exhausted}
+          {#if pin}
+            <span
+              class="pin-dot"
+              class:pin-dot-visited={visited && !exhausted}
+              class:pin-dot-sealed={sealed}
+              class:pin-dot-exhausted={exhausted}
+              style="left: {pin.dot.x}%; top: {pin.dot.y}%"
+              aria-hidden="true"
+            ></span>
 
             {#if sealed}
-              <div class="pin-tag pin-tag-sealed" aria-hidden="true">
+              <div
+                class="pin-tag pin-tag-sealed"
+                class:pin-tag-debug={debugPins}
+                style="left: {pin.tag.x}%; top: {pin.tag.y}%"
+                aria-hidden="true"
+              >
                 <p class="pin-row1">
                   <span>Ch. {pin.chamber}</span>
-                  <span class="pin-tag-status">— — —</span>
+                  <span class="pin-tag-status">{exhausted ? '✓' : '— — —'}</span>
                 </p>
                 <p class="pin-name">{room.name}</p>
-                <p class="pin-cat">Sealed &middot; no entry</p>
+                <p class="pin-cat">{exhausted ? 'Closed · all ruled' : 'Sealed · no entry'}</p>
               </div>
             {:else if room.slug === 'attic'}
-              <a href="/attic" class="pin-tag pin-tag-meta">
+              <a
+                href="/attic"
+                class="pin-tag pin-tag-meta"
+                class:pin-tag-debug={debugPins}
+                style="left: {pin.tag.x}%; top: {pin.tag.y}%"
+              >
                 <p class="pin-row1">
                   <span>Ch. {pin.chamber}</span>
                   <span class="pin-tag-status">Meta</span>
@@ -105,6 +235,9 @@
               <a
                 href={'/room/' + room.slug + '?claim_id=' + gameState.current.claimId}
                 class="pin-tag"
+                class:pin-tag-visited={visited}
+                class:pin-tag-debug={debugPins}
+                style="left: {pin.tag.x}%; top: {pin.tag.y}%"
                 aria-label="{room.name}, {room.category}{visited ? ', visited' : ''}"
               >
                 <p class="pin-row1">
@@ -115,9 +248,9 @@
                 <p class="pin-cat">{room.category}</p>
               </a>
             {/if}
-          </div>
-        {/if}
-      {/each}
+          {/if}
+        {/each}
+      </div>
     </div>
   </main>
 </div>
@@ -125,7 +258,10 @@
 <style>
   .mansion-shell {
     display: flex;
-    min-height: 100vh;
+    /* Same viewport-locked pattern as the chamber shell — the board lives
+       inside the visible frame and never causes a page-level scroll. */
+    height: 100dvh;
+    overflow: hidden;
     background: var(--color-ink);
   }
 
@@ -136,17 +272,31 @@
     align-items: center;
     justify-content: center;
     padding: 1.5rem 2rem;
+    /* Below 1100px the layout swaps to the .board-list view, which can
+       outgrow the viewport on tall lists. Allow internal scroll so the
+       page itself stays put. */
+    overflow-y: auto;
+    min-height: 0;
   }
 
+  /* The board holds the artwork at its native aspect ratio so pin coords
+     (canvas %) keep landing on real building features. `object-fit: cover`
+     on a free-shaped canvas would crop and break every pin. The board
+     letterboxes against the surrounding ink — no frame, no ornament. */
   .board {
     position: relative;
     width: 100%;
-    max-width: 1280px;
-    aspect-ratio: 1440 / 900;
-    border: 1px solid rgba(233, 228, 216, 0.16);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
+    max-width: min(100%, calc((100dvh - 3rem) * 2528 / 1696));
+    aspect-ratio: 2528 / 1696;
+    background: var(--color-ink);
     isolation: isolate;
+  }
+
+  /* Canvas fills the board; pins reference its dimensions directly. */
+  .board-canvas {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
   }
 
   .board-bg {
@@ -174,9 +324,6 @@
     left: 0;
     right: 0;
     z-index: 5;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
     padding: 1.2rem 1.5rem;
     background: linear-gradient(to bottom, rgba(11, 11, 13, 0.85), transparent);
   }
@@ -191,132 +338,178 @@
 
   .board-sub {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-top: 0.35rem;
   }
 
-  .board-clock {
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-  }
-
-  /* Room pin: dot + leader + tag */
-  .room-pin {
+  /* SVG leader layer. Spans the canvas with viewBox 0 0 100 100 so each
+     line's coords match the pin coords directly (canvas %). Lines are
+     decorative; they sit below the dot and tag in z-order. */
+  .pin-leaders {
     position: absolute;
-    transform: translate(-50%, -50%);
-    z-index: 4;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
   }
 
+  .leader-line {
+    stroke: var(--color-brass-key);
+    stroke-opacity: 0.6;
+    stroke-width: 1;
+  }
+
+  .leader-line.leader-visited {
+    stroke: rgba(255, 215, 106, 0.7);
+  }
+
+  .leader-line.leader-sealed {
+    stroke: rgba(210, 58, 42, 0.4);
+  }
+
+  .leader-line.leader-exhausted {
+    stroke: rgba(107, 143, 176, 0.55);
+  }
+
+  /* Brass dot — centered on its (x, y) point so resizing the canvas
+     keeps the dot pinned to its architectural feature. */
   .pin-dot {
-    display: block;
-    width: 10px;
-    height: 10px;
+    position: absolute;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: var(--color-ember);
-    box-shadow:
-      0 0 0 3px rgba(210, 58, 42, 0.18),
-      0 0 18px rgba(210, 58, 42, 0.5);
-    animation: pinPulse 3.6s ease-in-out infinite;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+      circle at 35% 30%,
+      var(--color-brass-key-glow),
+      #8a7235 65%,
+      #3a2f18 100%
+    );
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+    pointer-events: none;
   }
 
-  .room-pin-visited .pin-dot {
-    background: var(--color-bone);
-    box-shadow:
-      0 0 0 3px rgba(233, 228, 216, 0.18),
-      0 0 14px rgba(233, 228, 216, 0.4);
+  .pin-dot::before,
+  .pin-dot::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1px solid rgba(240, 194, 77, 0.45);
+    animation: pinPing 2.5s ease-out infinite;
+    pointer-events: none;
   }
 
-  .room-pin-sealed .pin-dot {
-    background: var(--color-rivet);
-    box-shadow: none;
-    animation: none;
+  .pin-dot::after {
+    animation-delay: 0.7s;
   }
 
-  @keyframes pinPulse {
-    0%,
-    100% {
-      transform: scale(1);
+  @keyframes pinPing {
+    0% {
+      transform: scale(0.6);
       opacity: 1;
     }
-    50% {
-      transform: scale(1.18);
-      opacity: 0.85;
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
     }
   }
 
-  .pin-leader {
-    position: absolute;
-    top: 50%;
-    left: 12px;
-    width: 60px;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(210, 58, 42, 0.55), transparent);
-    transform-origin: left;
+  .pin-dot-visited {
+    background: radial-gradient(circle at 35% 30%, #ffd76a, #c89a3a 65%, #5a4220 100%);
+  }
+  .pin-dot-visited::before,
+  .pin-dot-visited::after {
+    border-color: rgba(255, 215, 106, 0.65);
   }
 
-  .room-pin-flip .pin-leader {
-    left: auto;
-    right: 12px;
-    background: linear-gradient(270deg, rgba(210, 58, 42, 0.55), transparent);
+  .pin-dot-sealed {
+    background: radial-gradient(circle at 35% 30%, #4a4248, #2a2428 65%, #1a141a 100%);
+  }
+  .pin-dot-sealed::before,
+  .pin-dot-sealed::after {
+    border-color: rgba(210, 58, 42, 0.45);
+    animation: none;
+    transform: scale(1);
+    opacity: 0.55;
   }
 
-  .room-pin-visited .pin-leader {
-    background: linear-gradient(90deg, rgba(233, 228, 216, 0.45), transparent);
+  .pin-dot-exhausted {
+    background: radial-gradient(circle at 35% 30%, #6b8fb0, #2c3e52 65%, #1a2030 100%);
+  }
+  .pin-dot-exhausted::before,
+  .pin-dot-exhausted::after {
+    border-color: rgba(107, 143, 176, 0.5);
+    animation: none;
+    transform: scale(1);
+    opacity: 0.6;
   }
 
-  .room-pin-visited.room-pin-flip .pin-leader {
-    background: linear-gradient(270deg, rgba(233, 228, 216, 0.45), transparent);
-  }
-
+  /* Tag — fixed pixel width, free-floating from its top-left coord.
+     Width is intentionally fixed so a long category label can't push
+     the layout sideways; height is auto to hold the three text lines. */
   .pin-tag {
     position: absolute;
-    top: -28px;
-    left: 72px;
     width: 200px;
-    padding: 0.55rem 0.7rem;
-    background: rgba(11, 11, 13, 0.92);
-    border: 1px solid rgba(233, 228, 216, 0.18);
+    padding: 0.4rem 0.65rem 0.45rem;
+    background: linear-gradient(180deg, rgba(20, 22, 30, 0.92) 0%, rgba(11, 12, 18, 0.95) 100%);
+    border: 1px solid var(--color-brass-key);
     text-decoration: none;
     color: var(--color-paper);
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
+    z-index: 4;
+    transition:
+      border-color var(--motion-base) var(--ease-out),
+      box-shadow var(--motion-base) var(--ease-out);
+    backdrop-filter: blur(2px);
   }
 
-  .room-pin-flip .pin-tag {
-    left: auto;
-    right: 72px;
-    text-align: right;
+  .pin-tag:hover,
+  .pin-tag:focus-visible {
+    /* Pop to the top of the pin layer so an overlapped tag underneath
+       can still be hovered/clicked once the user reaches its visible
+       edge. Without this, the "front" tag (later in DOM order) wins
+       every hit even after the user moves onto the back tag. */
+    z-index: 6;
+    border-color: rgba(255, 215, 106, 0.85);
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 215, 106, 0.4);
+    outline: none;
   }
 
-  .pin-tag:hover {
-    border-color: var(--color-ember);
-    background: rgba(20, 20, 23, 0.96);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
-    transform: translateY(-2px);
+  .pin-tag-visited {
+    border-color: rgba(255, 215, 106, 0.6);
   }
 
   .pin-tag-sealed {
     cursor: default;
+    border-color: rgba(210, 58, 42, 0.45);
     opacity: 0.55;
     pointer-events: none;
   }
 
   .pin-tag-meta {
-    border-color: rgba(233, 228, 216, 0.1);
-    opacity: 0.85;
+    border-color: rgba(233, 228, 216, 0.18);
+    opacity: 0.9;
+  }
+
+  /* Debug overlay (?debug=pins): outline each tag so coords are easy to
+     spot during artwork tuning. */
+  .pin-tag-debug {
+    outline: 1px dashed rgba(255, 215, 106, 0.6);
+    outline-offset: 1px;
   }
 
   .pin-row1 {
     display: flex;
     justify-content: space-between;
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -328,16 +521,106 @@
   }
 
   .pin-name {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 1.05rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.95rem;
     color: var(--color-bone);
     line-height: 1.1;
   }
 
   .pin-cat {
     font-family: var(--font-readout);
-    font-size: 0.5rem;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-top: 0.3rem;
+  }
+
+  /* Narrow-viewport list. Hidden on desktop; takes over below 1100px,
+     where the pin overlay can no longer keep tags from overlapping. */
+  .board-list {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 4.5rem 1rem 1.5rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    overflow-y: auto;
+  }
+
+  .bl-item {
+    min-width: 0;
+  }
+
+  .bl-link {
+    display: block;
+    height: 100%;
+    padding: 0.7rem 0.75rem;
+    background: linear-gradient(180deg, rgba(20, 22, 30, 0.9) 0%, rgba(11, 12, 18, 0.95) 100%);
+    border: 1px solid var(--color-brass-key);
+    color: var(--color-paper);
+    text-decoration: none;
+    transition:
+      border-color var(--motion-base) var(--ease-out),
+      transform var(--motion-base) var(--ease-out);
+  }
+
+  .bl-link:hover,
+  .bl-link:focus-visible {
+    border-color: var(--color-brass-key-glow);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .bl-item-visited .bl-link {
+    border-color: rgba(255, 215, 106, 0.55);
+  }
+
+  .bl-item-sealed .bl-link-sealed {
+    border-color: rgba(210, 58, 42, 0.4);
+    opacity: 0.6;
+  }
+
+  .bl-item-exhausted .bl-link-sealed {
+    border-color: rgba(107, 143, 176, 0.45);
+    opacity: 0.7;
+  }
+
+  .bl-link-meta {
+    border-color: rgba(233, 228, 216, 0.18);
+    opacity: 0.85;
+  }
+
+  .bl-row1 {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-readout);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 0.25rem;
+  }
+
+  .bl-status {
+    color: var(--color-bone);
+  }
+
+  .bl-name {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--color-bone);
+    line-height: 1.15;
+  }
+
+  .bl-cat {
+    font-family: var(--font-readout);
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -345,25 +628,38 @@
   }
 
   @media (max-width: 1100px) {
-    .pin-tag {
-      width: 160px;
-      font-size: 0.7rem;
-    }
-  }
-
-  @media (max-width: 900px) {
+    /* Below the pin layout's collision-safe width, swap to the list. */
     .board {
-      max-width: 100%;
+      aspect-ratio: auto;
+      min-height: 70vh;
     }
 
+    .board-bg,
+    .board-overlay,
+    .pin-leaders,
+    .pin-dot,
     .pin-tag {
-      width: 130px;
+      display: none;
+    }
+
+    .board-list {
+      display: grid;
     }
   }
 
   @media (max-width: 767px) {
     .mansion-main {
       padding: 0.75rem;
+    }
+
+    .board-list {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .board-list {
+      grid-template-columns: 1fr;
     }
   }
 </style>

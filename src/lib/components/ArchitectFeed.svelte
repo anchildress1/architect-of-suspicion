@@ -8,6 +8,14 @@
       feedContainer.scrollTop = feedContainer.scrollHeight;
     }
   });
+
+  function formatTime(ts: number): string {
+    return new Date(ts).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+  }
 </script>
 
 <div
@@ -16,16 +24,12 @@
   aria-live="polite"
   aria-label="The Architect's record"
 >
-  <div class="feed-head">
-    <span>The Record</span>
-    <span class="feed-count">{gameState.current.feed.length} ent.</span>
-  </div>
-
   {#if gameState.current.feed.length === 0}
     <p class="feed-empty">The Architect observes in silence.</p>
   {:else}
     {#each gameState.current.feed as entry (entry.id)}
       <div class="feed-entry feed-{entry.type}">
+        <p class="feed-time">{formatTime(entry.timestamp)}</p>
         <p class="feed-text">{entry.text}</p>
       </div>
     {/each}
@@ -44,32 +48,16 @@
     scrollbar-color: rgba(233, 228, 216, 0.18) transparent;
   }
 
-  .feed-head {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-bottom: 0.25rem;
-  }
-
-  .feed-count {
-    color: var(--color-brass-dim);
-    opacity: 0.7;
-  }
-
   .feed-empty {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-size: 0.95rem;
-    color: rgba(233, 228, 216, 0.5);
-    line-height: 1.5;
+    font-family: var(--font-architect);
+    font-size: 13.5px;
+    color: var(--color-paper-dim);
+    line-height: 1.6;
   }
 
   .feed-entry {
-    padding: 0.5rem 0;
+    position: relative;
+    padding: 0.5rem 0 0.6rem 0.85rem;
     border-bottom: 1px solid rgba(233, 228, 216, 0.06);
     animation: feedIn 0.45s cubic-bezier(0.2, 0, 0, 1) both;
   }
@@ -78,39 +66,55 @@
     border-bottom: none;
   }
 
+  .feed-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-brass-dim);
+    margin-bottom: 0.2rem;
+  }
+
   .feed-text {
-    font-family: var(--font-display);
-    font-size: 0.95rem;
-    font-style: italic;
-    color: var(--color-bone);
-    line-height: 1.55;
+    font-family: var(--font-architect);
+    font-size: 13.5px;
+    color: #e8d8b8;
+    line-height: 1.6;
     text-wrap: pretty;
   }
 
-  /* Action lines = machine voice (mono, terse) */
-  .feed-action .feed-text {
-    font-family: var(--font-readout);
-    font-style: normal;
-    font-size: 0.62rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-paper-dim);
+  /* Action = the player's hand on the record (cyan-ink, Geist, terse). */
+  .feed-action {
+    border-left: 2px solid var(--color-cyan-ink);
+    color: var(--color-cyan-ink);
   }
 
-  .feed-action .feed-text::before {
-    content: '→ ';
+  .feed-action .feed-text {
+    font-family: var(--font-body);
+    font-style: normal;
+    font-size: 14px;
+    color: var(--color-paper-dim);
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* Reaction = the Architect speaking (ember rule). */
+  .feed-reaction {
+    border-left: 2px solid var(--color-ember);
+    color: var(--color-ember);
+  }
+
+  /* Narration = atmospheric prompts; quiet brass-dim rule. */
+  .feed-narration {
+    border-left: 2px solid rgba(122, 118, 104, 0.4);
     color: var(--color-brass-dim);
   }
 
-  /* Reaction lines = the Architect speaking */
-  .feed-reaction .feed-text {
-    color: var(--color-bone);
-  }
-
-  /* Narration = atmospheric prompts */
   .feed-narration .feed-text {
-    color: rgba(233, 228, 216, 0.74);
-    font-size: 0.85rem;
+    color: var(--color-paper-dim);
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   @keyframes feedIn {
