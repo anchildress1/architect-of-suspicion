@@ -12,11 +12,13 @@ import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, TensionMap } from './types';
 
-const SYSTEM_PROMPT = `You analyze a corpus of Ashley's career facts for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports contradictory readings, or where themes across categories conflict.
+export const SYSTEM_PROMPT = `You analyze a corpus of Ashley's career facts for a narrative game called Architect of Suspicion. Surface fault lines: places where the same evidence supports two contradictory readings of Ashley's working style, or where style themes across categories pull in opposite directions.
 
 Produce raw material only — tensions that a later pass will use to generate claims. Do not write claims yourself.
 
-A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of Ashley's behavior. A weak tension is generic (e.g. "ambition vs humility"), single-card, or unfalsifiable.`;
+Stay in working-style territory: how Ashley operates, what she instinctively reaches for, what trade-offs her decisions reveal. Do not surface tensions framed as moral, ethical, or character judgments — the downstream game is a recruiter-facing artifact, and tensions framed in those terms produce claims that damage Ashley's professional reputation regardless of how the player rules. Both sides of every tension must be a recognizable professional approach a hiring manager would respect — a trade-off between two legitimate ways of working, not virtue versus self-deception.
+
+A strong tension is grounded in 3+ cards across 2+ categories and supports two mutually exclusive interpretations of Ashley's working style. A weak tension is generic (e.g. "ambition vs humility"), single-card, unfalsifiable, or moral rather than stylistic.`;
 
 const SCHEMA = {
   type: 'object',
@@ -49,10 +51,10 @@ TASK:
 Identify 8-15 distinct tensions in this corpus.
 
 Tension types (find at least one of each):
-1. Dual-read evidence — the same card supports contradictory readings (e.g. "takes initiative" vs "ignores input")
-2. Cross-category clash — themes conflict across categories (e.g. Awards celebrate boldness while Constraints flag risk-aversion)
-3. Virtue-or-cope — a Philosophy or Work Style card reads as genuine principle OR as rationalization
-4. Trade-off fault line — career Decisions that required sacrificing one value for another
+1. Dual-read evidence — the same card supports two contradictory working-style readings (e.g. "moves first / asks later" vs "gathers signal before committing"). Both readings must be hireable.
+2. Cross-category clash — style themes pull opposite directions across categories (e.g. Awards celebrate decisiveness while Constraints reveal patience). Both sides legitimate.
+3. Style trade-off — a Philosophy or Work Style card describes one approach that complements its own opposite (e.g. "ships rough drafts" vs "polishes before shipping"). Surface the trade-off, not a virtue/vice judgment.
+4. Decision fault line — career Decisions that required choosing between two legitimate priorities (e.g. depth vs breadth, build vs measure, lead vs ship).
 
 Each tension must reference 3+ specific cards by title and span 2+ categories. Use the notes field for meta-observations about the corpus that did not rise to the level of a full tension.`;
 }

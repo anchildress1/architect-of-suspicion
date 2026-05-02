@@ -26,7 +26,9 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
+export const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
+
+Recruiter-safety rule (non-negotiable): the rewritten_blurb is public text that lives on the page next to Ashley's name regardless of how the player ultimately rules. It must read as a description of a hireable professional under BOTH classifications. The "proof" reading and the "objection" reading must each describe a working-style trait a hiring manager would respect. If the only honest way to write a card against this claim leaves the proof OR objection reading sounding like a character flaw — drop the card by emitting your best dual-hireable version anyway and flag the strain in notes; downstream review will cut it. Never write text that indicts Ashley's competence, integrity, or basic professionalism.
 
 Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields.
 
@@ -45,9 +47,9 @@ Temporal reasoning rules:
 
 Output per card (all four fields required — no proof/objection scratch work, go straight to the final fields):
 1. card_id — the exact id from the ELIGIBLE CARDS block. Copy it; never invent or modify.
-2. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic.
-3. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = supports. Negative = undermines. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. Hidden from the player.
-4. notes — server-only auditor note (1-3 sentences). State the tension levers this rewrite pulls, how work/play + deadline context were handled, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't see the 2-week constraint", or "work-vs-play ambiguity intentional; blurb reads as production but the fact is a hackathon build"). This is the QA trail.`;
+2. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic. Both the "proof" and "objection" readings of this text must describe a hireable working-style trait — never write content that reads as a character flaw under either classification.
+3. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = supports. Negative = undermines. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. Hidden from the player. Note: because Pass 2 enforces dual-hireability on every claim, "supports" and "undermines" both translate to professional traits — the score is directional, not moral.
+4. notes — server-only auditor note (1-3 sentences). State the tension levers this rewrite pulls, how work/play + deadline context were handled, whether the dual-hireability check holds for both readings of the rewritten_blurb, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't see the 2-week constraint", or "dual-hireability strained: proof reading verges on 'misses deadlines' — recommend reviewer cut"). This is the QA trail.`;
 
 /** Build a batch-specific schema. Keeps `card_id` constrained to the batch's
  *  UUIDs via `enum`; drops `minItems`/`maxItems`, `additionalProperties: false`,

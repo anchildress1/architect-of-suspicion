@@ -4,14 +4,16 @@ Implementation of the pipeline described in [docs/CLAIM-ENGINE-PRD.md](../../doc
 
 ## What it does
 
-Reads every eligible card from `public.cards`, runs a 4-pass AI pipeline to generate provocative claims and score each card against each claim, then writes the results to `suspicion.claims` + `suspicion.claim_cards`. The game reads those tables at runtime.
+Reads every eligible card from `public.cards`, runs a 4-pass AI pipeline to generate working-style claims and score each card against each claim, then writes the results to `suspicion.claims` + `suspicion.claim_cards`. The game reads those tables at runtime.
+
+Every claim is filtered through a **dual-hireability** test in Pass 2: both the "guilty" reading (the claim is true of Ashley) and the "not guilty" reading (the claim is false) must describe a hireable working-style trait a recruiter would respect. Character indictments — competence, integrity, ethics, basic professionalism — are rejected before they reach scoring. The game's surface text lives publicly next to Ashley's name; the seed must never produce text that paints her badly even when the player's verdict goes the other way.
 
 ## Passes
 
 | Pass        | Role                                                        | Default model                   | Provider  | Reasoning                      |
 | ----------- | ----------------------------------------------------------- | ------------------------------- | --------- | ------------------------------ |
 | 1. Tensions | Find fault lines in the corpus                              | `claude-sonnet-4-6`             | Anthropic | adaptive thinking, effort=high |
-| 2. Claims   | Generate provocative claims from tensions                   | `gpt-5.4`                       | OpenAI    | reasoning_effort=medium        |
+| 2. Claims   | Generate dual-hireable working-style claims from tensions   | `gpt-5.4`                       | OpenAI    | reasoning_effort=medium        |
 | 3. Score    | Rate ambiguity + surprise per card/claim pair               | `gpt-5.4-mini`                  | OpenAI    | reasoning_effort=low           |
 | 4. Validate | Adversarial cross-check from a different vendor than Pass 2 | `gemini-3.1-flash-lite-preview` | Google    | thinkingLevel=low              |
 
