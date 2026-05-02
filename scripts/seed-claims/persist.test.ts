@@ -8,6 +8,8 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
       claim_text: 'Ashley prioritizes novelty over reliability',
       rationale: 'Targets speed vs quality tension',
       tensions_targeted: ['speed-vs-quality'],
+      guilty_reading: 'a builder who treats novelty as leverage',
+      not_guilty_reading: 'a builder who reaches for the proven path first',
     },
     validation: {
       claim_id: 'claim-1',
@@ -58,6 +60,8 @@ describe('buildSeedPayload', () => {
       {
         claim_text: survivor.claim.claim_text,
         rationale: survivor.claim.rationale,
+        guilty_reading: survivor.claim.guilty_reading,
+        not_guilty_reading: survivor.claim.not_guilty_reading,
         room_coverage: 6,
         total_eligible_cards: 2,
         cards: [
@@ -173,5 +177,52 @@ describe('buildSeedPayload', () => {
     });
 
     expect(() => buildSeedPayload([invalid])).toThrow(/Duplicate eligible card/);
+  });
+
+  it('throws when guilty_reading is missing — runtime cover letter would have no anchor', () => {
+    const invalid = makeInput({
+      claim: {
+        ...makeInput().claim,
+        guilty_reading: '',
+      },
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing guilty_reading/);
+  });
+
+  it('throws when guilty_reading is whitespace-only', () => {
+    const invalid = makeInput({
+      claim: {
+        ...makeInput().claim,
+        guilty_reading: '   ',
+      },
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing guilty_reading/);
+  });
+
+  it('throws when not_guilty_reading is missing', () => {
+    const invalid = makeInput({
+      claim: {
+        ...makeInput().claim,
+        not_guilty_reading: '',
+      },
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing not_guilty_reading/);
+  });
+
+  it('trims surrounding whitespace from both readings before persisting', () => {
+    const padded = makeInput({
+      claim: {
+        ...makeInput().claim,
+        guilty_reading: '  rigor that pays off  ',
+        not_guilty_reading: '\tships pragmatically\n',
+      },
+    });
+
+    const [row] = buildSeedPayload([padded]);
+    expect(row.guilty_reading).toBe('rigor that pays off');
+    expect(row.not_guilty_reading).toBe('ships pragmatically');
   });
 });

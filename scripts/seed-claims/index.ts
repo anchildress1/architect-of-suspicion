@@ -84,23 +84,30 @@ export async function main(): Promise<void> {
       return result;
     })());
 
+  // pass2-claims-v2: cache key bumped when GeneratedClaim grew the
+  // guilty_reading / not_guilty_reading fields. Stale v1 files lack those
+  // fields and would silently feed empty strings into persist; pruning by
+  // signature alone wouldn't catch a same-corpus re-run after the upgrade.
   const candidates =
-    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims', sig)) ??
+    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims-v2', sig)) ??
     (await (async () => {
       const result = await runPass2(cards, tensions);
-      await saveCheckpoint('pass2-claims', sig, result);
+      await saveCheckpoint('pass2-claims-v2', sig, result);
       return result;
     })());
 
+  // pass3-score-v2: bumped alongside pass2-claims-v2. The cached `selected`
+  // array is GeneratedClaim[]; the v1 shape predates the dual-hireability
+  // readings and would re-introduce them as undefined on resume.
   const pass3Cache = await loadCheckpoint<{
     scored: Array<[string, CardClaimScore[]]>;
     selected: GeneratedClaim[];
-  }>('pass3-score', sig);
+  }>('pass3-score-v2', sig);
   const { scored, selected } = pass3Cache
     ? { scored: new Map(pass3Cache.scored), selected: pass3Cache.selected }
     : await (async () => {
         const result = await runPass3(cards, candidates);
-        await saveCheckpoint('pass3-score', sig, {
+        await saveCheckpoint('pass3-score-v2', sig, {
           scored: Array.from(result.scored.entries()),
           selected: result.selected,
         });

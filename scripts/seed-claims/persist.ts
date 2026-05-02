@@ -25,6 +25,11 @@ export interface ClaimCardSeedRow {
 export interface ClaimSeedRow {
   claim_text: string;
   rationale: string | null;
+  /** Hireable reading the runtime cover letter prompt anchors on when the
+   *  player Accuses. Pass 2 produces it; the RPC enforces NOT NULL + non-empty. */
+  guilty_reading: string;
+  /** Mirror of guilty_reading for the Pardon verdict. */
+  not_guilty_reading: string;
   room_coverage: number;
   total_eligible_cards: number;
   cards: ClaimCardSeedRow[];
@@ -49,6 +54,19 @@ function assertAiScore(aiScore: number, cardId: string, claim: GeneratedClaim): 
       `Invalid ai_score=${aiScore} for card ${cardId} on claim "${claim.claim_text}" (${claim.id}); expected number in [-1.0, 1.0]`,
     );
   }
+}
+
+// Pass 2's schema marks both readings required, but persist runs after every
+// upstream pass plus disk-checkpoint round-trips that could corrupt or
+// truncate the field. The runtime cover letter prompt assumes both are
+// non-empty — fail loudly here rather than write blank strings to the DB.
+function assertReading(value: unknown, field: string, claim: GeneratedClaim): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(
+      `Missing ${field} for claim "${claim.claim_text}" (${claim.id}); Pass 2 must populate both readings`,
+    );
+  }
+  return value.trim();
 }
 
 export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
@@ -111,6 +129,12 @@ export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
     payload.push({
       claim_text: input.claim.claim_text,
       rationale: input.claim.rationale,
+      guilty_reading: assertReading(input.claim.guilty_reading, 'guilty_reading', input.claim),
+      not_guilty_reading: assertReading(
+        input.claim.not_guilty_reading,
+        'not_guilty_reading',
+        input.claim,
+      ),
       room_coverage: input.validation.room_coverage,
       total_eligible_cards: input.validation.total_eligible_cards,
       cards,

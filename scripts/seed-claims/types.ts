@@ -73,6 +73,15 @@ export interface GeneratedClaim {
   claim_text: string;
   rationale: string;
   tensions_targeted: string[];
+  /** One-sentence hireable trait the `accuse` verdict surfaces. Persisted to
+   *  `suspicion.claims.guilty_reading` and used by the runtime cover letter
+   *  prompt so an accused verdict resolves to a recruiter-safe reading
+   *  instead of a generic condemnation. */
+  guilty_reading: string;
+  /** One-sentence hireable trait the `pardon` verdict surfaces. Persisted to
+   *  `suspicion.claims.not_guilty_reading`. Mirror of `guilty_reading` for
+   *  the opposite verdict. */
+  not_guilty_reading: string;
 }
 
 /** Per-card score for a given claim (Pass 3 output). */

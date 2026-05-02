@@ -193,22 +193,38 @@ export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<
     );
   }
 
-  const claims: GeneratedClaim[] = parsed.claims.map((claim, index) => ({
-    id: `claim-${index + 1}`,
-    claim_text: claim.claim_text,
-    rationale: claim.rationale,
-    tensions_targeted: claim.tensions_targeted,
-  }));
+  const claims: GeneratedClaim[] = parsed.claims.map((claim, index) => {
+    assertHireableReading(claim.guilty_reading, 'guilty_reading', claim.claim_text);
+    assertHireableReading(claim.not_guilty_reading, 'not_guilty_reading', claim.claim_text);
+    return {
+      id: `claim-${index + 1}`,
+      claim_text: claim.claim_text,
+      rationale: claim.rationale,
+      tensions_targeted: claim.tensions_targeted,
+      guilty_reading: claim.guilty_reading.trim(),
+      not_guilty_reading: claim.not_guilty_reading.trim(),
+    };
+  });
 
   console.log(`[pass2] ${claims.length} claims:`);
-  for (let i = 0; i < claims.length; i++) {
-    const c = claims[i];
-    const p = parsed.claims[i];
-    console.log(`  ${i + 1}. [${c.id}] "${c.claim_text}"`);
-    console.log(`     → ${c.rationale}`);
-    console.log(`     ✓ guilty:     ${p.guilty_reading}`);
-    console.log(`     ✓ not guilty: ${p.not_guilty_reading}`);
+  for (const claim of claims) {
+    console.log(`  - [${claim.id}] "${claim.claim_text}"`);
+    console.log(`     → ${claim.rationale}`);
+    console.log(`     ✓ guilty:     ${claim.guilty_reading}`);
+    console.log(`     ✓ not guilty: ${claim.not_guilty_reading}`);
   }
 
   return claims;
+}
+
+// Both readings are persisted to suspicion.claims and consumed at runtime by
+// the cover letter prompt. An empty/whitespace value would let the prompt
+// drift back to inventing a reading from claim text alone — exactly what the
+// dual-hireability constraint exists to prevent. Guard at the pipeline edge.
+function assertHireableReading(value: unknown, field: string, claimText: string): void {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(
+      `[pass2] missing ${field} for claim "${claimText}" — schema should have prevented this`,
+    );
+  }
 }
