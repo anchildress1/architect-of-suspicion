@@ -1,40 +1,52 @@
 /** Pass 2: Claim Generation.
  *
- *  Input:  tension map from Pass 1 + full card corpus.
- *  Output: config.targets.generate candidate claims (default 15), each a single
- *          declarative sentence about Ashley's working style that reads as a
- *          hireable trait under BOTH the "guilty" and "not guilty" verdict.
+ *  Input:  truth map from Pass 1 + full card corpus.
+ *  Output: config.targets.generate candidate claims (default 15). Each claim
+ *          carries a single underlying hireable_truth (the trait the brief
+ *          will reveal) plus a desired_verdict that flags whether the surface
+ *          claim is TRUE of Ashley (player Accuses to align) or FALSE (player
+ *          Pardons to align).
  *
- *  Recruiter-safety rule: this game is a public artifact. Every claim that
- *  ships must satisfy the dual-hireability test — both verdicts must read as
- *  professional traits a recruiter would respect. Claims that indict character
- *  or morality (e.g. "Ashley takes credit for the team's work") are forbidden:
- *  even when disproven, the surface text plants a defamatory suggestion next
- *  to Ashley's name. Style accusations ("Ashley over-engineers everything")
- *  are fine — guilty reads as rigor, not-guilty reads as pragmatic shipping.
+ *  Why this shape: the brief lands the same hireable_truth regardless of
+ *  verdict. The verdict only swings the rhetorical opener — match means the
+ *  player saw the truth clearly, miss means the record corrects them. Two
+ *  recruiters investigating the same claim reach the same conclusion about
+ *  Ashley; only the storytelling differs.
  *
- *  Model:  claude-opus-4-7 — tuned for Opus's adaptive thinking + effort
- *          knobs. Single call, generous output budget, explicit count pin.
+ *  Recruiter-safety rule (unchanged): the surface claim is a public artifact.
+ *  Style claims ("Ashley over-engineers everything", "Ashley uses AI too
+ *  much") are fine — both readings, and the underlying truth, describe a
+ *  hireable working-style trait. Moral indictments ("Ashley takes credit",
+ *  "Ashley coasts on reputation") stay forbidden — they damage the artifact
+ *  no matter how the verdict resolves.
+ *
+ *  Model:  claude-opus-4-7 — adaptive thinking pays off here because the
+ *          model has to anchor each claim to a specific truth, decide
+ *          desired_verdict from corpus evidence, and stay inside the
+ *          recruiter-safety constraint simultaneously.
  */
 
 import { clientFor } from './clients';
 import { formatCardCorpus } from './cards';
 import { config } from './config';
-import type { CardRow, GeneratedClaim, TensionMap } from './types';
+import type { CardRow, GeneratedClaim, TruthMap } from './types';
 
 interface ParsedClaim {
   claim_text: string;
   rationale: string;
-  tensions_targeted: string[];
-  guilty_reading: string;
-  not_guilty_reading: string;
+  truths_targeted: string[];
+  hireable_truth: string;
+  desired_verdict: 'accuse' | 'pardon';
 }
 
-export const SYSTEM_PROMPT = `You write claims for Architect of Suspicion — a game where players sort Ashley's career facts as "proof" or "objection" against a single claim about Ashley.
+export const SYSTEM_PROMPT = `You write claims for Architect of Suspicion — a game where players sort Ashley's career facts as "proof" or "objection" against a single claim about Ashley, then render Accuse or Pardon. The brief at the end always reveals a single underlying hireable_truth about how Ashley works; the verdict only swings the rhetorical opener (player saw the truth vs the record corrects them).
 
-A good claim describes Ashley's working style, instinct, approach, or pattern in a way that creates genuine player tension AND satisfies the dual-hireability test: both the "guilty" reading (this is true of Ashley) and the "not guilty" reading (this is not true of Ashley) must land as professional traits a hiring manager would respect. The claim is the surface tension; either resolution must still make Ashley look like a strong hire.
+Each claim you write has three parts:
+1. claim_text — the surface accusation, the question the player investigates. A reasonable-doubt framing of the underlying truth.
+2. hireable_truth — the single positive professional trait the brief reveals at the end. Drawn from Pass 1's truths or a sharper version of one.
+3. desired_verdict — the verdict that aligns with reality. accuse if the surface claim_text is TRUE of Ashley (the player accuses correctly to align with the truth); pardon if claim_text is FALSE (the truth contradicts the surface accusation).
 
-This is non-negotiable. The game is a public artifact viewed by recruiters. A claim that indicts character — competence, integrity, ethics, basic professionalism — is forbidden, even if "disproven" in play. The surface text is what a recruiter reads. Style claims are fine; moral claims are not.
+Recruiter-safety rule (non-negotiable): the game is a public artifact viewed by recruiters. Both the claim_text AND the hireable_truth must read as a recognizable professional trait a hiring manager would respect — even when the brief contradicts the surface claim. A claim that indicts competence, integrity, ethics, or basic professionalism is forbidden, even if the brief "exonerates" Ashley by surfacing the contradicting truth. Style framings only.
 
 Forbidden claim shapes (these EXACT shapes shipped in earlier seed runs and damaged the public artifact — never regenerate them or anything functionally equivalent):
 - "Ashley coasts on reputation rather than earning it" (indicts effort)
@@ -42,18 +54,22 @@ Forbidden claim shapes (these EXACT shapes shipped in earlier seed runs and dama
 - "Ashley prioritizes novelty over reliability" (recruiters read this as "ships broken things")
 
 Output contract:
-- Every claim must be a single declarative sentence in the form "Ashley [verb] [working-style observation]"
-- Each claim must be grounded in at least 2 tensions from the input
+- claim_text is a single declarative sentence: "Ashley [verb] [working-style observation]"
+- hireable_truth is a single declarative sentence: the trait the brief reveals
+- The relationship between claim_text and hireable_truth is reasonable doubt: someone reading the corpus quickly could plausibly believe claim_text; the full evidence reveals hireable_truth instead
+- desired_verdict reflects which way the FULL evidence actually leans:
+   - accuse: claim_text is roughly TRUE of Ashley, sharpened by hireable_truth (e.g. claim "Ashley over-engineers everything"; truth "Ashley builds constraints before features"; desired_verdict accuse — the surface claim is true, the truth is the hireable refinement)
+   - pardon: claim_text is roughly FALSE of Ashley; hireable_truth is the actual story (e.g. claim "Ashley uses AI too much"; truth "Ashley weaponizes AI — teaches and constrains it"; desired_verdict pardon — the surface accusation collapses under the truth)
+- Each claim must draw on at least 2 truths from the input
 - Rationale must name specific card titles or categories that support the claim
-- guilty_reading: one sentence describing the hireable professional trait someone sees if the claim is true
-- not_guilty_reading: one sentence describing the hireable professional trait someone sees if the claim is false
-- If you cannot honestly write both readings as hireable, the claim fails the test — replace it with one that passes
-- Return exactly the number of claims requested — no more, no fewer`;
+- Return exactly the number of claims requested — no more, no fewer
 
-/** Pin the output array length in the schema itself. Opus strict-mode
- *  honors minItems/maxItems so the model physically cannot over- or
- *  under-produce, and we save the retries we used to burn when a loose
- *  schema let it return 12 claims when we asked for 18. */
+Honesty contract: downstream Pass 4 cross-checks the desired_verdict you declare against the average ai_score sign of the claim's surviving card pool. A mismatch (claim says accuse but evidence leans pardon, or vice versa) drops the claim from the seed entirely. There is no benefit to fudging the desired_verdict — the cross-check catches it and you lose the claim anyway.`;
+
+/** Pin output array length in the schema itself so Opus strict-mode honors
+ *  minItems/maxItems and physically can't over- or under-produce. Saves the
+ *  retries we used to burn when a loose schema let it return 12 claims when
+ *  we asked for 18. */
 function schemaForTarget(target: number): Record<string, unknown> {
   return {
     type: 'object',
@@ -65,24 +81,20 @@ function schemaForTarget(target: number): Record<string, unknown> {
           properties: {
             claim_text: { type: 'string', minLength: 1 },
             rationale: { type: 'string', minLength: 1 },
-            tensions_targeted: {
+            truths_targeted: {
               type: 'array',
               items: { type: 'string' },
               minItems: 2,
             },
-            // The dual-hireability fields are required so the model commits
-            // to both readings up front. Self-graded — Pass 3+ never reads
-            // them — but the act of writing them forces the test before the
-            // claim ships.
-            guilty_reading: { type: 'string', minLength: 1 },
-            not_guilty_reading: { type: 'string', minLength: 1 },
+            hireable_truth: { type: 'string', minLength: 1 },
+            desired_verdict: { type: 'string', enum: ['accuse', 'pardon'] },
           },
           required: [
             'claim_text',
             'rationale',
-            'tensions_targeted',
-            'guilty_reading',
-            'not_guilty_reading',
+            'truths_targeted',
+            'hireable_truth',
+            'desired_verdict',
           ],
           additionalProperties: false,
         },
@@ -95,13 +107,13 @@ function schemaForTarget(target: number): Record<string, unknown> {
   };
 }
 
-function buildPrompt(cards: CardRow[], tensions: TensionMap, target: number): string {
+function buildPrompt(cards: CardRow[], truths: TruthMap, target: number): string {
   // Claude responds cleanly to clear XML-ish section tags — keep the same
   // content but wrap inputs so Opus's long-context attention can separate
   // raw material from task instructions.
-  return `<tensions>
-${JSON.stringify(tensions, null, 2)}
-</tensions>
+  return `<truths>
+${JSON.stringify(truths, null, 2)}
+</truths>
 
 <corpus count="${cards.length}">
 ${formatCardCorpus(cards)}
@@ -112,36 +124,38 @@ Generate exactly ${target} candidate claims. Downstream scoring selects the best
 </task>
 
 <requirements>
-1. Describes a working-style pattern someone could argue either way from the evidence — not a compliment, not neutral, but also not a moral indictment.
+1. Each claim_text is a working-style accusation a reasonable observer could doubt the truth of — not a compliment, not neutral, not a moral indictment.
 2. Specific enough to evaluate against individual cards without insider knowledge.
-3. Grounded in at least 2 tensions from the list above — cite them in tensions_targeted.
+3. Grounded in at least 2 truths from the input — cite them in truths_targeted.
 4. Rationale must reference specific card titles or categories as supporting evidence.
-5. Dual-hireability test: write guilty_reading and not_guilty_reading. Both must describe a recognizable professional trait a hiring manager would respect. If you cannot, the claim fails — replace it.
+5. hireable_truth is the brief's reveal: a single sharper, hireable trait the FULL evidence demonstrates.
+6. desired_verdict reflects the FULL evidence's verdict against the surface claim_text — accuse if true of Ashley, pardon if not. Be honest; downstream cross-checks compare desired_verdict against the average ai_score sign of the claim's pool, and a mismatch drops the claim.
 </requirements>
 
 <variety>
 Spread claims across these axes:
 - Breadth: some claims span 5+ categories; others focus on 3-4 but go deeper.
 - Angle: speed vs craft, autonomy vs collaboration, build vs measure, breadth vs depth, plan vs improvise, ship vs polish.
+- Verdict mix: aim for roughly half accuse-leaning and half pardon-leaning across the batch so downstream selection has both shapes.
 </variety>
 
 <shape_examples>
-Each example is paired with the dual-hireability check that lets it ship.
+Each example is paired with the underlying truth and desired verdict.
 - "Ashley over-engineers everything"
-  - guilty: rigor that pays off in production
-  - not guilty: ships pragmatically when 80% is enough
+  - hireable_truth: "Ashley builds constraints before features so failure modes become design tools."
+  - desired_verdict: accuse (surface claim is roughly true; truth is the hireable refinement)
+- "Ashley uses AI too much"
+  - hireable_truth: "Ashley weaponizes AI — teaches it, constrains it, holds it to the engineering standards she holds herself."
+  - desired_verdict: pardon (surface claim is false; the truth contradicts it)
 - "Ashley would rather build it than buy it"
-  - guilty: hands-on craft and deep understanding of her own stack
-  - not guilty: pragmatic about leverage and existing tools
+  - hireable_truth: "Ashley prefers depth in load-bearing systems and leverage everywhere else."
+  - desired_verdict: accuse (rough true; truth sharpens the trade-off into a hireable rule)
 - "Ashley always knows better than the room"
-  - guilty: confident expert worth listening to
-  - not guilty: humble collaborator who genuinely takes input
-- "Ashley follows curiosity over plan"
-  - guilty: opportunistic, ships things nobody else thought of
-  - not guilty: disciplined when the moment requires a plan
+  - hireable_truth: "Ashley arrives with the call already loaded but tests it against the room before committing."
+  - desired_verdict: pardon (surface reads as arrogance; the truth shows disciplined collaboration)
 - "Ashley solves first, names later"
-  - guilty: bias to working code
-  - not guilty: cares about clarity and maintainability
+  - hireable_truth: "Ashley ships drafts that work, then iterates names and structure once the shape is real."
+  - desired_verdict: accuse
 </shape_examples>
 
 <rejection_criteria>
@@ -153,16 +167,17 @@ Do not generate claims that are:
   - "Ashley coasts on reputation" (indicts effort)
   - "Ashley takes credit for what the team delivered" (indicts integrity)
   - "Ashley prioritizes novelty over reliability" (indicts judgment in a way recruiters will read as "ships broken things")
-  Reframe character claims as style claims that pass the dual-hireability test, or drop them.
+  Reframe character claims as style claims that pass the recruiter-safety test, or drop them.
+- Truth-claim mismatches — hireable_truth must be the SAME working-style territory as claim_text, not a non-sequitur exoneration.
 </rejection_criteria>`;
 }
 
-export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<GeneratedClaim[]> {
+export async function runPass2(cards: CardRow[], truths: TruthMap): Promise<GeneratedClaim[]> {
   const client = clientFor(config.models.pass2);
   const target = config.targets.generate;
   console.log(`[pass2] model=${client.model} generate=${target}`);
 
-  const raw = await client.complete(buildPrompt(cards, tensions, target), {
+  const raw = await client.complete(buildPrompt(cards, truths, target), {
     system: SYSTEM_PROMPT,
     // Opus 4.7 sync output cap is 64k and its new tokenizer runs ~35% more
     // tokens for the same text. Adaptive-thinking at medium effort eats a
@@ -194,37 +209,44 @@ export async function runPass2(cards: CardRow[], tensions: TensionMap): Promise<
   }
 
   const claims: GeneratedClaim[] = parsed.claims.map((claim, index) => {
-    assertHireableReading(claim.guilty_reading, 'guilty_reading', claim.claim_text);
-    assertHireableReading(claim.not_guilty_reading, 'not_guilty_reading', claim.claim_text);
+    assertNonEmpty(claim.hireable_truth, 'hireable_truth', claim.claim_text);
+    assertVerdict(claim.desired_verdict, claim.claim_text);
     return {
       id: `claim-${index + 1}`,
       claim_text: claim.claim_text,
       rationale: claim.rationale,
-      tensions_targeted: claim.tensions_targeted,
-      guilty_reading: claim.guilty_reading.trim(),
-      not_guilty_reading: claim.not_guilty_reading.trim(),
+      truths_targeted: claim.truths_targeted,
+      hireable_truth: claim.hireable_truth.trim(),
+      desired_verdict: claim.desired_verdict,
     };
   });
 
   console.log(`[pass2] ${claims.length} claims:`);
   for (const claim of claims) {
-    console.log(`  - [${claim.id}] "${claim.claim_text}"`);
+    console.log(`  - [${claim.id}] (${claim.desired_verdict.toUpperCase()}) "${claim.claim_text}"`);
+    console.log(`     truth: ${claim.hireable_truth}`);
     console.log(`     → ${claim.rationale}`);
-    console.log(`     ✓ guilty:     ${claim.guilty_reading}`);
-    console.log(`     ✓ not guilty: ${claim.not_guilty_reading}`);
   }
 
   return claims;
 }
 
-// Both readings are persisted to suspicion.claims and consumed at runtime by
-// the cover letter prompt. An empty/whitespace value would let the prompt
-// drift back to inventing a reading from claim text alone — exactly what the
-// dual-hireability constraint exists to prevent. Guard at the pipeline edge.
-function assertHireableReading(value: unknown, field: string, claimText: string): void {
+// Both fields are persisted to suspicion.claims (NOT NULL with CHECK
+// constraints) and consumed at runtime by the cover letter prompt. Validate
+// at the pipeline edge — a downstream nullish value is a pipeline bug, not
+// something runtime should silently paper over.
+function assertNonEmpty(value: unknown, field: string, claimText: string): void {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(
       `[pass2] missing ${field} for claim "${claimText}" — schema should have prevented this`,
+    );
+  }
+}
+
+function assertVerdict(value: unknown, claimText: string): void {
+  if (value !== 'accuse' && value !== 'pardon') {
+    throw new Error(
+      `[pass2] invalid desired_verdict=${String(value)} for claim "${claimText}" — schema should have prevented this`,
     );
   }
 }

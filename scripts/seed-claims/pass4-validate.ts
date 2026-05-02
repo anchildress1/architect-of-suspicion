@@ -189,6 +189,11 @@ async function processBatch(
       rewrittenBlurb: arg.rewritten_blurb.trim(),
       aiScore: clampScore(arg.ai_score),
       notes: arg.notes.trim(),
+      // isParamount defaults to false here — runPass4 picks the paramount
+      // set after all batches complete and rewrites this flag for the
+      // chosen cards. Doing it post-batch lets us balance |ai_score| against
+      // room coverage with the full pool in hand.
+      isParamount: false,
     });
   }
 
@@ -253,7 +258,22 @@ export async function runPass4(
     const coveredRooms = roomsCovered(rewrittenCards);
     const passedCoverage = coveredRooms >= config.targets.minRooms;
     const passedTotal = rewrittenCards.length >= config.targets.minTotalCards;
-    const survived = passedCoverage && passedTotal;
+    const verdictAlignment = checkVerdictAlignment(claim, claimArguments);
+    const survived = passedCoverage && passedTotal && verdictAlignment.aligned;
+
+    // Paramount selection runs only for survivors — there's no point
+    // flagging cards on a claim that won't ship. Mutates claimArguments
+    // in-place to set isParamount=true on the chosen card_ids.
+    if (survived) {
+      const paramount = selectParamount(rewrittenCards, claimArguments);
+      for (const cardId of paramount) {
+        const arg = claimArguments.get(cardId);
+        if (arg) claimArguments.set(cardId, { ...arg, isParamount: true });
+      }
+      console.log(
+        `[pass4] "${claim.claim_text}": flagged ${paramount.size} paramount card${paramount.size === 1 ? '' : 's'}`,
+      );
+    }
 
     validations.push({
       claim_id: claim.id,
@@ -263,18 +283,84 @@ export async function runPass4(
       survived,
       cut_reason: survived
         ? undefined
-        : !passedCoverage
-          ? `only ${coveredRooms}/${config.targets.minRooms} rooms covered`
-          : `only ${rewrittenCards.length} rewritten cards (need ≥${config.targets.minTotalCards})`,
+        : cutReason(claim, verdictAlignment, {
+            passedCoverage,
+            coveredRooms,
+            passedTotal,
+            rewrittenCount: rewrittenCards.length,
+          }),
       eligible_card_ids: rewrittenCards.map((c) => c.objectID),
     });
 
     console.log(
-      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${rewrittenCards.length} cards, ${coveredRooms} rooms)`,
+      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${rewrittenCards.length} cards, ${coveredRooms} rooms, avg ai_score=${verdictAlignment.average.toFixed(2)} vs desired=${claim.desired_verdict})`,
     );
   }
 
   return { validations, arguments: argumentsByClaim };
+}
+
+interface VerdictAlignment {
+  /** Average ai_score across the claim's pool. Sign indicates which way the
+   *  full evidence leans against the surface claim. */
+  average: number;
+  /** True when the evidence's directional sign matches the claim's declared
+   *  desired_verdict (positive avg → accuse, negative avg → pardon). */
+  aligned: boolean;
+}
+
+/**
+ * Cross-check Pass 2's declared desired_verdict against the directional
+ * evidence Pass 4 just produced. desired_verdict says "the surface claim is
+ * roughly TRUE/FALSE of Ashley"; the average ai_score across the pool says
+ * "here's how the cards actually lean." Mismatch = the model contradicted
+ * itself across passes — drop the claim rather than ship a brief whose
+ * verdict-as-self-assessment opener will misfire.
+ *
+ * Threshold: |average| must clear MIN_VERDICT_MAGNITUDE. A near-zero average
+ * means the pool is genuinely ambivalent, which makes desired_verdict
+ * unreliable regardless of sign — drop those too.
+ */
+function checkVerdictAlignment(
+  claim: GeneratedClaim,
+  claimArguments: Map<string, CardArgument>,
+): VerdictAlignment {
+  if (claimArguments.size === 0) return { average: 0, aligned: false };
+  let sum = 0;
+  for (const arg of claimArguments.values()) sum += arg.aiScore;
+  const average = sum / claimArguments.size;
+
+  if (Math.abs(average) < MIN_VERDICT_MAGNITUDE) {
+    return { average, aligned: false };
+  }
+  const signMatches =
+    (claim.desired_verdict === 'accuse' && average > 0) ||
+    (claim.desired_verdict === 'pardon' && average < 0);
+  return { average, aligned: signMatches };
+}
+
+const MIN_VERDICT_MAGNITUDE = 0.1;
+
+function cutReason(
+  claim: GeneratedClaim,
+  verdict: VerdictAlignment,
+  coverage: {
+    passedCoverage: boolean;
+    coveredRooms: number;
+    passedTotal: boolean;
+    rewrittenCount: number;
+  },
+): string {
+  if (!coverage.passedCoverage) {
+    return `only ${coverage.coveredRooms}/${config.targets.minRooms} rooms covered`;
+  }
+  if (!coverage.passedTotal) {
+    return `only ${coverage.rewrittenCount} rewritten cards (need ≥${config.targets.minTotalCards})`;
+  }
+  // Alignment failure — surface it loudly so a rerun can investigate the
+  // upstream Pass 2 vs Pass 4 disagreement instead of silently shipping a
+  // claim whose verdict opener would mislead the player.
+  return `desired_verdict=${claim.desired_verdict} mismatches evidence avg ai_score=${verdict.average.toFixed(2)} (need |avg|≥${MIN_VERDICT_MAGNITUDE} with matching sign)`;
 }
 
 function roomsCovered(cards: CardRow[]): number {
@@ -284,4 +370,57 @@ function roomsCovered(cards: CardRow[]): number {
     if (room) rooms.add(room);
   }
   return rooms.size;
+}
+
+const PARAMOUNT_BASE = 5;
+const PARAMOUNT_MAX = 8;
+const PARAMOUNT_MIN_ROOMS = 3;
+
+/**
+ * Pick the small set of cards that the runtime cover letter prompt MUST
+ * surface — whether or not the player ruled them. Chosen by descending
+ * |ai_score| (the most directionally decisive evidence), with room-coverage
+ * balancing so a single chamber can't dominate the must-surface set. The
+ * prompt uses these to call out paramount-but-skipped cards as gaps.
+ *
+ * Algorithm:
+ *  1. Sort survivors by |ai_score| descending. Pick the top PARAMOUNT_BASE.
+ *  2. If that picks fewer than PARAMOUNT_MIN_ROOMS distinct rooms, expand
+ *     down the ranked list (up to PARAMOUNT_MAX) adding cards from rooms
+ *     not yet covered, until either the room minimum is met or the cap
+ *     hits.
+ *  3. Returns the chosen card_id set.
+ */
+function selectParamount(
+  rewrittenCards: CardRow[],
+  claimArguments: Map<string, CardArgument>,
+): Set<string> {
+  const ranked = [...rewrittenCards]
+    .map((card) => ({ card, score: claimArguments.get(card.objectID)?.aiScore ?? 0 }))
+    .sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+
+  const chosen = new Set<string>();
+  const roomsHit = new Set<RoomSlug>();
+
+  for (let i = 0; i < ranked.length && chosen.size < PARAMOUNT_BASE; i++) {
+    const { card } = ranked[i];
+    chosen.add(card.objectID);
+    const room = roomFor(card);
+    if (room) roomsHit.add(room);
+  }
+
+  if (roomsHit.size < PARAMOUNT_MIN_ROOMS) {
+    for (let i = 0; i < ranked.length && chosen.size < PARAMOUNT_MAX; i++) {
+      const { card } = ranked[i];
+      if (chosen.has(card.objectID)) continue;
+      const room = roomFor(card);
+      if (room && !roomsHit.has(room)) {
+        chosen.add(card.objectID);
+        roomsHit.add(room);
+        if (roomsHit.size >= PARAMOUNT_MIN_ROOMS) break;
+      }
+    }
+  }
+
+  return chosen;
 }

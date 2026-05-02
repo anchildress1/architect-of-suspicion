@@ -20,16 +20,22 @@ export interface ClaimCardSeedRow {
   rewritten_blurb: string;
   /** Server-only auditor note. Persisted to `suspicion.claim_cards.notes`. */
   notes: string;
+  /** Cards essential to revealing the hireable_truth — surfaced by the
+   *  runtime brief regardless of whether the player ruled them. */
+  is_paramount: boolean;
 }
 
 export interface ClaimSeedRow {
   claim_text: string;
   rationale: string | null;
-  /** Hireable reading the runtime cover letter prompt anchors on when the
-   *  player Accuses. Pass 2 produces it; the RPC enforces NOT NULL + non-empty. */
-  guilty_reading: string;
-  /** Mirror of guilty_reading for the Pardon verdict. */
-  not_guilty_reading: string;
+  /** Single positive professional trait the brief reveals — anchors the
+   *  runtime cover letter prompt. Pass 2 produces it; the RPC enforces
+   *  NOT NULL + non-empty. */
+  hireable_truth: string;
+  /** `accuse` (claim is true of Ashley) or `pardon` (claim is false). The
+   *  brief lands the same hireable_truth either way; this only swings the
+   *  rhetorical opener. */
+  desired_verdict: 'accuse' | 'pardon';
   room_coverage: number;
   total_eligible_cards: number;
   cards: ClaimCardSeedRow[];
@@ -56,17 +62,26 @@ function assertAiScore(aiScore: number, cardId: string, claim: GeneratedClaim): 
   }
 }
 
-// Pass 2's schema marks both readings required, but persist runs after every
+// Pass 2's schema marks hireable_truth required, but persist runs after every
 // upstream pass plus disk-checkpoint round-trips that could corrupt or
-// truncate the field. The runtime cover letter prompt assumes both are
-// non-empty — fail loudly here rather than write blank strings to the DB.
-function assertReading(value: unknown, field: string, claim: GeneratedClaim): string {
+// truncate the field. The runtime cover letter prompt assumes both fields
+// are present — fail loudly here rather than write garbage to the DB.
+function assertHireableTruth(value: unknown, claim: GeneratedClaim): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(
-      `Missing ${field} for claim "${claim.claim_text}" (${claim.id}); Pass 2 must populate both readings`,
+      `Missing hireable_truth for claim "${claim.claim_text}" (${claim.id}); Pass 2 must populate it`,
     );
   }
   return value.trim();
+}
+
+function assertDesiredVerdict(value: unknown, claim: GeneratedClaim): 'accuse' | 'pardon' {
+  if (value !== 'accuse' && value !== 'pardon') {
+    throw new Error(
+      `Invalid desired_verdict=${String(value)} for claim "${claim.claim_text}" (${claim.id}); expected 'accuse' or 'pardon'`,
+    );
+  }
+  return value;
 }
 
 export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
@@ -123,18 +138,26 @@ export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
         ai_score: arg.aiScore,
         rewritten_blurb: arg.rewrittenBlurb,
         notes: arg.notes,
+        is_paramount: arg.isParamount === true,
       });
+    }
+
+    // Paramount must be a non-empty subset for surviving claims — Pass 4
+    // selects ≥3 by design. Zero paramount means selectParamount silently
+    // skipped this claim, which would let the runtime brief lose its
+    // gap-callout signal.
+    const paramountCount = cards.filter((c) => c.is_paramount).length;
+    if (paramountCount === 0) {
+      throw new Error(
+        `No paramount cards on surviving claim "${input.claim.claim_text}" (${input.claim.id}); pass4 must select at least one`,
+      );
     }
 
     payload.push({
       claim_text: input.claim.claim_text,
       rationale: input.claim.rationale,
-      guilty_reading: assertReading(input.claim.guilty_reading, 'guilty_reading', input.claim),
-      not_guilty_reading: assertReading(
-        input.claim.not_guilty_reading,
-        'not_guilty_reading',
-        input.claim,
-      ),
+      hireable_truth: assertHireableTruth(input.claim.hireable_truth, input.claim),
+      desired_verdict: assertDesiredVerdict(input.claim.desired_verdict, input.claim),
       room_coverage: input.validation.room_coverage,
       total_eligible_cards: input.validation.total_eligible_cards,
       cards,
@@ -156,6 +179,9 @@ export async function persistSeed(inputs: PersistInput[]): Promise<void> {
   }
 
   for (const claim of payload) {
-    console.log(`[persist] wrote claim "${claim.claim_text}" + ${claim.cards.length} pairs`);
+    const paramount = claim.cards.filter((c) => c.is_paramount).length;
+    console.log(
+      `[persist] wrote "${claim.claim_text}" (${claim.desired_verdict}) + ${claim.cards.length} pairs (${paramount} paramount)`,
+    );
   }
 }

@@ -21,7 +21,7 @@ import { runPass2 } from './pass2-claims';
 import { runPass3 } from './pass3-score';
 import { runPass4 } from './pass4-validate';
 import { persistSeed, type PersistInput } from './persist';
-import type { CardClaimScore, GeneratedClaim, TensionMap } from './types';
+import type { CardClaimScore, GeneratedClaim, TruthMap } from './types';
 import { pathToFileURL } from 'node:url';
 
 type Provider = 'anthropic' | 'openai' | 'gemini';
@@ -76,38 +76,42 @@ export async function main(): Promise<void> {
   // signature matches, we resume without a paid re-run. Maps serialize via
   // Object.fromEntries and are rehydrated on load.
 
-  const tensions =
-    (await loadCheckpoint<TensionMap>('pass1-tensions', sig)) ??
+  // pass1-truths: Pass 1 now produces a TruthMap (positive professional
+  // truths + reasonable-doubt framings), not a TensionMap. Cache key changed
+  // so any v1 checkpoint on disk is left orphaned and pruneStaleCheckpoints
+  // wipes it on the next run.
+  const truths =
+    (await loadCheckpoint<TruthMap>('pass1-truths', sig)) ??
     (await (async () => {
       const result = await runPass1(cards);
-      await saveCheckpoint('pass1-tensions', sig, result);
+      await saveCheckpoint('pass1-truths', sig, result);
       return result;
     })());
 
-  // pass2-claims-v2: cache key bumped when GeneratedClaim grew the
-  // guilty_reading / not_guilty_reading fields. Stale v1 files lack those
-  // fields and would silently feed empty strings into persist; pruning by
-  // signature alone wouldn't catch a same-corpus re-run after the upgrade.
+  // pass2-claims-v3: GeneratedClaim grew hireable_truth + desired_verdict
+  // and lost the dual-reading fields. v2 caches lack hireable_truth/
+  // desired_verdict and would crash persist; v3 caches are guaranteed to
+  // have the new shape.
   const candidates =
-    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims-v2', sig)) ??
+    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims-v3', sig)) ??
     (await (async () => {
-      const result = await runPass2(cards, tensions);
-      await saveCheckpoint('pass2-claims-v2', sig, result);
+      const result = await runPass2(cards, truths);
+      await saveCheckpoint('pass2-claims-v3', sig, result);
       return result;
     })());
 
-  // pass3-score-v2: bumped alongside pass2-claims-v2. The cached `selected`
-  // array is GeneratedClaim[]; the v1 shape predates the dual-hireability
-  // readings and would re-introduce them as undefined on resume.
+  // pass3-score-v3: bumped alongside pass2-claims-v3. Cached `selected`
+  // array is GeneratedClaim[] which now carries hireable_truth +
+  // desired_verdict; older shapes are not interpretable.
   const pass3Cache = await loadCheckpoint<{
     scored: Array<[string, CardClaimScore[]]>;
     selected: GeneratedClaim[];
-  }>('pass3-score-v2', sig);
+  }>('pass3-score-v3', sig);
   const { scored, selected } = pass3Cache
     ? { scored: new Map(pass3Cache.scored), selected: pass3Cache.selected }
     : await (async () => {
         const result = await runPass3(cards, candidates);
-        await saveCheckpoint('pass3-score-v2', sig, {
+        await saveCheckpoint('pass3-score-v3', sig, {
           scored: Array.from(result.scored.entries()),
           selected: result.selected,
         });
