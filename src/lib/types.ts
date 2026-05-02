@@ -74,3 +74,15 @@ export interface EvaluateResponse {
    *  the UI show a subdued state instead of pretending the Architect spoke. */
   reaction_fallback: boolean;
 }
+
+/** 409 body returned when a card has already been ruled in this session.
+ *  Carries the *canonical* server-side state so the client can re-sync
+ *  without trusting the attempted classification (which may differ from
+ *  what the database already holds — e.g. retry after a successful write,
+ *  second tab, hard reload mid-pick). */
+export interface EvaluateConflictResponse {
+  canonical: {
+    classification: Classification;
+    attention: number;
+  };
+}

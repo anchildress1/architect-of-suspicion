@@ -34,8 +34,11 @@ vi.mock('$lib/server/rateLimit', () => ({
 }));
 
 vi.mock('@sveltejs/kit', () => ({
-  json: (body: unknown) =>
-    new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }),
+  json: (body: unknown, init?: ResponseInit) =>
+    new Response(JSON.stringify(body), {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    }),
   error: (status: number, message: string) => {
     const err = new Error(message) as Error & { status: number };
     err.status = status;
@@ -82,6 +85,10 @@ interface MockOptions {
   titlesError?: unknown;
   insertError?: unknown;
   attentionUpdateError?: unknown;
+  canonicalPick?: { classification: string } | null;
+  canonicalPickError?: unknown;
+  canonicalAttention?: { attention: number | null } | null;
+  canonicalAttentionError?: unknown;
 }
 
 const insertCalls: unknown[] = [];
@@ -161,10 +168,28 @@ function setupSupabase(opts: MockOptions = {}) {
           }),
         };
       }
+      if (picksCallCount === 2) {
+        return {
+          insert: vi.fn().mockImplementation((row: unknown) => {
+            insertCalls.push(row);
+            return Promise.resolve({ error: opts.insertError ?? null });
+          }),
+        };
+      }
+      // Third call: loadCanonicalPick — select('classification').eq().eq().maybeSingle()
       return {
-        insert: vi.fn().mockImplementation((row: unknown) => {
-          insertCalls.push(row);
-          return Promise.resolve({ error: opts.insertError ?? null });
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data:
+                  opts.canonicalPick === undefined
+                    ? { classification: 'proof' }
+                    : opts.canonicalPick,
+                error: opts.canonicalPickError ?? null,
+              }),
+            }),
+          }),
         }),
       };
     }
@@ -175,6 +200,16 @@ function setupSupabase(opts: MockOptions = {}) {
           return {
             eq: vi.fn().mockResolvedValue({ error: opts.attentionUpdateError ?? null }),
           };
+        }),
+        // select used by loadCanonicalPick for attention
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data:
+                opts.canonicalAttention === undefined ? { attention: 60 } : opts.canonicalAttention,
+              error: opts.canonicalAttentionError ?? null,
+            }),
+          }),
         }),
       };
     }
@@ -409,15 +444,71 @@ describe('POST /api/evaluate', () => {
     await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to record pick');
   });
 
-  it('409s when the card has already been ruled in the session', async () => {
+  it('returns 409 with canonical classification + attention when the card was already ruled', async () => {
     setupSupabase({
       pairScore: 0.3,
       insertError: { message: 'duplicate', code: '23505' },
+      canonicalPick: { classification: 'objection' },
+      canonicalAttention: { attention: 42 },
+    });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    const res = await POST(makeRequest(validBody));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body).toEqual({
+      canonical: { classification: 'objection', attention: 42 },
+    });
+  });
+
+  it.each([
+    { label: 'null', dbValue: null, expected: 50 },
+    { label: 'too low', dbValue: -999, expected: 0 },
+    { label: 'too high', dbValue: 999, expected: 100 },
+  ])(
+    'normalizes $label canonical attention before returning a conflict',
+    async ({ dbValue, expected }) => {
+      setupSupabase({
+        pairScore: 0.3,
+        insertError: { message: 'duplicate', code: '23505' },
+        canonicalPick: { classification: 'proof' },
+        canonicalAttention: { attention: dbValue },
+      });
+      mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+      const res = await POST(makeRequest(validBody));
+      const body = await res.json();
+
+      expect(res.status).toBe(409);
+      expect(body).toEqual({
+        canonical: { classification: 'proof', attention: expected },
+      });
+    },
+  );
+
+  it('500s on conflict if the canonical pick cannot be re-read', async () => {
+    setupSupabase({
+      pairScore: 0.3,
+      insertError: { message: 'duplicate', code: '23505' },
+      canonicalPick: null,
     });
     mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 
     await expect(POST(makeRequest(validBody))).rejects.toThrow(
-      'Card already ruled in this session',
+      'Failed to recover canonical pick after conflict',
+    );
+  });
+
+  it('500s on conflict if the canonical attention cannot be re-read', async () => {
+    setupSupabase({
+      pairScore: 0.3,
+      insertError: { message: 'duplicate', code: '23505' },
+      canonicalAttention: null,
+    });
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    await expect(POST(makeRequest(validBody))).rejects.toThrow(
+      'Failed to recover canonical attention after conflict',
     );
   });
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
   import type { Classification, ClaimCardEntry } from '$lib/types';
 
   interface Props {
@@ -12,18 +11,15 @@
 
   let { card, index, total, onDecide, disabled = false }: Props = $props();
   let chosen = $state<Classification | null>(null);
-  let timer: ReturnType<typeof setTimeout> | null = null;
 
   function decide(c: Classification) {
     if (chosen || disabled) return;
     chosen = c;
-    // Let the stamp animation read before swapping the witness.
-    timer = setTimeout(() => onDecide(card, c), 360);
+    // Fire the pick immediately — the stamp + exit transitions on this card
+    // play in parallel with the API call (typically 2–5s round-trip), giving
+    // the player far more readtime than the previous 360ms cosmetic delay.
+    onDecide(card, c);
   }
-
-  onDestroy(() => {
-    if (timer) clearTimeout(timer);
-  });
 </script>
 
 <article
@@ -36,17 +32,11 @@
   <div class="wc-edge" aria-hidden="true"></div>
 
   <header class="wc-head">
-    <span class="wc-cat">{card.category}</span>
     <span class="wc-id">Exhibit {index + 1} / {total}</span>
   </header>
 
   <h2 class="wc-title">{card.title}</h2>
   <p class="wc-body">{card.blurb}</p>
-
-  <footer class="wc-foot">
-    <span class="wc-who">Case 23&middot;{(index + 11).toString().padStart(2, '0')}</span>
-    <span class="wc-line"></span>
-  </footer>
 
   <div class="wc-stamp wc-stamp-proof" aria-hidden={chosen !== 'proof'}>Proof</div>
   <div class="wc-stamp wc-stamp-objection" aria-hidden={chosen !== 'objection'}>Objection</div>
@@ -74,25 +64,33 @@
 </article>
 
 <style>
+  /* Mechanical witness card — dark instrument panel on a darker stage.
+     The 3px ember left rule is the only chromatic event at rest. */
   .witness-card {
     position: relative;
     width: min(100%, 36rem);
     background: linear-gradient(180deg, rgba(20, 20, 23, 0.92) 0%, rgba(11, 11, 13, 0.96) 100%);
     border: 1px solid rgba(233, 228, 216, 0.18);
+    color: var(--color-paper);
     box-shadow:
       0 30px 60px rgba(0, 0, 0, 0.55),
       inset 0 1px 0 rgba(233, 228, 216, 0.04);
     padding: 2rem 2.25rem 1.4rem;
     overflow: hidden;
     transition:
-      transform 360ms cubic-bezier(0.4, 0, 0.2, 1),
-      opacity 360ms ease;
+      transform 360ms var(--ease-snap),
+      opacity 360ms ease,
+      filter 360ms ease;
   }
 
+  /* 2px ember left rule — the universal "voice" edge across the app. */
   .wc-edge {
     position: absolute;
-    inset: 12px;
-    border: 1px solid rgba(233, 228, 216, 0.08);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: var(--color-ember);
     pointer-events: none;
   }
 
@@ -101,10 +99,10 @@
     justify-content: space-between;
     margin-bottom: 1.4rem;
     padding-bottom: 0.7rem;
-    border-bottom: 1px dashed rgba(233, 228, 216, 0.16);
+    border-bottom: 1px solid rgba(233, 228, 216, 0.12);
     font-family: var(--font-readout);
-    font-size: 0.6rem;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
   }
@@ -112,7 +110,8 @@
   .wc-title {
     font-family: var(--font-display);
     font-style: italic;
-    font-size: clamp(1.4rem, 2vw, 1.85rem);
+    font-weight: 400;
+    font-size: clamp(1.4rem, 2.2vw, 1.95rem);
     color: var(--color-bone);
     line-height: 1.25;
     text-wrap: balance;
@@ -124,56 +123,39 @@
     font-size: 0.95rem;
     color: var(--color-paper-dim);
     line-height: 1.65;
+    max-width: 56ch;
     margin-bottom: 1.8rem;
     text-wrap: pretty;
   }
 
-  .wc-foot {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-family: var(--font-readout);
-    font-size: 0.55rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
-    margin-bottom: 1.2rem;
-  }
-
-  .wc-line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, var(--color-brass-deep), transparent);
-  }
-
-  /* Stamps — overlay when a verdict is rendered */
+  /* Stamps — top-right, blue/red/neutral verdict colors on dark. */
   .wc-stamp {
     position: absolute;
-    top: 25%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-8deg) scale(0.6);
+    top: 36px;
+    right: 44px;
+    transform-origin: top right;
+    transform: rotate(-8deg) scale(1.2);
     font-family: var(--font-display);
-    font-style: italic;
-    font-size: 4rem;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border: 6px double currentColor;
-    padding: 0.5rem 1.5rem;
+    border: 3px solid currentColor;
+    padding: 0.4rem 0.9rem;
+    background: rgba(11, 11, 13, 0.55);
     opacity: 0;
     pointer-events: none;
     transition:
-      opacity 240ms ease,
-      transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      opacity var(--motion-snap) ease-out,
+      transform var(--motion-snap) var(--ease-overshoot);
   }
 
   .wc-stamp-proof {
     color: var(--color-bone);
   }
-
   .wc-stamp-objection {
     color: var(--color-cyan-ink);
   }
-
   .wc-stamp-dismiss {
     color: var(--color-brass-dim);
   }
@@ -181,30 +163,36 @@
   .exit-proof .wc-stamp-proof,
   .exit-objection .wc-stamp-objection,
   .exit-dismiss .wc-stamp-dismiss {
-    opacity: 0.85;
-    transform: translate(-50%, -50%) rotate(-8deg) scale(1);
+    opacity: 0.95;
+    transform: rotate(-8deg) scale(1);
   }
 
-  /* Card exits */
+  /* Card exits — proof rises, objection falls right, dismiss drains.
+     The card dims to 0.4 instead of disappearing entirely so the stamp
+     stays visible during the LLM round-trip (typically 2–5s after the
+     360ms exit transition completes). When the API resolves and the
+     parent advances the pointer, this component is destroyed and the
+     next witness pops in. */
   .exit-proof,
   .exit-objection,
   .exit-dismiss {
-    opacity: 0;
+    opacity: 0.4;
   }
 
   .exit-proof {
-    transform: translateX(36px) rotate(2deg);
+    transform: translateY(-24px) rotate(1deg);
   }
 
   .exit-objection {
-    transform: translateX(-36px) rotate(-2deg);
+    transform: translateX(40px) rotate(-2deg);
   }
 
   .exit-dismiss {
-    transform: translateY(28px) scale(0.97);
+    transform: translateX(-32px) scale(0.97);
+    filter: grayscale(1);
   }
 
-  /* Lever strip */
+  /* Levers — neutral instrument switches; verdict color appears on hover. */
   .wc-levers {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -215,19 +203,18 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.2rem;
-    padding: 0.85rem 0.9rem;
+    gap: 0.3rem;
+    padding: 14px 12px;
     background: rgba(11, 11, 13, 0.7);
-    border: 1px solid rgba(233, 228, 216, 0.12);
+    border: 1px solid rgba(233, 228, 216, 0.18);
     color: var(--color-paper-dim);
     cursor: pointer;
     text-align: left;
-    transition: all 0.25s ease;
-  }
-
-  .lv:hover:not(:disabled) {
-    border-color: rgba(233, 228, 216, 0.4);
-    background: rgba(20, 20, 23, 0.88);
+    transition:
+      box-shadow var(--motion-base) var(--ease-out),
+      border-color var(--motion-base) var(--ease-out),
+      background var(--motion-base) var(--ease-out),
+      color var(--motion-base) var(--ease-out);
   }
 
   .lv:disabled {
@@ -237,7 +224,7 @@
 
   .lv-key {
     font-family: var(--font-readout);
-    font-size: 0.55rem;
+    font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
@@ -245,25 +232,38 @@
 
   .lv-name {
     font-family: var(--font-display);
-    font-style: italic;
     font-size: 1.15rem;
     color: var(--color-bone);
   }
 
   .lv-hint {
-    font-family: var(--font-readout);
-    font-size: 0.5rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--color-brass-dim);
+    font-family: var(--font-body);
+    font-size: 11px;
+    color: var(--color-paper-dim);
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.3;
   }
 
+  /* Per-verdict hover: proof stays bone, objection uses cyan-ink, dismiss stays neutral. */
   .lv-proof:hover:not(:disabled) {
     border-color: var(--color-bone);
+    color: var(--color-paper);
+    box-shadow:
+      0 0 0 1px rgba(233, 228, 216, 0.75),
+      0 8px 24px rgba(233, 228, 216, 0.18);
+  }
+
+  .lv-proof:hover:not(:disabled) .lv-name {
+    color: var(--color-bone);
   }
 
   .lv-objection:hover:not(:disabled) {
     border-color: var(--color-cyan-ink);
+    color: var(--color-paper);
+    box-shadow:
+      0 0 0 1px var(--color-cyan-ink),
+      0 8px 24px rgba(107, 143, 176, 0.28);
   }
 
   .lv-objection:hover:not(:disabled) .lv-name {
@@ -272,5 +272,9 @@
 
   .lv-dismiss:hover:not(:disabled) {
     border-color: var(--color-brass-dim);
+    color: var(--color-paper);
+    box-shadow:
+      0 0 0 1px var(--color-brass-dim),
+      0 8px 24px rgba(122, 118, 104, 0.22);
   }
 </style>

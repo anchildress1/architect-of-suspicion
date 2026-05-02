@@ -101,9 +101,9 @@ describe('attentionFromHistory', () => {
 });
 
 describe('moodFor', () => {
-  it('returns Drifting at the low end', () => {
-    expect(moodFor(0)).toBe('Drifting');
-    expect(moodFor(20)).toBe('Drifting');
+  it('returns Exonerating at the low end', () => {
+    expect(moodFor(0)).toBe('Exonerating');
+    expect(moodFor(20)).toBe('Exonerating');
   });
 
   it('returns Watching in the lower middle', () => {
@@ -111,18 +111,18 @@ describe('moodFor', () => {
     expect(moodFor(50)).toBe('Watching');
   });
 
-  it('returns Interested in the upper middle', () => {
-    expect(moodFor(55)).toBe('Interested');
-    expect(moodFor(75)).toBe('Interested');
+  it('returns Tightening in the upper middle', () => {
+    expect(moodFor(55)).toBe('Tightening');
+    expect(moodFor(75)).toBe('Tightening');
   });
 
-  it('returns Riveted at the high end', () => {
-    expect(moodFor(80)).toBe('Riveted');
-    expect(moodFor(100)).toBe('Riveted');
+  it('returns Damning at the high end', () => {
+    expect(moodFor(80)).toBe('Damning');
+    expect(moodFor(100)).toBe('Damning');
   });
 
   it('clamps out-of-range values before mapping', () => {
-    expect(moodFor(-10)).toBe('Drifting');
-    expect(moodFor(150)).toBe('Riveted');
+    expect(moodFor(-10)).toBe('Exonerating');
+    expect(moodFor(150)).toBe('Damning');
   });
 });

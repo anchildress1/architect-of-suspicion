@@ -45,8 +45,8 @@
 
   .error-label {
     font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 0.3em;
+    font-size: 12px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-brass-dim);
     margin-bottom: 1.5rem;
@@ -64,16 +64,15 @@
   .error-message {
     font-family: var(--font-body);
     font-size: 1.1rem;
-    font-style: italic;
-    color: var(--color-parchment);
+    color: var(--color-bone);
     line-height: 1.6;
     margin-bottom: 0.75rem;
   }
 
   .error-detail {
     font-family: var(--font-readout);
-    font-size: 0.7rem;
-    color: var(--color-parchment-dim);
+    font-size: 11px;
+    color: var(--color-brass-dim);
     margin-bottom: 2rem;
   }
 
@@ -94,7 +93,6 @@
 
   .error-link:hover {
     border-color: var(--color-brass);
-    background: rgba(196, 162, 78, 0.1);
-    box-shadow: 0 0 20px rgba(196, 162, 78, 0.1);
+    background: rgba(233, 228, 216, 0.06);
   }
 </style>

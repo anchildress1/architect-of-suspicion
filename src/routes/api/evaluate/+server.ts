@@ -1,12 +1,12 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { Classification, FullCard } from '$lib/types';
+import type { Classification, EvaluateConflictResponse, FullCard } from '$lib/types';
 import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildReactionPrompt } from '$lib/server/prompts/evaluate';
 import { rateLimitGuard } from '$lib/server/rateLimit';
-import { applyAttentionDelta, clampAttention } from '$lib/attention';
+import { applyAttentionDelta, BASELINE_ATTENTION, clampAttention } from '$lib/attention';
 import { loadSessionCapability } from '$lib/server/sessionCapability';
 import { isUuid, parseJsonBodyWithLimit } from '$lib/server/validation';
 
@@ -137,6 +137,50 @@ async function loadPickHistory(
   }));
 }
 
+async function loadCanonicalPick(
+  sessionId: string,
+  cardId: string,
+): Promise<EvaluateConflictResponse> {
+  const supabase = getSupabase();
+  const suspicion = supabase.schema('suspicion');
+
+  const [pickRes, sessionRes] = await Promise.all([
+    suspicion
+      .from('picks')
+      .select('classification')
+      .eq('session_id', sessionId)
+      .eq('card_id', cardId)
+      .maybeSingle(),
+    suspicion.from('sessions').select('attention').eq('session_id', sessionId).maybeSingle(),
+  ]);
+
+  if (pickRes.error || !pickRes.data) {
+    console.error(
+      '[evaluate] canonical pick read failed:',
+      pickRes.error?.message ?? 'no row returned for unique-conflict pick',
+    );
+    error(500, 'Failed to recover canonical pick after conflict');
+  }
+  if (sessionRes.error || !sessionRes.data) {
+    console.error(
+      '[evaluate] canonical attention read failed:',
+      sessionRes.error?.message ?? 'session row missing',
+    );
+    error(500, 'Failed to recover canonical attention after conflict');
+  }
+
+  return {
+    canonical: {
+      classification: pickRes.data.classification as Classification,
+      attention: clampAttention(
+        typeof sessionRes.data.attention === 'number'
+          ? sessionRes.data.attention
+          : BASELINE_ATTENTION,
+      ),
+    },
+  };
+}
+
 async function callReaction(
   claimText: string,
   card: FullCard,
@@ -146,7 +190,10 @@ async function callReaction(
   try {
     const client = getClaudeClient();
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      // Sonnet handles in-character voice + connecting evidence to the claim
+      // measurably better than Haiku at this prompt size; Haiku tended toward
+      // generic atmospheric filler despite the "name a SPECIFIC detail" rule.
+      model: 'claude-sonnet-4-6',
       max_tokens: 400,
       system: ARCHITECT_SYSTEM_PROMPT,
       messages: [
@@ -202,8 +249,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
   if (pickError) {
     // 23505 = unique_violation: the card has already been ruled in this session.
+    // Return the *canonical* pick + attention so the client can re-sync to the
+    // server's truth instead of committing the attempted classification (which
+    // may differ from what was actually persisted — see types.EvaluateConflictResponse).
     if ((pickError as { code?: string }).code === '23505') {
-      error(409, 'Card already ruled in this session');
+      const canonical = await loadCanonicalPick(session.sessionId, input.cardId);
+      return json(canonical satisfies EvaluateConflictResponse, { status: 409 });
     }
     console.error('[evaluate] picks insert failed:', pickError.message);
     error(500, 'Failed to record pick');

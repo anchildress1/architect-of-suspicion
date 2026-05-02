@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Design QA — POC vs Implementation</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0b0b0d;
+        --void: #141417;
+        --iron: #1a1a1e;
+        --plate: #22222a;
+        --paper: #e9e4d8;
+        --paper-dim: #a5a090;
+        --bone: #e9e4d8;
+        --bone-dim: #c9c4b4;
+        --brass-dim: #7a7668;
+        --brass-deep: #3e3c34;
+        --ember: #d23a2a;
+        --ember-deep: #8a1f14;
+        --cyan: #6b8fb0;
+        --rule: rgba(233, 228, 216, 0.12);
+        --f-display: 'Instrument Serif', Georgia, serif;
+        --f-body: 'Geist', system-ui, sans-serif;
+        --f-mono: 'JetBrains Mono', ui-monospace, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--f-body);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Outer frame */
+      .doc {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 96px 64px 120px;
+      }
+
+      /* Masthead — feels like the dossier itself */
+      .masthead {
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 36px;
+        margin-bottom: 64px;
+        position: relative;
+      }
+      .masthead .eyebrow {
+        font-family: var(--f-mono);
+        font-size: 11px;
+        letter-spacing: 0.36em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .masthead .eyebrow::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        background: var(--ember);
+        box-shadow: 0 0 10px var(--ember);
+        border-radius: 50%;
+      }
+      .masthead h1 {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-weight: 400;
+        font-size: 76px;
+        line-height: 1.05;
+        margin: 0 0 28px;
+        color: var(--bone);
+        letter-spacing: -0.005em;
+        text-wrap: balance;
+      }
+      .masthead h1 em {
+        color: var(--ember);
+        font-style: italic;
+      }
+      .masthead .deck {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 22px;
+        color: var(--paper-dim);
+        line-height: 1.45;
+        max-width: 56ch;
+        text-wrap: pretty;
+      }
+      .masthead .meta {
+        margin-top: 28px;
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        font-family: var(--f-mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+      }
+      .masthead .meta b {
+        color: var(--bone);
+        font-weight: 500;
+      }
+
+      /* Section anchor */
+      .sec {
+        margin-bottom: 72px;
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .sec-head .num {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 48px;
+        color: var(--ember);
+        line-height: 1;
+      }
+      .sec-head h2 {
+        font-family: var(--f-display);
+        font-weight: 400;
+        font-size: 34px;
+        line-height: 1.1;
+        color: var(--bone);
+        margin: 0;
+        flex: 1;
+        text-wrap: balance;
+      }
+      .sec-head .severity {
+        font-family: var(--f-mono);
+        font-size: 10px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border: 1px solid currentColor;
+        white-space: nowrap;
+      }
+      .severity.crit {
+        color: var(--ember);
+      }
+      .severity.high {
+        color: #d99a3a;
+      }
+      .severity.med {
+        color: var(--cyan);
+      }
+
+      .sec p.lede {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 19px;
+        color: var(--paper-dim);
+        line-height: 1.5;
+        margin: 0 0 20px;
+        max-width: 60ch;
+        text-wrap: pretty;
+      }
+
+      /* Gap card */
+      .gap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1px solid var(--rule);
+        margin-bottom: 22px;
+        background: rgba(255, 255, 255, 0.012);
+      }
+      .gap > .col {
+        padding: 22px 24px;
+        position: relative;
+      }
+      .gap > .col + .col {
+        border-left: 1px solid var(--rule);
+      }
+      .gap .col-head {
+        font-family: var(--f-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .gap .col.actual .col-head {
+        color: var(--ember);
+      }
+      .gap .col.target .col-head {
+        color: var(--bone-dim);
+      }
+      .gap .col.actual .col-head::before {
+        content: '✗';
+        margin-right: 8px;
+      }
+      .gap .col.target .col-head::before {
+        content: '✓';
+        margin-right: 8px;
+      }
+      .gap .what {
+        font-family: var(--f-display);
+        font-size: 18px;
+        line-height: 1.35;
+        color: var(--bone);
+        margin: 0 0 8px;
+        text-wrap: balance;
+      }
+      .gap .why {
+        font-family: var(--f-body);
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--paper-dim);
+        margin: 0;
+        text-wrap: pretty;
+      }
+      .gap.full {
+        grid-template-columns: 1fr;
+      }
+      .gap.full > .col + .col {
+        border-left: none;
+        border-top: 1px solid var(--rule);
+      }
+
+      /* Code chips for selectors / paths */
+      code,
+      .code {
+        font-family: var(--f-mono);
+        font-size: 12.5px;
+        color: var(--bone);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 1px 6px;
+        border-radius: 1px;
+        border: 1px solid var(--rule);
+      }
+      .pathline {
+        font-family: var(--f-mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--brass-dim);
+        margin-top: 6px;
+      }
+      .pathline a {
+        color: var(--cyan);
+        text-decoration: none;
+      }
+
+      /* Fix block — actionable */
+      .fix {
+        margin-top: 14px;
+        padding: 14px 16px;
+        background: rgba(210, 58, 42, 0.06);
+        border-left: 2px solid var(--ember);
+      }
+      .fix .fix-head {
+        font-family: var(--f-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--ember);
+        margin-bottom: 8px;
+      }
+      .fix p {
+        font-family: var(--f-body);
+        font-size: 13.5px;
+        line-height: 1.55;
+        color: var(--paper);
+        margin: 0 0 6px;
+      }
+      .fix p:last-child {
+        margin-bottom: 0;
+      }
+      .fix ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        font-size: 13.5px;
+        line-height: 1.7;
+        color: var(--paper);
+      }
+      .fix li::marker {
+        color: var(--ember);
+      }
+
+      /* Pull-quote callout */
+      .callout {
+        margin: 36px 0;
+        padding: 28px 32px;
+        border-left: 3px solid var(--ember);
+        background: linear-gradient(180deg, rgba(210, 58, 42, 0.08), rgba(210, 58, 42, 0.02));
+      }
+      .callout .lbl {
+        font-family: var(--f-mono);
+        font-size: 10px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--ember);
+        margin-bottom: 10px;
+      }
+      .callout p {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 24px;
+        line-height: 1.4;
+        color: var(--bone);
+        margin: 0;
+        text-wrap: pretty;
+      }
+
+      /* Closing — checklist */
+      .checklist {
+        margin-top: 72px;
+        padding: 32px;
+        border: 1px solid var(--rule);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .checklist h3 {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-weight: 400;
+        font-size: 28px;
+        color: var(--bone);
+        margin: 0 0 18px;
+      }
+      .checklist ol {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+        counter-reset: chk;
+      }
+      .checklist li {
+        counter-increment: chk;
+        padding: 10px 0 10px 44px;
+        position: relative;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--paper);
+        border-bottom: 1px dashed var(--rule);
+      }
+      .checklist li:last-child {
+        border-bottom: none;
+      }
+      .checklist li::before {
+        content: counter(chk, decimal-leading-zero);
+        position: absolute;
+        left: 0;
+        top: 10px;
+        font-family: var(--f-mono);
+        font-size: 11px;
+        color: var(--brass-dim);
+        letter-spacing: 0.18em;
+      }
+      .checklist li b {
+        color: var(--bone);
+        font-weight: 500;
+      }
+
+      /* Footer signature */
+      .signoff {
+        margin-top: 80px;
+        padding-top: 32px;
+        border-top: 1px solid var(--rule);
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .signoff .by {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 22px;
+        color: var(--bone);
+      }
+      .signoff .role {
+        font-family: var(--f-mono);
+        font-size: 10px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--brass-dim);
+        text-align: right;
+      }
+
+      /* Print-friendly */
+      @media print {
+        body {
+          background: #fff;
+          color: #111;
+        }
+        .gap {
+          break-inside: avoid;
+        }
+        .sec {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <article class="doc">
+      <!-- ─── Masthead ─────────────────────────────────────── -->
+      <header class="masthead">
+        <p class="eyebrow">Design QA &middot; Architect of Suspicion &middot; Internal</p>
+        <h1>The implementation has <em>drifted</em>.</h1>
+        <p class="deck">
+          A field report on where the production app diverges from
+          <code>redesign/cinematic-forge</code> &mdash; and how to bring it back. Five screens
+          audited; thirteen gaps catalogued; a punch list at the end.
+        </p>
+        <div class="meta">
+          <span><b>Reviewed</b> April 2026</span>
+          <span><b>Branch</b> redesign/cinematic-forge</span>
+          <span><b>Audited</b> Summons, Mansion, Chamber, Verdict, Architect Panel</span>
+          <span><b>Severity</b> 4 critical, 6 high, 3 medium</span>
+        </div>
+      </header>
+
+      <!-- ─── The thesis ─────────────────────────────────────── -->
+      <div class="callout">
+        <div class="lbl">Thesis</div>
+        <p>
+          The implementation reads correct &mdash; bone on ink, the right fonts, the right copy. But
+          it has lost the <em>theatre</em>. Every screen is one or two clicks away from the POC, and
+          the cumulative effect is a courtroom drama dressed as a CRUD app. Below, in priority
+          order, the work to put the gavel back in the room.
+        </p>
+      </div>
+
+      <!-- ─── 01 · Witness card (CRITICAL) ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">01</span>
+          <h2>The witness card never made the leap to parchment.</h2>
+          <span class="severity crit">Critical</span>
+        </div>
+        <p class="lede">
+          This is the single most consequential gap. The POC inverted the card &mdash; bone
+          parchment with dark ink, an editorial broadsheet. The implementation kept the original
+          dark slab. Everything downstream (stamps, queue, levers) is calibrated against the new
+          card and reads wrong without it.
+        </p>
+
+        <div class="gap">
+          <div class="col actual">
+            <div class="col-head">Implementation &middot; today</div>
+            <p class="what">Dark slab card, cream text on near-black.</p>
+            <p class="why">
+              <code>WitnessCard.svelte</code> uses
+              <code
+                >background: linear-gradient(180deg, rgba(20,20,23,0.92), rgba(11,11,13,0.96))</code
+              >
+              with bone text. The card disappears into the chamber background and reads as a panel,
+              not a document.
+            </p>
+            <div class="pathline">
+              src/lib/components/WitnessCard.svelte &middot; lines 80&ndash;90
+            </div>
+          </div>
+          <div class="col target">
+            <div class="col-head">POC &middot; target</div>
+            <p class="what">Bone parchment broadsheet, ink-colored text, ember edge rule.</p>
+            <p class="why">
+              <code>.witness-card { background: var(--bone); color: var(--paper-ink); }</code> with
+              a 3px ember left rule and 32px box-shadow. Reads as a sworn document on a dark stage
+              &mdash; the lit object in the room.
+            </p>
+            <div class="pathline">styles.css &middot; .witness-card (~line 1190)</div>
+          </div>
+        </div>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Swap card background to <code>var(--color-bone)</code>; text color to
+              <code>var(--color-paper-ink)</code> (a new token: <code>#14141a</code>).
+            </li>
+            <li>
+              Replace <code>.wc-edge</code> 1px inset border with a
+              <strong>3px ember left rule</strong> (<code>::before</code>, full height, no inset).
+            </li>
+            <li>
+              Drop the dashed brass border under <code>.wc-head</code>; use a solid
+              <code>1px rgba(20,20,26,0.15)</code> hairline instead. Bone needs ink hairlines, not
+              brass.
+            </li>
+            <li>
+              Title goes to <strong>52px Instrument Serif, weight 400</strong> (regular, not italic)
+              &mdash; the broadsheet effect requires the upright serif at scale.
+            </li>
+            <li>
+              Body copy: 17px / 1.55, color <code>rgba(20,20,26,0.78)</code>,
+              <code>max-width: 56ch</code>.
+            </li>
+            <li>
+              Padding bumps to <code>44px 56px 36px</code>. The current 2rem/2.25rem reads cramped
+              on bone.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 02 · Stamps (CRITICAL) ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">02</span>
+          <h2>The verdict stamps are vestigial.</h2>
+          <span class="severity crit">Critical</span>
+        </div>
+        <p class="lede">
+          In the POC a stamp is the punctuation of a decision &mdash; it lands hard, in the corner,
+          in the language of evidence rooms. The implementation places it center-card at 25% top, in
+          cream-on-black, where it reads as a watermark over a panel rather than ink slammed onto a
+          document.
+        </p>
+
+        <div class="gap">
+          <div class="col actual">
+            <div class="col-head">Implementation &middot; today</div>
+            <p class="what">Centered, cream / cyan / brass on dark, 4rem.</p>
+            <p class="why">
+              Without the bone card behind it, the stamp has no surface to stamp <em>onto</em>. The
+              colors (bone, cyan-ink, brass-dim) all sit at similar luminance against the dark slab,
+              so the stamp blends instead of slams.
+            </p>
+            <div class="pathline">WitnessCard.svelte &middot; .wc-stamp (~line 138)</div>
+          </div>
+          <div class="col target">
+            <div class="col-head">POC &middot; target</div>
+            <p class="what">Top-right, 22px, ‑8&deg; rotation, on bone parchment.</p>
+            <p class="why">
+              <strong>Proof</strong> in deep green (<code>#0a6a4a</code>),
+              <strong>Objection</strong> in ember, <strong>Struck</strong> in slate. Each scaled-in
+              with a 180ms cubic-bezier overshoot to feel like a hand pressing a stamp. The contrast
+              against bone is what sells it.
+            </p>
+            <div class="pathline">styles.css &middot; .wc-stamp (~line 1260)</div>
+          </div>
+        </div>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Move stamps to <code>top: 36px; right: 44px; transform-origin: top right</code>.
+            </li>
+            <li>
+              Use the POC's color palette: <strong>Proof <code>#0a6a4a</code></strong
+              >, <strong>Objection <code>--ember</code></strong
+              >, <strong>Dismiss <code>#5a5a5a</code></strong
+              >. Cyan-ink is wrong here &mdash; objection is the hot color.
+            </li>
+            <li>
+              Stamp size <strong>22px Instrument Serif weight 700</strong>, letter-spacing 0.22em,
+              uppercase, 3px solid border (not 6px double).
+            </li>
+            <li>
+              Animation: 180ms ease-out opacity + cubic-bezier(.3, 1.5, .4, 1) scale from 1.2 &rarr;
+              1.0 with ‑8&deg; rotation. The slight overshoot is what makes it feel like a hand.
+            </li>
+            <li>Hold stamp 360ms before card exits &mdash; the player needs to read it.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 03 · Levers ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">03</span>
+          <h2>The levers are buttons, not levers.</h2>
+          <span class="severity high">High</span>
+        </div>
+        <p class="lede">
+          The POC treats the three actions as instrument-panel switches &mdash; tall slate panels
+          with brass borders, color encoding the verdict on hover. The implementation has flat,
+          low-contrast pills that feel like form controls.
+        </p>
+
+        <div class="gap">
+          <div class="col actual">
+            <div class="col-head">Implementation &middot; today</div>
+            <p class="what">Flat panels, hover only changes border color.</p>
+            <p class="why">
+              Border <code>rgba(233,228,216,0.12)</code> hover to <code>0.4</code> &mdash; barely
+              perceptible. Background stays the same. No glow, no shadow. They feel optional.
+            </p>
+          </div>
+          <div class="col target">
+            <div class="col-head">POC &middot; target</div>
+            <p class="what">Embossed slate switches with verdict-colored glow on hover.</p>
+            <p class="why">
+              Background <code>linear-gradient(180deg, #22262f, #14171f)</code>, 1px brass border,
+              padding 14&times;12. <strong>On hover, glow + 1px ring in the verdict color</strong>:
+              brass for proof, ember for objection, brass-dim for dismiss. Click feels like throwing
+              a switch.
+            </p>
+          </div>
+        </div>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Lever background: <code>linear-gradient(180deg, #22262f, #14171f)</code>; border
+              <code>1px solid rgba(196,162,78,0.35)</code> &mdash; this is the one place warm brass
+              survives, because the levers are the only physical mechanism in the chamber.
+            </li>
+            <li>
+              Hover state per-verdict: ember box-shadow on objection, bone-glow on proof, brass-dim
+              on dismiss. <code>box-shadow: 0 0 0 1px var(--brass), 0 8px 24px rgba(...)</code>.
+            </li>
+            <li>
+              Add the keyboard hint visibly (<code>P &rarr;</code>, <code>&uarr; O</code>,
+              <code>&larr; &#x232B;</code>) in mono 9px, brass-dim. The implementation has them
+              already; they just need to read like they belong on an instrument.
+            </li>
+            <li>
+              Hint copy under each lever: 11px Geist, paper-dim. <em>Strike from record</em> /
+              <em>Counter-evidence</em> / <em>Enter as evidence</em>.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 04 · Title scale on Summons ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">04</span>
+          <h2>The summons title is whispering.</h2>
+          <span class="severity high">High</span>
+        </div>
+        <p class="lede">
+          <code>clamp(2.5rem, 6vw, 4.25rem)</code> ceilings the headline at 68px. The POC ran it at
+          56&ndash;72px <em>uppercase serif with 0.25em tracking</em>. The whole thing is meant to
+          read like a marquee. At 68px italic without tracking, it reads as a hero header.
+        </p>
+
+        <div class="gap">
+          <div class="col actual">
+            <div class="col-head">Implementation &middot; today</div>
+            <p class="what">Italic headline, no tracking, ember <em>of</em> small.</p>
+            <p class="why">
+              The current treatment makes <code>of</code> brass-dim and small (0.75em). In the POC,
+              <code>of</code> is the only ember on the screen and it is given equal optical weight
+              to <em>Architect</em> / <em>Suspicion</em> &mdash; that's the whole joke of the title.
+            </p>
+            <div class="pathline">routes/+page.svelte &middot; .summons-headline (~line 226)</div>
+          </div>
+          <div class="col target">
+            <div class="col-head">POC &middot; target</div>
+            <p class="what">
+              Roman caps, 56px, 0.25em tracking, ember <em>of</em> sized as a peer.
+            </p>
+            <p class="why">
+              Letter-spacing carries the marquee feel; size carries the menace. The ember
+              <code>of</code> stays the same size as the rest of the line, italic, as the single
+              chromatic event in an otherwise bone-on-ink composition.
+            </p>
+          </div>
+        </div>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Headline:
+              <code
+                >font-size: clamp(48px, 5.2vw, 64px); letter-spacing: 0.22em; text-transform:
+                uppercase; font-style: normal</code
+              >.
+            </li>
+            <li>
+              <code>.summons-amp</code>: keep ember color,
+              <strong>remove the 0.75em sizing</strong>, add <code>font-style: italic</code>. It
+              should read at the same x-height as its neighbors.
+            </li>
+            <li>
+              Add the under-glow back:
+              <code>text-shadow: 0 0 30px rgba(210,58,42,0.18), 0 2px 0 rgba(0,0,0,0.8)</code>. The
+              ember halo is what tells the eye this is the cinematic version.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 05 · Lever button on Summons ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">05</span>
+          <h2>The "Enter the Mansion" CTA is a web button.</h2>
+          <span class="severity high">High</span>
+        </div>
+
+        <div class="gap">
+          <div class="col actual">
+            <div class="col-head">Implementation &middot; today</div>
+            <p class="what">Translucent ember pill, italic body label.</p>
+            <p class="why">
+              <code>background: linear-gradient(rgba(210,58,42,0.18), rgba(138,31,20,0.18))</code>.
+              Reads as a primary CTA in a SaaS app. The dossier is set in 1920; the button should be
+              too.
+            </p>
+          </div>
+          <div class="col target">
+            <div class="col-head">POC &middot; target</div>
+            <p class="what">Embossed brass-bordered lever, uppercase tracked label, key icon.</p>
+            <p class="why">
+              Dark substrate, brass 1px border, inner highlight + outer drop shadow, all-caps
+              display serif 13px / 0.28em. A <strong>key icon</strong> sits to the left. On hover
+              the brass glows.
+            </p>
+          </div>
+        </div>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Background: <code>linear-gradient(180deg, #2a2417 0%, #14110a 100%)</code>. Border
+              <code>1px solid var(--color-bone-dim)</code>.
+            </li>
+            <li>
+              Box-shadow:
+              <code
+                >inset 0 1px 0 rgba(255,230,170,0.2), inset 0 -1px 0 rgba(0,0,0,0.6), 0 6px 20px
+                rgba(0,0,0,0.6)</code
+              >.
+            </li>
+            <li>
+              Label:
+              <code
+                >font-family: var(--font-display); font-size: 13px; font-weight: 600;
+                letter-spacing: 0.28em; text-transform: uppercase</code
+              >.
+            </li>
+            <li>
+              Add a 22&times;22 SVG key icon on the left (<code>circle r=4 cx=8 cy=12</code> + 3
+              rectangles for the bit). Currently nowhere in the implementation.
+            </li>
+            <li>
+              Hover glow: <code>0 0 24px rgba(240,194,77,0.25)</code> &mdash; this is one of the
+              rare moments warm gold is allowed; the lever is <em>physical</em>.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 06 · Mansion board ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">06</span>
+          <h2>The mansion is a photograph, not a board.</h2>
+          <span class="severity high">High</span>
+        </div>
+        <p class="lede">
+          The POC treats the exterior image as something pinned to a board &mdash; a 6px black inset
+          shadow gives it depth, brass corners hint at framing, and the room pins read as physical
+          objects on top. The implementation shows the photograph at full-bleed with a thin border.
+          It reads flat.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Wrap the image in a <code>.board</code> with <code>inset: 26px</code>, brass 1px
+              border, and
+              <code>box-shadow: inset 0 0 0 6px rgba(0,0,0,0.5), 0 30px 80px rgba(0,0,0,0.7)</code>.
+              The black inset is the trick &mdash; it makes the photo feel set
+              <em>into</em> something.
+            </li>
+            <li>
+              Pins: 16&times;16 brass radial dots (<code
+                >radial-gradient(circle at 35% 30%, #f0c24d, #8a7235 65%, #3a2f18 100%)</code
+              >) with <strong>two pinging rings</strong> (<code>::before</code> and
+              <code>::after</code>, animated <code>scale(0.6) &rarr; scale(1.6)</code> over 2.5s,
+              staggered 0.7s).
+            </li>
+            <li>
+              Tags: brass 1px border, dark gradient background,
+              <code>backdrop-filter: blur(2px)</code>, leader line connecting to the dot.
+            </li>
+            <li>
+              Visited state: brass dot becomes saturated gold; box border brass-glow. Sealed: ember
+              rim.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 07 · Architect panel gauge ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">07</span>
+          <h2>The attention meter is over-decorated.</h2>
+          <span class="severity med">Medium</span>
+        </div>
+        <p class="lede">
+          The implementation's gauge is closer to the POC than I expected &mdash; tick marks
+          present, hub correct, needle in ember. Two real issues: the arc gradient runs grey-to-bone
+          (cold) when it should run cold-to-warm to encode escalation, and the tick labels (<em
+            >Drifting / Watching / Interested / Riveted</em
+          >) below the gauge fight with the glyph for attention. POC labels are inside the arc
+          itself.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Arc gradient: <code>#3a3a42 &rarr; #c9c4b4 &rarr; #d23a2a</code> (slate &rarr; bone
+              &rarr; ember). Mood is geographic on the arc &mdash; left is cold, right is hot.
+            </li>
+            <li>
+              Move mood labels <strong>inside</strong> the arc: <code>COOL</code> at 24,146 /
+              <code>ENGAGED</code> at 130,36 (top of arc) / <code>FURY</code> at 236,146. Drop the
+              <code>.meter-track</code> grid below.
+            </li>
+            <li>
+              Below the gauge, render a single readout line:
+              <code>{mood} &middot; {value}<small>/100</small></code> in JetBrains Mono, ember.
+            </li>
+            <li>
+              Add the per-pick delta callout below: a 10.5px mono pill that fades in for 350ms on
+              attention change, color-coded (ember for up, cyan for down, brass-dim for flat). The
+              implementation has the smoothed value but doesn't surface the delta &mdash; players
+              miss the consequence of their pick.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 08 · Architect feed ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">08</span>
+          <h2>The record reads as a chat log.</h2>
+          <span class="severity med">Medium</span>
+        </div>
+        <p class="lede">
+          Feed entries in the implementation share one visual rhythm. The POC differentiates:
+          actions get a cyan-ink left rule and a small diamond marker; the Architect's reactions get
+          an ember left rule, an ember diamond, and switch to
+          <em>italic Instrument Serif at 15.5px</em>. The mode-switch in typography is what sells
+          the Architect speaking.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Action entry: <code>border-left: 2px solid var(--color-cyan-ink)</code>,
+              <code>::before</code> diamond marker (8&times;8 rotated 45&deg;), body in Geist 14px /
+              1.4.
+            </li>
+            <li>
+              Reaction entry: <code>border-left: 2px solid var(--color-ember)</code>,
+              <code>::before</code> diamond with
+              <code>box-shadow: 0 0 8px var(--color-ember)</code>, body in
+              <strong>Instrument Serif italic 15.5px</strong> color <code>#e8d8b8</code>.
+            </li>
+            <li>
+              Time stamp above body in mono 9px, brass-dim, with chamber slug for action entries
+              (<code>23:12 &middot; PARLOR</code>).
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 09 · Tally ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">09</span>
+          <h2>Proof and Objection look like the same thing.</h2>
+          <span class="severity med">Medium</span>
+        </div>
+        <p class="lede">
+          In the POC, the tally boxes are color-coded by verdict: Proof reads in
+          <strong>bone-glow</strong>, Objection in <strong>ember</strong>. The implementation shows
+          both numerals in the same paper color, which collapses the distinction the entire game is
+          built on.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li><code>.tally-box.proof .n { color: var(--color-bone); }</code></li>
+            <li><code>.tally-box.objection .n { color: var(--color-ember); }</code></li>
+            <li>
+              Numeral: 28px Instrument Serif weight 700, baseline-aligned with a small 10px mono
+              <em>collected</em> caption.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 10 · Dossier ornaments ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">10</span>
+          <h2>The dossier corners are the wrong color and the wrong size.</h2>
+          <span class="severity high">High</span>
+        </div>
+        <p class="lede">
+          Implementation: 14&times;14 ember corners. POC: 38&times;38 brass-dim corners. The POC
+          corners are deliberately understated &mdash; they're a printer's mark, not an alarm.
+          Making them ember at 14px reads as warning state, which is exactly the wrong note for a
+          calm legal document.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Corner ornaments:
+              <code>width: 38px; height: 38px; border: 1px solid var(--color-brass-dim);</code>
+              &mdash; not ember.
+            </li>
+            <li>
+              Position them <code>top/left: -1px</code> (flush with dossier edge), not 6px inset.
+            </li>
+            <li>
+              Restore the giant serif quotation marks framing the claim:
+              <code
+                >::before { content: '"'; font-size: 72px; top: 18px; left: ‑36px; color:
+                var(--color-bone-dim); }</code
+              >
+              and matching <code>::after</code> bottom-right. Currently absent &mdash; the claim
+              sits as a plain blockquote.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 11 · Verdict actions ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">11</span>
+          <h2>The verdict screen's actions are unstyled.</h2>
+          <span class="severity high">High</span>
+        </div>
+        <p class="lede">
+          The cover letter itself is close to the POC &mdash; a real win. But the four buttons below
+          it (<em>Read Resume</em> / <em>Download Letter</em> / <em>Share Record</em> /
+          <em>Begin Again</em>) are flat browser buttons, which collapses the ceremony of the whole
+          screen.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Treat all four as quiet ghost buttons: 1px <code>rgba(196,162,78,0.3)</code> border,
+              transparent background, 13px Instrument Serif weight 600, 0.22em tracking, uppercase.
+            </li>
+            <li>
+              <strong>Download Letter</strong> is the primary &mdash; same chrome as the Summons
+              lever button: dark substrate, brass border, inner highlight, key icon (or wax-seal
+              icon).
+            </li>
+            <li>
+              Spacing: 14px between buttons, 28px above the row, separated from the letter by a
+              hairline brass rule.
+            </li>
+            <li>
+              Hover on any: brass border brightens to <code>--color-bone</code>, subtle 0 0 16px
+              brass glow.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 12 · Resume sidebar ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">12</span>
+          <h2>The resume sidebar is bolted on.</h2>
+          <span class="severity med">Medium</span>
+        </div>
+        <p class="lede">
+          It exists, it has the right tokens, but it lives in its own typographic world &mdash;
+          tighter, more SaaS, no ornament. The verdict screen is the one place the player gets the
+          recruiter-friendly content; the resume should feel like an exhibit appendix, not a panel.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Wrap the resume in a parchment-style container that echoes the witness card: bone
+              background, ink text, 3px ember left rule, 1px hairline divider.
+            </li>
+            <li>
+              Section labels (<em>Experience</em> / <em>Skills</em> / <em>Education</em>) in
+              <strong>Instrument Serif italic 12px</strong> with a thin brass underline &mdash; not
+              all-caps mono.
+            </li>
+            <li>
+              Skills as small ink-on-bone tags with a hairline border, not the dark cards the
+              implementation uses.
+            </li>
+            <li>
+              Drop the disclaimer line; it breaks the fourth wall in the wrong way for this screen.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── 13 · Witness queue ─────────────────── -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="num">13</span>
+          <h2>The on-deck card is missing.</h2>
+          <span class="severity high">High</span>
+        </div>
+        <p class="lede">
+          The POC stacks the next witness card behind the active one, scaled to 0.94 with 0.55
+          opacity and a slight grayscale, so the player feels the queue physically. After a verdict,
+          the active card animates out and the peek promotes into position. Without this, the
+          chamber loses its rhythm; each card arrives without anticipation.
+        </p>
+
+        <div class="fix">
+          <div class="fix-head">Fix</div>
+          <ul>
+            <li>
+              Render <code>cards[i+1]</code> alongside the active card with class
+              <code>.peek</code>:
+              <code
+                >transform: translate(32px, 36px) scale(0.94); opacity: 0.55; filter:
+                grayscale(0.35) brightness(0.85);</code
+              >
+            </li>
+            <li>
+              Hide the peek card's body and stamps (<code
+                >.wc-body, .wc-stamp { display: none; }</code
+              >) &mdash; only the masthead is visible.
+            </li>
+            <li>
+              On verdict, cross-fade: active card animates out per its verdict (proof rises,
+              objection shudders + falls right, dismiss slides left + drains to grey); peek card
+              promotes to <code>translate(0,0) scale(0.985)</code> with delay 120ms.
+            </li>
+            <li>
+              This animation is the chamber's signature beat &mdash; it sells the witness format. It
+              is the highest-leverage interaction-design fix on this list.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─── Punch list ─────────────────── -->
+      <div class="checklist">
+        <h3>Order of operations</h3>
+        <ol>
+          <li>
+            <b>Land the parchment witness card.</b> Everything in the chamber depends on this:
+            stamps, levers, queue, animations. Fix #01 first; the rest of the chamber follows in
+            hours.
+          </li>
+          <li>
+            <b>Restore the verdict stamps.</b> Right corner, ‑8&deg;, the three-color palette.
+            Highest visible signal of decision per pick.
+          </li>
+          <li>
+            <b>Add the on-deck peek card.</b> The animation choreography only works once the queue
+            is visible.
+          </li>
+          <li>
+            <b>Rebuild the lever buttons.</b> Slate gradient, brass border, verdict-colored hover
+            glow. Includes the keyboard-hint typography pass.
+          </li>
+          <li>
+            <b>Summons title + lever button.</b> These are the two pieces a viewer judges in the
+            first 800ms; they determine whether the rest of the app gets a fair read.
+          </li>
+          <li>
+            <b>Mansion board treatment.</b> The 6px black inset shadow + brass corners. Pins get the
+            double-ring ping animation.
+          </li>
+          <li>
+            <b>Architect panel polish.</b> Gauge gradient cold-to-warm, mood labels inside arc, feed
+            typography mode-switch, color-coded tally.
+          </li>
+          <li>
+            <b>Dossier corners and quotation marks.</b> Quick win &mdash; ten lines of CSS, large
+            perceived effect.
+          </li>
+          <li>
+            <b>Verdict screen actions and resume sidebar.</b> Final 10% of polish; saves the screen
+            from feeling like a wrap-up.
+          </li>
+        </ol>
+      </div>
+
+      <div class="signoff">
+        <span class="by">Ship in this order. The chamber sells the rest.</span>
+        <span class="role">Design QA &middot; redesign/cinematic-forge</span>
+      </div>
+    </article>
+  </body>
+</html>

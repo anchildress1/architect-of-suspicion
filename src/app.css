@@ -8,6 +8,8 @@
 @import '@fontsource/jetbrains-mono/300.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
 @import 'tailwindcss';
 
 @theme {
@@ -20,31 +22,42 @@
   --color-rivet: #3a3a42;
 
   --color-bone: #e9e4d8;
-  --color-bone-2: #d6d0c0;
   --color-bone-dim: #a5a090;
   --color-paper: #e9e4d8;
   --color-paper-dim: #a5a090;
   --color-paper-ink: #14141a;
 
   --color-brass: #c9c4b4;
-  --color-brass-dim: #7a7668;
-  --color-brass-deep: #3e3c34;
-  --color-brass-glow: #e9e4d8;
+  /* brass-dim drives every small mono caption, eyebrow, field label, and
+     timestamp on dark surfaces — most text in the rail and chrome. The
+     original #7a7668 was sub-AA (4.33:1); #aaa498 lands at 8.0:1 (AAA).
+     Paired with the 11px label floor + 0.14em max tracking so word
+     shapes stay legible at the smallest sizes. */
+  --color-brass-dim: #aaa498;
+
+  /* The brass-key palette — the "way in" affordance. Lives on every
+     hand-touchable metal surface: the lever button keys, the mansion
+     pin furniture (dot, leader, tag border), and the verdict ghost
+     buttons. Two values: a base for rest, a glow for hover/focus.
+     Nothing else uses warm gold — that is the rule. */
+  --color-brass-key: #c4a24e;
+  --color-brass-key-glow: #f0c24d;
 
   --color-ember: #d23a2a;
-  --color-ember-deep: #8a1f14;
   --color-oxblood: #8a1f14;
-  --color-oxblood-hi: #d23a2a;
 
   --color-cyan-ink: #6b8fb0;
   --color-cyan-deep: #2c3e52;
 
   --color-rule: #2a2a30;
 
-  /* Typography — editorial noir */
+  /* Typography — industrial noir.
+     Four registers: display (accusations/exhibit titles), body (player voice),
+     architect (the narrator's transcript), readout (labels/captions). */
   --font-display: 'Instrument Serif', 'Times New Roman', serif;
   --font-body: 'Geist Sans', system-ui, sans-serif;
   --font-letter: 'Instrument Serif', serif;
+  --font-architect: 'Geist Mono', 'JetBrains Mono', monospace;
   --font-readout: 'JetBrains Mono', monospace;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -55,12 +68,24 @@
   --step-3: clamp(1.5rem, 1.125rem + 1.25vw, 2rem);
   --step-4: clamp(1.875rem, 1.25rem + 2vw, 2.75rem);
   --step-5: clamp(2.25rem, 1.5rem + 3vw, 4rem);
+
+  /* Motion language — three durations, three easings. Use these
+     instead of one-off values so micro-interactions feel like one
+     instrument, not nine. */
+  --motion-snap: 140ms;
+  --motion-base: 280ms;
+  --motion-heavy: 700ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-snap: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-overshoot: cubic-bezier(0.3, 1.5, 0.4, 1);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(170, 164, 152, 0.35) transparent;
 }
 
 html,
@@ -113,6 +138,38 @@ body {
   outline: 2px solid var(--color-bone);
   outline-offset: 3px;
   border-radius: 2px;
+}
+
+/* ============================================
+   BRANDED SELECTION — ember on paper
+   ============================================ */
+::selection {
+  background: rgba(210, 58, 42, 0.4);
+  color: var(--color-bone);
+}
+
+/* ============================================
+   SCROLLBAR — thin, on the dark surface
+   (Firefox/standards rules colocated with the global reset above so we
+   don't duplicate the universal selector. WebKit needs its own rules.)
+   ============================================ */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(170, 164, 152, 0.35);
+  border-radius: 3px;
+  transition: background var(--motion-base) var(--ease-out);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 196, 180, 0.55);
 }
 
 /* ============================================
