@@ -170,16 +170,28 @@ Generates the cover letter from collected evidence.
 }
 ```
 
-**Server-side:** verifies the capability token, fetches the verdict-matching
-hireable reading from `suspicion.claims` (`guilty_reading` for Accuse,
-`not_guilty_reading` for Pardon) so the prompt has a recruiter-safe trait
-anchor (AGENTS.md Invariants #8 and #12). Then loads all picks for the
-session from `suspicion.picks`, retrieves full card data for each, and passes
-the trio (claim text, ruled evidence, anchor reading) to Claude. Persists
-`cover_letter` and `architect_closing` back onto the session row so a refresh
-after a sessionStorage flush still surfaces the verdict. If the readings row
-is missing or unreadable the route returns 500 — the letter prompt is never
-asked to invent its own framing.
+**Server-side:** verifies the capability token, then loads three things in
+parallel:
+
+1. The claim's truth context — `hireable_truth` + `desired_verdict` from
+   `suspicion.claims`. The brief always reveals `hireable_truth` regardless
+   of verdict; `desired_verdict` only swings the rhetorical opener.
+2. The paramount card pool — every `suspicion.claim_cards` row with
+   `is_paramount = true`, joined to `public.cards` for the full record
+   (including `fact`, server-only). The brief surfaces these whether the
+   player ruled them or not.
+3. All picks for the session from `suspicion.picks`, joined to `public.cards`.
+
+The route partitions the picks: paramount cards get their classification
+attached (or `null` when skipped, which the prompt calls out as a gap);
+non-paramount Proof + Objection rulings become personalization. Dismiss
+rulings stay struck. The combined context is passed to Claude.
+
+Persists `cover_letter` and `architect_closing` back onto the session row so
+a refresh after a sessionStorage flush still surfaces the verdict. The route
+returns 500 if the truth context is missing OR the paramount pool is empty —
+the prompt is never asked to invent its framing or ride personalization
+alone (AGENTS.md Invariant #8).
 
 **Response:**
 
@@ -250,12 +262,16 @@ CREATE TABLE suspicion.picks (
 
 Populated by the offline claim engine (`scripts/seed-claims`) via the `replace_claim_seed` RPC (`SECURITY DEFINER`, granted to `service_role` only). At runtime the app reads these tables but never writes to them.
 
-`suspicion.claims` carries `guilty_reading` and `not_guilty_reading` — both
-NOT NULL with non-empty CHECK constraints. They're the hireable working-style
-traits each verdict resolves to; the runtime cover letter prompt anchors on
-the verdict-matching one so an Accuse outcome surfaces a recruiter-safe trait
-instead of a generic condemnation. See PRD.md §"Cover Letter" and Pass 2 of
-[`CLAIM-ENGINE-PRD.md`](CLAIM-ENGINE-PRD.md).
+`suspicion.claims` carries `hireable_truth` (NOT NULL with non-empty CHECK)
+and `desired_verdict` (NOT NULL CHECK in `('accuse','pardon')`). Together
+they anchor the runtime cover letter prompt: `hireable_truth` is the single
+positive trait the brief reveals regardless of verdict; `desired_verdict`
+flags whether the surface claim is true or false of Ashley, swinging only
+the rhetorical opener. `suspicion.claim_cards.is_paramount` (boolean,
+default false) flags the cards essential to revealing the truth — the brief
+surfaces them whether or not the player ruled them, calling out
+paramount-but-skipped as gaps. See PRD.md §"Cover Letter" and Pass 1 / Pass
+2 / Pass 4 of [`CLAIM-ENGINE-PRD.md`](CLAIM-ENGINE-PRD.md).
 
 ```sql
 CREATE TABLE suspicion.claim_cards (

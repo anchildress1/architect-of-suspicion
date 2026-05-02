@@ -205,32 +205,41 @@ sees only the smoothed needle and one of four mood labels.
 
 ### Cover Letter
 
-Generated at runtime from the **ruled** evidence (Proof + Objection — dismissed
-exhibits are excluded). Written by the AI in character as The Architect — stays
-in editorial-noir register, signed "The Architect, Presiding Magistrate."
+Generated at runtime. The brief reveals a single underlying **hireable
+truth** about how Ashley works — the same truth regardless of which way the
+player ruled, regardless of which subset of cards they engaged. Two recruiters
+investigating the same claim reach the same conclusion about Ashley. Only the
+storytelling adapts.
 
 The cover letter:
 
-- References only cards the player ruled on
-- Highlights themes across the ruled evidence — Proof and Objection treated as
-  one coherent professional pattern, not a tally of wins and losses
-- Anchors on the verdict-matching hireable trait persisted on the claim
-  (`suspicion.claims.guilty_reading` for Accuse, `not_guilty_reading` for
-  Pardon — produced by Pass 2 of the claim engine)
-- Closes with the verdict label (Accused / Pardoned) — gameplay framing only;
-  the brief itself remains a recruiter-safe character assessment under either
-  outcome
-- Should be memorable and unlike any cover letter the reader has seen
+- **Anchors on the hireable truth** persisted on the claim
+  (`suspicion.claims.hireable_truth`, produced by Pass 2 of the claim engine).
+  The truth is the answer; the cited evidence is the proof.
+- **Surfaces all paramount cards** (cards flagged `is_paramount` on
+  `suspicion.claim_cards` by Pass 4). Paramount-but-skipped cards are called
+  out as gaps — the magistrate enters them into the record on the player's
+  behalf. Paramount cards the player ruled are cited with their classification.
+- **Cites non-paramount Proof + Objection rulings** as personalization. They
+  shape the rhetoric, never the conclusion.
+- **Excludes Dismiss rulings** — struck from the record stays struck.
+- **Verdict swings the opener only.** Each claim has a `desired_verdict`
+  (Pass 2 sets it: `accuse` if the surface claim is true of Ashley, `pardon`
+  if false). Player's verdict matches → opens "you saw the truth clearly."
+  Mismatch → "the record corrects you." Either way the truth lands.
+- **Closes** signed "The Architect, Presiding Magistrate of the Court of
+  Suspicion."
 
-**Recruiter-safety contract.** This is a public artifact a hiring manager
-will read. The verdict is gameplay framing, not moral judgment. Both Accuse
-and Pardon resolve to a hireable working-style trait. The brief NEVER indicts
-competence, integrity, ethics, judgment, work ethic, or basic professionalism.
-This is enforced in three places: Pass 2 of the claim engine refuses to
-generate claims that fail the dual-hireability test (`scripts/seed-claims/pass2-claims.ts`),
-the runtime prompt locks the trait-anchored framing in
-(`src/lib/server/prompts/coverLetter.ts`), and AGENTS.md Invariants #8 and #12
-are the source of truth for AI agents touching this code.
+**Recruiter-safety contract.** The brief is a public artifact a hiring
+manager will read. It NEVER indicts competence, integrity, ethics, judgment,
+work ethic, or basic professionalism. Enforced in four places: Pass 1
+surfaces only positive professional truths, Pass 2 rejects claim shapes that
+would force a character indictment, Pass 4 cross-checks `desired_verdict`
+against the average `ai_score` sign and drops any claim whose declared
+orientation contradicts its evidence, and the runtime prompt at
+`src/lib/server/prompts/coverLetter.ts` locks both the trait-anchored
+framing and the banned-language list. AGENTS.md Invariant #8 is the source
+of truth.
 
 ### Resume
 
