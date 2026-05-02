@@ -1,5 +1,5 @@
 import { getSupabase } from '$lib/server/supabase';
-import type { Claim, ClaimVerdictReadings } from '$lib/types';
+import type { Claim, ClaimTruthContext, FullCard, Verdict } from '$lib/types';
 
 /** Unbiased rejection-sampled index in [0, max). Returns 0 if max <= 0. */
 function randomIndex(max: number): number {
@@ -77,35 +77,78 @@ export async function getClaimById(
 }
 
 /**
- * Fetch the dual-hireability readings persisted on suspicion.claims by Pass 2
- * of the claim engine. The cover letter prompt anchors on the verdict-matching
- * reading so the final letter resolves to a recruiter-safe trait under either
- * Accuse or Pardon (Invariants #8 and #12 in AGENTS.md). The DB enforces both
- * columns NOT NULL with a non-empty CHECK constraint — a missing row here
- * means the claim was deleted between session creation and verdict, which is
- * the only legitimate `null` return path.
+ * Fetch the truth context the cover letter prompt anchors on. Pass 2 of the
+ * claim engine produced the hireable_truth (the trait the brief reveals
+ * regardless of verdict) and the desired_verdict (whether the surface claim
+ * is actually true of Ashley). The DB enforces NOT NULL + CHECK constraints
+ * on both columns; a null return means the claim was deleted between session
+ * creation and verdict — the route refuses rather than letting the prompt
+ * drift to a recruiter-unsafe framing.
  */
-export async function getClaimVerdictReadings(
+export async function getClaimTruthContext(
   claimId: string,
-): Promise<{ readings: ClaimVerdictReadings | null; error: string | null }> {
+): Promise<{ context: ClaimTruthContext | null; error: string | null }> {
   const { data, error } = await getSupabase()
     .schema('suspicion')
     .from('claims')
-    .select('guilty_reading, not_guilty_reading')
+    .select('hireable_truth, desired_verdict')
     .eq('id', claimId)
     .maybeSingle();
 
   if (error) {
-    console.error('[claims] getClaimVerdictReadings failed:', error.message);
-    return { readings: null, error: 'Failed to fetch claim readings' };
+    console.error('[claims] getClaimTruthContext failed:', error.message);
+    return { context: null, error: 'Failed to fetch claim truth' };
   }
-  if (!data) return { readings: null, error: 'Claim not found' };
+  if (!data) return { context: null, error: 'Claim not found' };
+
+  const desiredVerdict = data.desired_verdict as Verdict;
+  if (desiredVerdict !== 'accuse' && desiredVerdict !== 'pardon') {
+    console.error(
+      '[claims] getClaimTruthContext: invalid desired_verdict in DB:',
+      data.desired_verdict,
+    );
+    return { context: null, error: 'Invalid claim truth state' };
+  }
 
   return {
-    readings: {
-      guilty: data.guilty_reading as string,
-      notGuilty: data.not_guilty_reading as string,
+    context: {
+      hireableTruth: data.hireable_truth as string,
+      desiredVerdict,
     },
     error: null,
   };
+}
+
+/**
+ * Fetch the paramount cards for a claim, joined to the source card facts.
+ * The runtime cover letter prompt surfaces these regardless of whether the
+ * player ruled them — paramount-but-skipped becomes a "the player did not
+ * call X to the stand" gap call-out. Returns FullCard rows so the prompt
+ * has access to the fact (`fact` is server-only and never returned to the
+ * client elsewhere — same posture as `/api/evaluate`).
+ */
+export async function getParamountCards(
+  claimId: string,
+): Promise<{ cards: FullCard[]; error: string | null }> {
+  const { data, error } = await getSupabase()
+    .schema('suspicion')
+    .from('claim_cards')
+    .select('card_id, cards:card_id ( objectID, title, blurb, fact, category, signal )')
+    .eq('claim_id', claimId)
+    .eq('is_paramount', true);
+
+  if (error) {
+    console.error('[claims] getParamountCards failed:', error.message);
+    return { cards: [], error: 'Failed to fetch paramount cards' };
+  }
+
+  const cards: FullCard[] = [];
+  for (const row of data ?? []) {
+    // Supabase types the joined `cards` column as a single object when the
+    // FK has a 1-to-1 shape but typing varies — coerce defensively.
+    const joined = (row as { cards: FullCard | FullCard[] | null }).cards;
+    const card = Array.isArray(joined) ? joined[0] : joined;
+    if (card) cards.push(card);
+  }
+  return { cards, error: null };
 }

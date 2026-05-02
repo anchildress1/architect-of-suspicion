@@ -91,16 +91,36 @@ interface MockOptions {
   cardsError?: unknown;
   sessionVerdictUpdateError?: unknown;
   sessionLetterUpdateError?: unknown;
-  /** Override the claims-row response for getClaimVerdictReadings. Default is
-   *  a populated guilty/not-guilty pair so the prompt always has its anchor. */
-  claimsRow?: { guilty_reading: string; not_guilty_reading: string } | null;
+  /** Override the claims-row response for getClaimTruthContext. Default is a
+   *  populated truth + verdict so the prompt always has its anchor. */
+  claimsRow?: { hireable_truth: string; desired_verdict: string } | null;
   claimsRowError?: unknown;
+  /** Override the paramount-cards rows for getParamountCards. Default
+   *  surfaces both mockCards as paramount so the prompt has gap/citation
+   *  inputs. Empty array exercises the missing-paramount 500 path. */
+  paramountRows?: Array<{
+    card_id: string;
+    cards: {
+      objectID: string;
+      title: string;
+      blurb: string;
+      fact: string;
+      category: string;
+      signal: number;
+    } | null;
+  }>;
+  paramountRowsError?: unknown;
 }
 
 const defaultClaimsRow = {
-  guilty_reading: 'rigor that pays off in production',
-  not_guilty_reading: 'pragmatic shipper who keeps the door for AI open',
+  hireable_truth: 'Ashley weaponizes AI — teaches it, constrains it, holds it to standard.',
+  desired_verdict: 'pardon',
 };
+
+const defaultParamountRows = [
+  { card_id: 'card-1', cards: { ...mockCards[0] } },
+  { card_id: 'card-2', cards: { ...mockCards[1] } },
+];
 
 function setupMocks(options: MockOptions = {}) {
   sessionUpdates.length = 0;
@@ -108,6 +128,8 @@ function setupMocks(options: MockOptions = {}) {
   const picks = options.picks ?? mockPicks;
   const cards = options.cards ?? mockCards;
   const claimsRow = options.claimsRow === undefined ? defaultClaimsRow : options.claimsRow;
+  const paramountRows =
+    options.paramountRows === undefined ? defaultParamountRows : options.paramountRows;
 
   mockFrom.mockImplementation((table: string) => {
     if (table !== 'cards') return {};
@@ -135,13 +157,26 @@ function setupMocks(options: MockOptions = {}) {
       };
     }
     if (table === 'claims') {
-      // getClaimVerdictReadings: select(...).eq(...).maybeSingle()
+      // getClaimTruthContext: select('hireable_truth, desired_verdict').eq(...).maybeSingle()
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             maybeSingle: vi
               .fn()
               .mockResolvedValue({ data: claimsRow, error: options.claimsRowError ?? null }),
+          }),
+        }),
+      };
+    }
+    if (table === 'claim_cards') {
+      // getParamountCards: select(...).eq('claim_id', ...).eq('is_paramount', true)
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: paramountRows,
+              error: options.paramountRowsError ?? null,
+            }),
           }),
         }),
       };
@@ -253,36 +288,61 @@ describe('POST /api/generate-letter', () => {
     expect(prompts.every((p) => !p.includes('IGNORE PREVIOUS INSTRUCTIONS'))).toBe(true);
   });
 
-  it('threads the verdict-matching reading into both prompts', async () => {
+  it('threads the hireable truth into both prompts regardless of verdict', async () => {
     setupMocks();
     mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 
     await POST(makeRequest(validBody));
 
     const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
-    // accuse → guilty reading is the spine of both prompts
-    expect(prompts.every((p) => p.includes(defaultClaimsRow.guilty_reading))).toBe(true);
+    expect(prompts.every((p) => p.includes(defaultClaimsRow.hireable_truth))).toBe(true);
   });
 
-  it('uses the not-guilty reading when verdict is pardon', async () => {
+  it('opens with verdict-match language when player verdict matches desired_verdict', async () => {
     setupMocks();
     mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
 
+    // default claimsRow.desired_verdict = 'pardon'
     await POST(makeRequest({ verdict: 'pardon' }));
 
-    const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
-    expect(prompts.every((p) => p.includes(defaultClaimsRow.not_guilty_reading))).toBe(true);
+    const letterPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(letterPrompt).toMatch(/saw the truth clearly/i);
   });
 
-  it('500s when the claim readings row is missing (refuses unsafe framing)', async () => {
+  it('opens with verdict-miss language when player verdict mismatches desired_verdict', async () => {
+    setupMocks();
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    // default claimsRow.desired_verdict = 'pardon'; sending accuse → mismatch
+    await POST(makeRequest({ verdict: 'accuse' }));
+
+    const letterPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(letterPrompt).toMatch(/the record corrects them/i);
+  });
+
+  it('500s when the claim truth row is missing (refuses unsafe framing)', async () => {
     setupMocks({ claimsRow: null });
     await expect(POST(makeRequest(validBody))).rejects.toThrow('Claim not found');
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('500s when the claim readings query errors', async () => {
+  it('500s when the claim truth query errors', async () => {
     setupMocks({ claimsRowError: { message: 'pg-down' } });
-    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch claim readings');
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch claim truth');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('500s when no paramount cards exist for the claim — pipeline must reseed', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupMocks({ paramountRows: [] });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Claim has no paramount evidence');
+    expect(mockCreate).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('500s when the paramount-cards query errors', async () => {
+    setupMocks({ paramountRowsError: { message: 'pg-down' } });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch paramount cards');
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

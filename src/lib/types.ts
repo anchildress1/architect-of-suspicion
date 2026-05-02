@@ -12,15 +12,24 @@ export interface Claim {
   text: string;
 }
 
-/** Hireable working-style readings persisted on suspicion.claims. The cover
- *  letter prompt anchors on the verdict-matching reading so an Accuse outcome
- *  surfaces a recruiter-safe trait instead of a generic condemnation. Server
- *  side only — never serialized to the client. */
-export interface ClaimVerdictReadings {
-  /** Hireable trait the `accuse` verdict surfaces. */
-  guilty: string;
-  /** Hireable trait the `pardon` verdict surfaces. */
-  notGuilty: string;
+/** Server-side context the cover letter prompt anchors on. The brief always
+ *  reveals `hireableTruth`; the verdict only swings the rhetorical opener
+ *  (match vs miss against `desiredVerdict`). Never serialized to the client. */
+export interface ClaimTruthContext {
+  /** Single positive professional trait the brief reveals. */
+  hireableTruth: string;
+  /** `accuse` if the surface claim is true of Ashley, `pardon` if false. */
+  desiredVerdict: Verdict;
+}
+
+/** A paramount card joined with player-ruling state for the cover letter.
+ *  Pass 4 flagged this card as essential to revealing the hireable_truth —
+ *  the runtime brief surfaces it whether or not the player ruled it. When
+ *  `classification` is null the brief calls out the gap: "the player did
+ *  not call X to the stand". Server-side only. */
+export interface ParamountCardEntry {
+  card: FullCard;
+  classification: Exclude<Classification, 'dismiss'> | null;
 }
 
 /** A claim_cards row joined with the player-visible card fields.

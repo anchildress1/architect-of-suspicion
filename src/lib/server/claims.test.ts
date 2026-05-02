@@ -9,7 +9,7 @@ vi.mock('$lib/server/supabase', () => ({
   }),
 }));
 
-import { getClaimById, getClaimVerdictReadings, pickRandomClaim } from './claims';
+import { getClaimById, getClaimTruthContext, getParamountCards, pickRandomClaim } from './claims';
 
 interface CountResult {
   count: number | null;
@@ -197,7 +197,7 @@ describe('getClaimById', () => {
   });
 });
 
-describe('getClaimVerdictReadings', () => {
+describe('getClaimTruthContext', () => {
   const mockSelect = vi.fn();
   const mockEq = vi.fn();
   const mockMaybeSingle = vi.fn();
@@ -207,7 +207,7 @@ describe('getClaimVerdictReadings', () => {
   });
 
   function setupRow(
-    row: { guilty_reading: string; not_guilty_reading: string } | null,
+    row: { hireable_truth: string; desired_verdict: string } | null,
     err: unknown = null,
   ) {
     mockMaybeSingle.mockResolvedValue({ data: row, error: err });
@@ -218,47 +218,165 @@ describe('getClaimVerdictReadings', () => {
   }
 
   it('uses the suspicion schema', async () => {
-    setupRow({ guilty_reading: 'g', not_guilty_reading: 'n' });
-    await getClaimVerdictReadings('abc');
+    setupRow({ hireable_truth: 't', desired_verdict: 'pardon' });
+    await getClaimTruthContext('abc');
     expect(mockSchema).toHaveBeenCalledWith('suspicion');
   });
 
-  it('selects only the reading columns (no fact, no ai_score)', async () => {
-    setupRow({ guilty_reading: 'g', not_guilty_reading: 'n' });
-    await getClaimVerdictReadings('abc');
-    expect(mockSelect).toHaveBeenCalledWith('guilty_reading, not_guilty_reading');
+  it('selects only the truth + desired_verdict columns', async () => {
+    setupRow({ hireable_truth: 't', desired_verdict: 'accuse' });
+    await getClaimTruthContext('abc');
+    expect(mockSelect).toHaveBeenCalledWith('hireable_truth, desired_verdict');
   });
 
-  it('returns both readings on a hit, mapped to camelCase', async () => {
+  it('returns the truth context on a hit', async () => {
     setupRow({
-      guilty_reading: 'rigor that pays off in production',
-      not_guilty_reading: 'ships pragmatically when 80% is enough',
+      hireable_truth: 'Ashley weaponizes AI',
+      desired_verdict: 'pardon',
     });
 
-    const { readings, error } = await getClaimVerdictReadings('abc');
+    const { context, error } = await getClaimTruthContext('abc');
 
     expect(error).toBeNull();
-    expect(readings).toEqual({
-      guilty: 'rigor that pays off in production',
-      notGuilty: 'ships pragmatically when 80% is enough',
+    expect(context).toEqual({
+      hireableTruth: 'Ashley weaponizes AI',
+      desiredVerdict: 'pardon',
     });
   });
 
   it('returns Claim not found when the row is missing', async () => {
     setupRow(null);
 
-    const { readings, error } = await getClaimVerdictReadings('missing');
+    const { context, error } = await getClaimTruthContext('missing');
 
-    expect(readings).toBeNull();
+    expect(context).toBeNull();
     expect(error).toBe('Claim not found');
   });
 
-  it('returns Failed to fetch claim readings on query error', async () => {
+  it('returns Failed to fetch claim truth on query error', async () => {
     setupRow(null, { message: 'pg-down' });
 
-    const { readings, error } = await getClaimVerdictReadings('xyz');
+    const { context, error } = await getClaimTruthContext('xyz');
 
-    expect(readings).toBeNull();
-    expect(error).toBe('Failed to fetch claim readings');
+    expect(context).toBeNull();
+    expect(error).toBe('Failed to fetch claim truth');
+  });
+
+  it('rejects rows with an out-of-range desired_verdict (corrupt DB state)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupRow({ hireable_truth: 't', desired_verdict: 'maybe' });
+
+    const { context, error } = await getClaimTruthContext('xyz');
+
+    expect(context).toBeNull();
+    expect(error).toBe('Invalid claim truth state');
+    errorSpy.mockRestore();
+  });
+});
+
+describe('getParamountCards', () => {
+  const mockSelect = vi.fn();
+  const mockEqClaim = vi.fn();
+  const mockEqParamount = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function setupRows(
+    rows: Array<{
+      card_id: string;
+      cards: {
+        objectID: string;
+        title: string;
+        blurb: string;
+        fact: string;
+        category: string;
+        signal: number;
+      } | null;
+    }> | null,
+    err: unknown = null,
+  ) {
+    mockEqParamount.mockResolvedValue({ data: rows, error: err });
+    mockEqClaim.mockReturnValue({ eq: mockEqParamount });
+    mockSelect.mockReturnValue({ eq: mockEqClaim });
+    mockSchema.mockReturnValue({ from: mockSchemaFrom });
+    mockSchemaFrom.mockReturnValue({ select: mockSelect });
+  }
+
+  it('queries claim_cards joined to cards, filtered to paramount=true', async () => {
+    setupRows([]);
+    await getParamountCards('claim-1');
+
+    expect(mockSchemaFrom).toHaveBeenCalledWith('claim_cards');
+    expect(mockEqClaim).toHaveBeenCalledWith('claim_id', 'claim-1');
+    expect(mockEqParamount).toHaveBeenCalledWith('is_paramount', true);
+  });
+
+  it('returns the joined cards array on a hit', async () => {
+    setupRows([
+      {
+        card_id: 'c-1',
+        cards: {
+          objectID: 'c-1',
+          title: 'Card One',
+          blurb: 'b1',
+          fact: 'f1',
+          category: 'Awards',
+          signal: 5,
+        },
+      },
+      {
+        card_id: 'c-2',
+        cards: {
+          objectID: 'c-2',
+          title: 'Card Two',
+          blurb: 'b2',
+          fact: 'f2',
+          category: 'Constraints',
+          signal: 4,
+        },
+      },
+    ]);
+
+    const { cards, error } = await getParamountCards('claim-1');
+
+    expect(error).toBeNull();
+    expect(cards.map((c) => c.objectID)).toEqual(['c-1', 'c-2']);
+  });
+
+  it('skips rows where the joined card row is null', async () => {
+    setupRows([
+      { card_id: 'c-orphan', cards: null },
+      {
+        card_id: 'c-1',
+        cards: {
+          objectID: 'c-1',
+          title: 'Card One',
+          blurb: 'b1',
+          fact: 'f1',
+          category: 'Awards',
+          signal: 5,
+        },
+      },
+    ]);
+
+    const { cards } = await getParamountCards('claim-1');
+    expect(cards).toHaveLength(1);
+    expect(cards[0].objectID).toBe('c-1');
+  });
+
+  it('returns empty array when no paramount cards exist', async () => {
+    setupRows([]);
+    const { cards, error } = await getParamountCards('claim-1');
+    expect(cards).toEqual([]);
+    expect(error).toBeNull();
+  });
+
+  it('returns error string and empty cards on query failure', async () => {
+    setupRows(null, { message: 'pg-down' });
+    const { cards, error } = await getParamountCards('claim-1');
+    expect(cards).toEqual([]);
+    expect(error).toBe('Failed to fetch paramount cards');
   });
 });
