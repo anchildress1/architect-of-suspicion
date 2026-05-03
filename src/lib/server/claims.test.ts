@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSchema = vi.fn();
 const mockSchemaFrom = vi.fn();
+const mockPublicFrom = vi.fn();
 
 vi.mock('$lib/server/supabase', () => ({
   getSupabase: () => ({
     schema: (...args: unknown[]) => mockSchema(...args),
+    from: (...args: unknown[]) => mockPublicFrom(...args),
   }),
 }));
 
@@ -275,49 +277,70 @@ describe('getClaimTruthContext', () => {
 });
 
 describe('getParamountCards', () => {
-  const mockSelect = vi.fn();
-  const mockEqClaim = vi.fn();
-  const mockEqParamount = vi.fn();
+  // Two-step query: step 1 hits suspicion.claim_cards, step 2 hits public.cards.
+  const mockClaimSelect = vi.fn();
+  const mockClaimEqId = vi.fn();
+  const mockClaimEqParamount = vi.fn();
+
+  const mockCardsSelect = vi.fn();
+  const mockCardsIn = vi.fn();
+  const mockCardsIs = vi.fn();
+
+  type CardRow = {
+    objectID: string;
+    title: string;
+    blurb: string;
+    fact: string;
+    category: string;
+    signal: number;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  function setupRows(
-    rows: Array<{
-      card_id: string;
-      cards: {
-        objectID: string;
-        title: string;
-        blurb: string;
-        fact: string;
-        category: string;
-        signal: number;
-      } | null;
-    }> | null,
-    err: unknown = null,
-  ) {
-    mockEqParamount.mockResolvedValue({ data: rows, error: err });
-    mockEqClaim.mockReturnValue({ eq: mockEqParamount });
-    mockSelect.mockReturnValue({ eq: mockEqClaim });
+  function setup({
+    claimRows,
+    claimErr = null,
+    cardRows,
+    cardErr = null,
+  }: {
+    claimRows: Array<{ card_id: string }> | null;
+    claimErr?: unknown;
+    cardRows?: CardRow[] | null;
+    cardErr?: unknown;
+  }) {
+    // Step 1: suspicion.claim_cards
+    mockClaimEqParamount.mockResolvedValue({ data: claimRows, error: claimErr });
+    mockClaimEqId.mockReturnValue({ eq: mockClaimEqParamount });
+    mockClaimSelect.mockReturnValue({ eq: mockClaimEqId });
     mockSchema.mockReturnValue({ from: mockSchemaFrom });
-    mockSchemaFrom.mockReturnValue({ select: mockSelect });
+    mockSchemaFrom.mockReturnValue({ select: mockClaimSelect });
+
+    // Step 2: public.cards
+    mockCardsIs.mockResolvedValue({ data: cardRows ?? [], error: cardErr });
+    mockCardsIn.mockReturnValue({ is: mockCardsIs });
+    mockCardsSelect.mockReturnValue({ in: mockCardsIn });
+    mockPublicFrom.mockReturnValue({ select: mockCardsSelect });
   }
 
-  it('queries claim_cards joined to cards, filtered to paramount=true', async () => {
-    setupRows([]);
+  it('queries claim_cards then public.cards filtered to paramount=true', async () => {
+    setup({ claimRows: [{ card_id: 'c-1' }], cardRows: [] });
     await getParamountCards('claim-1');
 
     expect(mockSchemaFrom).toHaveBeenCalledWith('claim_cards');
-    expect(mockEqClaim).toHaveBeenCalledWith('claim_id', 'claim-1');
-    expect(mockEqParamount).toHaveBeenCalledWith('is_paramount', true);
+    expect(mockClaimEqId).toHaveBeenCalledWith('claim_id', 'claim-1');
+    expect(mockClaimEqParamount).toHaveBeenCalledWith('is_paramount', true);
+    expect(mockPublicFrom).toHaveBeenCalledWith('cards');
+    expect(mockCardsIn).toHaveBeenCalledWith('objectID', ['c-1']);
+    expect(mockCardsIs).toHaveBeenCalledWith('deleted_at', null);
   });
 
   it('returns the joined cards array on a hit', async () => {
-    setupRows([
-      {
-        card_id: 'c-1',
-        cards: {
+    setup({
+      claimRows: [{ card_id: 'c-1' }, { card_id: 'c-2' }],
+      cardRows: [
+        {
           objectID: 'c-1',
           title: 'Card One',
           blurb: 'b1',
@@ -325,10 +348,7 @@ describe('getParamountCards', () => {
           category: 'Awards',
           signal: 5,
         },
-      },
-      {
-        card_id: 'c-2',
-        cards: {
+        {
           objectID: 'c-2',
           title: 'Card Two',
           blurb: 'b2',
@@ -336,8 +356,8 @@ describe('getParamountCards', () => {
           category: 'Constraints',
           signal: 4,
         },
-      },
-    ]);
+      ],
+    });
 
     const { cards, error } = await getParamountCards('claim-1');
 
@@ -345,12 +365,13 @@ describe('getParamountCards', () => {
     expect(cards.map((c) => c.objectID)).toEqual(['c-1', 'c-2']);
   });
 
-  it('skips rows where the joined card row is null', async () => {
-    setupRows([
-      { card_id: 'c-orphan', cards: null },
-      {
-        card_id: 'c-1',
-        cards: {
+  it('skips orphaned paramount rows when the cards lookup drops them', async () => {
+    // Soft-deleted cards drop out of step 2 even though the claim_cards row
+    // still references them. The resulting set is the intersection.
+    setup({
+      claimRows: [{ card_id: 'c-orphan' }, { card_id: 'c-1' }],
+      cardRows: [
+        {
           objectID: 'c-1',
           title: 'Card One',
           blurb: 'b1',
@@ -358,23 +379,35 @@ describe('getParamountCards', () => {
           category: 'Awards',
           signal: 5,
         },
-      },
-    ]);
+      ],
+    });
 
     const { cards } = await getParamountCards('claim-1');
     expect(cards).toHaveLength(1);
     expect(cards[0].objectID).toBe('c-1');
   });
 
-  it('returns empty array when no paramount cards exist', async () => {
-    setupRows([]);
+  it('returns empty array (no step 2 query) when no paramount cards exist', async () => {
+    setup({ claimRows: [] });
     const { cards, error } = await getParamountCards('claim-1');
     expect(cards).toEqual([]);
     expect(error).toBeNull();
+    expect(mockPublicFrom).not.toHaveBeenCalled();
   });
 
-  it('returns error string and empty cards on query failure', async () => {
-    setupRows(null, { message: 'pg-down' });
+  it('returns error string and empty cards on step 1 failure', async () => {
+    setup({ claimRows: null, claimErr: { message: 'pg-down' } });
+    const { cards, error } = await getParamountCards('claim-1');
+    expect(cards).toEqual([]);
+    expect(error).toBe('Failed to fetch paramount cards');
+  });
+
+  it('returns error string and empty cards on step 2 failure', async () => {
+    setup({
+      claimRows: [{ card_id: 'c-1' }],
+      cardRows: null,
+      cardErr: { message: 'cards-down' },
+    });
     const { cards, error } = await getParamountCards('claim-1');
     expect(cards).toEqual([]);
     expect(error).toBe('Failed to fetch paramount cards');

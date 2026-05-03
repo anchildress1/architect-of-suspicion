@@ -95,21 +95,18 @@ interface MockOptions {
    *  populated truth + verdict so the prompt always has its anchor. */
   claimsRow?: { hireable_truth: string; desired_verdict: string } | null;
   claimsRowError?: unknown;
-  /** Override the paramount-cards rows for getParamountCards. Default
-   *  surfaces both mockCards as paramount so the prompt has gap/citation
-   *  inputs. Empty array exercises the missing-paramount 500 path. */
-  paramountRows?: Array<{
-    card_id: string;
-    cards: {
-      objectID: string;
-      title: string;
-      blurb: string;
-      fact: string;
-      category: string;
-      signal: number;
-    } | null;
-  }>;
+  /** Override the paramount-cards rows from suspicion.claim_cards. Default
+   *  is both mockCards' ids so the prompt has gap/citation inputs. Empty
+   *  array exercises the missing-paramount 500 path. */
+  paramountRows?: Array<{ card_id: string }>;
   paramountRowsError?: unknown;
+  /** Override the public.cards rows returned for the paramount-card lookup
+   *  (step 2 of getParamountCards). Defaults to mockCards. */
+  paramountCardLookup?: unknown[];
+  /** Error injected into the paramount-card lookup (step 2 of
+   *  getParamountCards). Distinct from `cardsError`, which fails the
+   *  ruled-extras lookup (loadCardsById). */
+  paramountCardLookupError?: unknown;
 }
 
 const defaultClaimsRow = {
@@ -117,10 +114,7 @@ const defaultClaimsRow = {
   desired_verdict: 'pardon',
 };
 
-const defaultParamountRows = [
-  { card_id: 'card-1', cards: { ...mockCards[0] } },
-  { card_id: 'card-2', cards: { ...mockCards[1] } },
-];
+const defaultParamountRows = [{ card_id: 'card-1' }, { card_id: 'card-2' }];
 
 function setupMocks(options: MockOptions = {}) {
   sessionUpdates.length = 0;
@@ -131,11 +125,30 @@ function setupMocks(options: MockOptions = {}) {
   const paramountRows =
     options.paramountRows === undefined ? defaultParamountRows : options.paramountRows;
 
+  // public.cards is hit twice per request: first by getParamountCards
+  // (step 2 — looking up paramount card details), then by loadCardsById
+  // (looking up ruled-extras the player Proof'd or Objection'd). The mock
+  // routes by call order so each path can be exercised independently in
+  // failure-mode tests.
+  let cardsCallCount = 0;
+  const paramountCardLookup = options.paramountCardLookup ?? mockCards;
   mockFrom.mockImplementation((table: string) => {
     if (table !== 'cards') return {};
     return {
       select: vi.fn().mockReturnValue({
         in: vi.fn().mockImplementation((_col: string, ids: string[]) => {
+          cardsCallCount++;
+          if (cardsCallCount === 1) {
+            // First call: getParamountCards step 2.
+            return {
+              is: vi.fn().mockResolvedValue({
+                data: paramountCardLookup,
+                error: options.paramountCardLookupError ?? null,
+              }),
+            };
+          }
+          // Second call: loadCardsById for ruled-extras. Track ids so tests
+          // can assert what the personalization lookup was asked for.
           lastCardsInCall.ids = ids;
           return {
             is: vi.fn().mockResolvedValue({ data: cards, error: options.cardsError ?? null }),

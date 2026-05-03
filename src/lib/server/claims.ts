@@ -130,31 +130,40 @@ export async function getClaimTruthContext(
 export async function getParamountCards(
   claimId: string,
 ): Promise<{ cards: FullCard[]; error: string | null }> {
-  // PostgREST embed syntax: `cards!card_id` says "embed `cards`, disambiguating
-  // via the FK on the `card_id` column" (FK constraint name is
-  // `claim_cards_card_id_fkey`). The original `cards:card_id (...)` form was
-  // alias-syntax — `alias:relation` where relation is a table name — which
-  // PostgREST tried to resolve as a relation called `card_id` and 400'd with
-  // "Could not find a relationship between 'claim_cards' and 'card_id'".
-  const { data, error } = await getSupabase()
+  // Two-step query for the cross-schema join: PostgREST cannot resolve
+  // embedded joins when .schema('suspicion') is active because the target
+  // (`public.cards`) lives in a different schema. Same pattern as
+  // fetchClaimDeck in $lib/server/cards.ts. Step 1: paramount card_ids from
+  // suspicion.claim_cards. Step 2: full FullCard rows from public.cards.
+  const supabase = getSupabase();
+
+  const { data: claimRows, error: claimErr } = await supabase
     .schema('suspicion')
     .from('claim_cards')
-    .select('cards!card_id ( objectID, title, blurb, fact, category, signal )')
+    .select('card_id')
     .eq('claim_id', claimId)
     .eq('is_paramount', true);
 
-  if (error) {
-    console.error('[claims] getParamountCards failed:', error.message);
+  if (claimErr) {
+    console.error('[claims] getParamountCards (step 1) failed:', claimErr.message);
     return { cards: [], error: 'Failed to fetch paramount cards' };
   }
 
-  const cards: FullCard[] = [];
-  for (const row of data ?? []) {
-    // Supabase types the joined `cards` column as a single object when the
-    // FK has a 1-to-1 shape but typing varies — coerce defensively.
-    const joined = (row as { cards: FullCard | FullCard[] | null }).cards;
-    const card = Array.isArray(joined) ? joined[0] : joined;
-    if (card) cards.push(card);
+  const cardIds = (claimRows ?? []).map((r) => (r as { card_id: string }).card_id);
+  if (cardIds.length === 0) {
+    return { cards: [], error: null };
   }
-  return { cards, error: null };
+
+  const { data: cardRows, error: cardErr } = await supabase
+    .from('cards')
+    .select('objectID, title, blurb, fact, category, signal')
+    .in('objectID', cardIds)
+    .is('deleted_at', null);
+
+  if (cardErr) {
+    console.error('[claims] getParamountCards (step 2) failed:', cardErr.message);
+    return { cards: [], error: 'Failed to fetch paramount cards' };
+  }
+
+  return { cards: (cardRows ?? []) as FullCard[], error: null };
 }
