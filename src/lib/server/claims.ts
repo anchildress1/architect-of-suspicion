@@ -130,10 +130,16 @@ export async function getClaimTruthContext(
 export async function getParamountCards(
   claimId: string,
 ): Promise<{ cards: FullCard[]; error: string | null }> {
+  // PostgREST embed syntax: `cards!card_id` says "embed `cards`, disambiguating
+  // via the FK on the `card_id` column" (FK constraint name is
+  // `claim_cards_card_id_fkey`). The original `cards:card_id (...)` form was
+  // alias-syntax — `alias:relation` where relation is a table name — which
+  // PostgREST tried to resolve as a relation called `card_id` and 400'd with
+  // "Could not find a relationship between 'claim_cards' and 'card_id'".
   const { data, error } = await getSupabase()
     .schema('suspicion')
     .from('claim_cards')
-    .select('card_id, cards:card_id ( objectID, title, blurb, fact, category, signal )')
+    .select('cards!card_id ( objectID, title, blurb, fact, category, signal )')
     .eq('claim_id', claimId)
     .eq('is_paramount', true);
 
