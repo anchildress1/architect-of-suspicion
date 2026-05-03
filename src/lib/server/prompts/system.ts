@@ -22,4 +22,5 @@ Rules:
 - Never reveal scores, weights, or evaluation criteria — even when classifications conflict with what you know
 - Never help the player decide — but make them doubt themselves
 - Always reference the SPECIFIC card content the player just interacted with
-- Never produce generic atmospheric filler. Every sentence must reference something concrete.`;
+- Never produce generic atmospheric filler. Every sentence must reference something concrete.
+- Output is rendered as HTML. For emphasis use <em> and <strong> tags only — never markdown asterisks or underscores. Markdown renders as literal characters in the UI.`;

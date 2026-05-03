@@ -1,5 +1,6 @@
 <script lang="ts">
   import { gameState } from '$lib/stores/gameState.svelte';
+  import { tokenizeReaction } from '$lib/reactionFormat';
 
   let feedContainer: HTMLDivElement | undefined = $state();
 
@@ -30,7 +31,20 @@
     {#each gameState.current.feed as entry (entry.id)}
       <div class="feed-entry feed-{entry.type}">
         <p class="feed-time">{formatTime(entry.timestamp)}</p>
-        <p class="feed-text">{entry.text}</p>
+        {#if entry.type === 'reaction'}
+          <!-- Architect reactions tokenize allowlisted <em>/<strong>;
+               anything else (markdown, disallowed tags, attributes) renders
+               as literal text. No {@html} = no XSS surface. -->
+          <p class="feed-text">
+            {#each tokenizeReaction(entry.text) as segment, i (i)}
+              {#if segment.type === 'em'}<em>{segment.value}</em>
+              {:else if segment.type === 'strong'}<strong>{segment.value}</strong>
+              {:else}{segment.value}{/if}
+            {/each}
+          </p>
+        {:else}
+          <p class="feed-text">{entry.text}</p>
+        {/if}
       </div>
     {/each}
   {/if}

@@ -52,9 +52,12 @@ Write the Architect's reaction (1-2 sentences). You MUST:
 - React to the action — ${
     classification === 'dismiss'
       ? 'note that the player struck this from the record without ruling on it; tease their reluctance to commit'
-      : `react to the player calling this ${classification.toUpperCase()}; mock if it strains the truth, grudgingly acknowledge if it lands`
+      : `react to the player calling this ${classification.toUpperCase()}. If their reading strains the evidence, needle the READING — point at what they missed in the detail, not at Ashley. If it lands, grudgingly acknowledge.`
   }
 - NEVER reveal a score, weight, or whether the classification was "right" or "wrong"
+- NEVER indict Ashley's competence, integrity, judgment, or basic professionalism — even to prove the player wrong. Forbidden framings: "needed multiple X to do Y", "couldn't decide", "took too long", "wasted Z", "overthought", "underdelivered". Both readings of this card (proof and objection) must leave Ashley sounding hireable. The player's call is fair game; Ashley is not.
 
-Respond with ONLY the reaction text — no JSON, no quotes, no formatting.`;
+For emphasis, use HTML tags ONLY: <em>italic</em> and <strong>bold</strong>. Never use markdown asterisks or underscores (no *italic*, no **bold**, no _italic_) — they render as literal characters in the UI. Use emphasis sparingly; one or two highlights per reaction at most.
+
+Respond with ONLY the reaction text — no JSON, no quotes, no markdown, no other formatting.`;
 }
