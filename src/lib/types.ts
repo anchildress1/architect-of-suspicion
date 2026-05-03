@@ -86,13 +86,13 @@ export interface CoverLetterResponse {
 }
 
 export interface EvaluateResponse {
-  ai_reaction: string;
+  /** suspicion.picks row id — pass to /api/reaction to stream the Architect's
+   *  in-character response. The pick is already committed by the time this
+   *  returns; the reaction is decoupled so the client can advance immediately. */
+  pick_id: string;
   /** Post-smoothing needle position [0, 100]. Computed server-side so the raw
    *  ai_score magnitude never reaches the client (Invariant #2). */
   attention: number;
-  /** True when the Claude reaction call fell back to a static string — lets
-   *  the UI show a subdued state instead of pretending the Architect spoke. */
-  reaction_fallback: boolean;
 }
 
 /** 409 body returned when a card has already been ruled in this session.

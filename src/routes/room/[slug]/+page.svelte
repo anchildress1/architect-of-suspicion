@@ -98,22 +98,72 @@
     }
   }
 
+  const FALLBACK_REACTION =
+    'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
+
+  async function streamReaction(pickId: string, reactionEntryId: string) {
+    let collected = '';
+    try {
+      const res = await fetch('/api/reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pick_id: pickId }),
+      });
+      if (!res.ok || !res.body) {
+        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          collected += decoder.decode(value, { stream: true });
+          gameState.updateFeedEntry(reactionEntryId, collected);
+        }
+      }
+      const flush = decoder.decode();
+      if (flush) {
+        collected += flush;
+        gameState.updateFeedEntry(reactionEntryId, collected);
+      }
+      if (!collected.trim()) {
+        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
+      }
+    } catch {
+      if (!collected.trim()) {
+        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
+      }
+    }
+  }
+
   async function applyEvaluateSuccess(
     res: Response,
     card: ClaimCardEntry,
     classification: Classification,
     ruledIndex: number,
   ) {
-    const { ai_reaction, attention } = (await res.json()) as EvaluateResponse;
+    const { pick_id, attention } = (await res.json()) as EvaluateResponse;
     pushFeedEntry(
       'action',
       classification === 'dismiss'
         ? `Struck "${card.title}" from the record.`
         : `Classified "${card.title}" as ${classification}.`,
     );
-    if (ai_reaction) pushFeedEntry('reaction', ai_reaction);
     gameState.setAttention(attention);
     commitRuling(card, classification, ruledIndex);
+    // Open a placeholder reaction entry now so the bubble's frame appears
+    // immediately, then stream tokens into it. The fetch runs detached — the
+    // player can pick the next card while the Architect's response lands.
+    const reactionEntryId = crypto.randomUUID();
+    gameState.addFeedEntry({
+      id: reactionEntryId,
+      type: 'reaction',
+      text: '',
+      timestamp: Date.now(),
+    });
+    void streamReaction(pick_id, reactionEntryId);
   }
 
   async function applyConflictRecovery(res: Response, card: ClaimCardEntry, ruledIndex: number) {
