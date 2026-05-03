@@ -66,11 +66,11 @@ Output contract:
 
 Honesty contract: downstream Pass 4 cross-checks the desired_verdict you declare against the average ai_score sign of the claim's surviving card pool. A mismatch (claim says accuse but evidence leans pardon, or vice versa) drops the claim from the seed entirely. There is no benefit to fudging the desired_verdict — the cross-check catches it and you lose the claim anyway.`;
 
-/** Pin output array length in the schema itself so Opus strict-mode honors
- *  minItems/maxItems and physically can't over- or under-produce. Saves the
- *  retries we used to burn when a loose schema let it return 12 claims when
- *  we asked for 18. */
-function schemaForTarget(target: number): Record<string, unknown> {
+/** Anthropic's structured-outputs API (`output_config.format.schema`) rejects
+ *  any `minItems` value other than 0 or 1, so we can't pin array length in the
+ *  schema the way we used to. The prompt asks for the exact count and the
+ *  truths floor; assertOutputShape() below rejects any drift after parse. */
+function schemaForTarget(_target: number): Record<string, unknown> {
   return {
     type: 'object',
     properties: {
@@ -84,7 +84,6 @@ function schemaForTarget(target: number): Record<string, unknown> {
             truths_targeted: {
               type: 'array',
               items: { type: 'string' },
-              minItems: 2,
             },
             hireable_truth: { type: 'string', minLength: 1 },
             desired_verdict: { type: 'string', enum: ['accuse', 'pardon'] },
@@ -98,8 +97,6 @@ function schemaForTarget(target: number): Record<string, unknown> {
           ],
           additionalProperties: false,
         },
-        minItems: target,
-        maxItems: target,
       },
     },
     required: ['claims'],
@@ -204,13 +201,14 @@ export async function runPass2(cards: CardRow[], truths: TruthMap): Promise<Gene
   }
   if (parsed.claims.length !== target) {
     throw new Error(
-      `[pass2] expected ${target} claims, got ${parsed.claims.length} — strict-schema minItems/maxItems should have prevented this`,
+      `[pass2] expected ${target} claims, got ${parsed.claims.length} — Anthropic structured outputs can't enforce minItems/maxItems > 1, so the prompt is the only count guard. Re-run, or raise reasoning effort.`,
     );
   }
 
   const claims: GeneratedClaim[] = parsed.claims.map((claim, index) => {
     assertNonEmpty(claim.hireable_truth, 'hireable_truth', claim.claim_text);
     assertVerdict(claim.desired_verdict, claim.claim_text);
+    assertTruthsTargeted(claim.truths_targeted, claim.claim_text);
     return {
       id: `claim-${index + 1}`,
       claim_text: claim.claim_text,
@@ -247,6 +245,18 @@ function assertVerdict(value: unknown, claimText: string): void {
   if (value !== 'accuse' && value !== 'pardon') {
     throw new Error(
       `[pass2] invalid desired_verdict=${String(value)} for claim "${claimText}" — schema should have prevented this`,
+    );
+  }
+}
+
+// Anthropic's `output_config.format.schema` only allows minItems 0 or 1, so
+// the "≥ 2 truths" floor moved out of the JSON Schema and lives here.
+function assertTruthsTargeted(value: unknown, claimText: string): void {
+  if (!Array.isArray(value) || value.length < 2) {
+    throw new Error(
+      `[pass2] truths_targeted must include at least 2 truths for claim "${claimText}" (got ${
+        Array.isArray(value) ? value.length : typeof value
+      })`,
     );
   }
 }
