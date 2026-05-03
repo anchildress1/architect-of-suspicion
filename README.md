@@ -117,7 +117,11 @@ Server-side only. Never check these into the repo, never expose them to the clie
 
 ## License
 
-Released under the [Polyform Shield License 1.0.0](LICENSE). Source-available; commercial use that competes with the licensor's offering is not permitted.
+Released under the [Polyform Shield License 1.0.0](LICENSE). Source-available, not open-source — read the license before you build a paid SaaS on top of it.
+
+- **You can:** use it, fork it, learn from it, ship it inside your day job, hand it to a client.
+- **You can't:** sell it, rebrand it, host it as paid SaaS, or otherwise monetize it without explicit written permission.
+- **Public forks:** include the LICENSE file and credit the original work.
 
 ---
 
