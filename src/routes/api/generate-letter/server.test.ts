@@ -319,7 +319,7 @@ describe('POST /api/generate-letter', () => {
     await POST(makeRequest({ verdict: 'pardon' }));
 
     const letterPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
-    expect(letterPrompt).toMatch(/saw the truth clearly/i);
+    expect(letterPrompt).toMatch(/truth lands clearly/i);
   });
 
   it('opens with verdict-miss language when player verdict mismatches desired_verdict', async () => {
@@ -330,7 +330,7 @@ describe('POST /api/generate-letter', () => {
     await POST(makeRequest({ verdict: 'accuse' }));
 
     const letterPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
-    expect(letterPrompt).toMatch(/the record corrects them/i);
+    expect(letterPrompt).toMatch(/truth holds even when the surface/i);
   });
 
   it('500s when the claim truth row is missing (refuses unsafe framing)', async () => {

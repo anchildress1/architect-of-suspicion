@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Verdict } from '$lib/types';
+  import { tokenizeReaction } from '$lib/reactionFormat';
 
   interface Props {
     letter: string;
@@ -12,9 +13,18 @@
 
   let copied = $state(false);
 
+  /**
+   * Strip allowlisted emphasis tags from HTML for clipboard copy. The model
+   * emits <em>/<strong> for visual emphasis; copying to clipboard should
+   * land plain text in the resume document.
+   */
+  function letterAsPlainText(html: string): string {
+    return html.replace(/<\/?(?:em|strong)>/g, '');
+  }
+
   async function copyToClipboard() {
     try {
-      await navigator.clipboard.writeText(letter);
+      await navigator.clipboard.writeText(letterAsPlainText(letter));
       copied = true;
       setTimeout(() => (copied = false), 2000);
     } catch {
@@ -52,14 +62,23 @@
 
   <div class="letter-body">
     {#each paragraphs as paragraph, i (i)}
-      <p style="animation-delay: {0.18 + i * 0.12}s">{paragraph}</p>
+      <!-- Tokenize allowlisted <em>/<strong> the model emits; everything
+           else (markdown, disallowed tags, attributes) renders as literal
+           text via Svelte's default escaping. No {@html} = no XSS surface. -->
+      <p style="animation-delay: {0.18 + i * 0.12}s">
+        {#each tokenizeReaction(paragraph) as segment, j (j)}
+          {#if segment.type === 'em'}<em>{segment.value}</em>
+          {:else if segment.type === 'strong'}<strong>{segment.value}</strong>
+          {:else}{segment.value}{/if}
+        {/each}
+      </p>
     {/each}
   </div>
 
   <footer class="letter-sign">
     <div>
       <p class="letter-signature">The Architect</p>
-      <p class="letter-role">Magistrate, Case 0426 &middot; ashleychildress.dev</p>
+      <p class="letter-role">Magistrate, Case 0426</p>
     </div>
     <div class="verdict-stamp" data-verdict={verdict}>
       <span class="verdict-stamp-word">{stampWord}</span>

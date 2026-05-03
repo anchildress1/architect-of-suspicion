@@ -55,18 +55,7 @@ describe('buildCoverLetterPrompt', () => {
     expect(prompt).toContain('Ashley uses AI too much');
   });
 
-  it('labels the verdict the player rendered', () => {
-    const prompt = buildCoverLetterPrompt(
-      'Test claim',
-      'accuse',
-      truthContext,
-      [paramountRuled],
-      [ruledExtra],
-    );
-    expect(prompt).toContain('Verdict the player rendered: ACCUSED');
-  });
-
-  it('labels pardon verdict the same way', () => {
+  it('frames the artifact as a portfolio cover letter for a recruiter audience', () => {
     const prompt = buildCoverLetterPrompt(
       'Test claim',
       'pardon',
@@ -74,10 +63,12 @@ describe('buildCoverLetterPrompt', () => {
       [paramountRuled],
       [],
     );
-    expect(prompt).toContain('Verdict the player rendered: PARDONED');
+    expect(prompt).toMatch(/portfolio cover letter/i);
+    expect(prompt).toMatch(/recruiter or hiring manager/i);
+    expect(prompt).toMatch(/attaches to a resume/i);
   });
 
-  it('anchors the brief on the hireable truth', () => {
+  it('anchors the cover letter on the hireable truth', () => {
     const prompt = buildCoverLetterPrompt(
       'Test claim',
       'pardon',
@@ -86,12 +77,12 @@ describe('buildCoverLetterPrompt', () => {
       [],
     );
     expect(prompt).toContain(truthContext.hireableTruth);
-    expect(prompt).toMatch(/the brief MUST reveal/i);
-    expect(prompt).toMatch(/spine of the brief/i);
+    expect(prompt).toMatch(/the cover letter MUST reveal/i);
+    expect(prompt).toMatch(/spine of the cover letter/i);
   });
 
   describe('verdict alignment opener', () => {
-    it('opens with "the player saw the truth clearly" when verdict matches desiredVerdict', () => {
+    it('opens with the truth-lands-clearly framing when verdict matches desiredVerdict', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -99,12 +90,12 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/saw the truth clearly/i);
+      expect(prompt).toMatch(/truth lands clearly/i);
       expect(prompt).toMatch(/aligns with the record/i);
-      expect(prompt).not.toMatch(/the record corrects them/i);
+      expect(prompt).not.toMatch(/holds even when the surface/i);
     });
 
-    it('opens with "the record corrects them" when verdict misses desiredVerdict', () => {
+    it('opens with the truth-still-holds framing when verdict misses desiredVerdict', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'accuse',
@@ -112,9 +103,9 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/the record corrects them/i);
-      expect(prompt).toMatch(/no scolding/i);
-      expect(prompt).not.toMatch(/saw the truth clearly/i);
+      expect(prompt).toMatch(/truth holds even when the surface/i);
+      expect(prompt).toMatch(/without scolding/i);
+      expect(prompt).not.toMatch(/truth lands clearly/i);
     });
 
     it('reports verdict alignment as YES vs NO so the model picks the right opener deterministically', () => {
@@ -132,13 +123,13 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(matchPrompt).toMatch(/YES \(their reading matches the record\)/);
-      expect(missPrompt).toMatch(/NO \(the record contradicts their reading\)/);
+      expect(matchPrompt).toMatch(/YES \(the chosen reading matches the record\)/);
+      expect(missPrompt).toMatch(/NO \(the record contradicts the chosen reading\)/);
     });
   });
 
-  describe('paramount evidence', () => {
-    it('cites paramount cards the player ruled with their classification', () => {
+  describe('evidence pool', () => {
+    it('includes paramount cards with directional engagement signal (no gameplay vocab)', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -147,10 +138,13 @@ describe('buildCoverLetterPrompt', () => {
         [],
       );
       expect(prompt).toContain('AI Tools Usage');
-      expect(prompt).toMatch(/RULED PROOF by player/);
+      expect(prompt).toMatch(/engaged as supporting/i);
+      // Gameplay vocab must NOT leak into the prompt — the model picks it up.
+      expect(prompt).not.toMatch(/RULED PROOF/);
+      expect(prompt).not.toMatch(/SKIPPED by player/);
     });
 
-    it('marks paramount cards the player skipped as gaps to surface', () => {
+    it('marks unengaged paramount cards without gameplay framing', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -159,10 +153,11 @@ describe('buildCoverLetterPrompt', () => {
         [],
       );
       expect(prompt).toContain('ADRs prevent drift');
-      expect(prompt).toMatch(/SKIPPED by player — surface as a gap/);
+      expect(prompt).toMatch(/not engaged during the investigation/i);
+      expect(prompt).not.toMatch(/SKIPPED by player/);
     });
 
-    it('surfaces both ruled and skipped paramount cards together', () => {
+    it('surfaces both engaged and unengaged paramount cards together', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -185,6 +180,20 @@ describe('buildCoverLetterPrompt', () => {
       expect(prompt).toContain('Ashley uses AI tools for code generation');
     });
 
+    it('instructs the model to pick 3-5 strongest pieces and weave them as prose', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/3-5 STRONGEST/i);
+      expect(prompt).toMatch(/weave/i);
+      expect(prompt).toMatch(/DO NOT enumerate/);
+      expect(prompt).toMatch(/numbered or bulleted list/i);
+    });
+
     it('warns when no paramount cards loaded — pipeline bug fallback', () => {
       const prompt = buildCoverLetterPrompt('Test claim', 'pardon', truthContext, [], []);
       expect(prompt).toMatch(/No paramount evidence loaded/i);
@@ -192,8 +201,8 @@ describe('buildCoverLetterPrompt', () => {
     });
   });
 
-  describe('ruled extras (non-paramount)', () => {
-    it('cites the player ruling for personalization', () => {
+  describe('personal investigation extras', () => {
+    it('cites the engagement direction without gameplay vocab', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -202,10 +211,11 @@ describe('buildCoverLetterPrompt', () => {
         [ruledExtra],
       );
       expect(prompt).toContain('Open Source Contributions');
-      expect(prompt).toMatch(/RULED OBJECTION by player/);
+      expect(prompt).toMatch(/engaged as challenging/i);
+      expect(prompt).not.toMatch(/RULED OBJECTION/);
     });
 
-    it('warns the model not to let extras shift the truth', () => {
+    it('warns the model not to let extras override the truth', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -213,7 +223,7 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [ruledExtra],
       );
-      expect(prompt).toMatch(/do NOT let them shift the truth/i);
+      expect(prompt).toMatch(/DO NOT let them override the truth/i);
     });
 
     it('handles the empty case gracefully', () => {
@@ -224,7 +234,7 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/No additional ruled evidence beyond the paramount set/i);
+      expect(prompt).toMatch(/No additional engaged evidence beyond the paramount set/i);
     });
   });
 
@@ -280,38 +290,92 @@ describe('buildCoverLetterPrompt', () => {
     });
   });
 
-  it('instructs to write a verdict brief, not a job application', () => {
-    const prompt = buildCoverLetterPrompt(
-      'Test claim',
-      'pardon',
-      truthContext,
-      [paramountRuled],
-      [],
-    );
-    expect(prompt).toContain('verdict brief');
-    expect(prompt).toContain('NOT a job application');
+  describe('gameplay-frame leak prevention', () => {
+    it('forbids referencing players, verdicts, courts, juries, magistrates in the OUTPUT', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [ruledExtra],
+      );
+      expect(prompt).toMatch(/NEVER reference players, verdicts, courts/i);
+      expect(prompt).toMatch(/no idea a game preceded this/i);
+    });
+
+    it('forbids "the brief", case numbers, and filing language in output', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/NO case numbers/);
+      expect(prompt).toMatch(/NO "Filed this day"/);
+      expect(prompt).toMatch(/NO "On the matter of …"/);
+    });
+
+    it('forbids a sign-off line in the body — component renders signature separately', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/NO sign-off/i);
+      expect(prompt).toMatch(/component renders the signature separately/i);
+    });
+
+    it('forbids unengaged-paramount cards being framed as "skipped" or "the player did not"', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountSkipped],
+        [],
+      );
+      expect(prompt).toMatch(/NEVER frame an absent card as "skipped"/i);
+      expect(prompt).toMatch(/the reader doesn't know there was a player/i);
+    });
   });
 
-  it('requests plain text response (no JSON wrapping)', () => {
-    const prompt = buildCoverLetterPrompt(
-      'Test claim',
-      'pardon',
-      truthContext,
-      [paramountRuled],
-      [],
-    );
-    expect(prompt).toContain('ONLY the brief text');
-  });
+  describe('formatting', () => {
+    it('instructs HTML emphasis tags only — no markdown', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/<em>italic<\/em>/i);
+      expect(prompt).toMatch(/<strong>bold<\/strong>/i);
+      expect(prompt).toMatch(/Never markdown asterisks/i);
+    });
 
-  it('forbids Victorian / steampunk vocabulary', () => {
-    const prompt = buildCoverLetterPrompt(
-      'Test claim',
-      'pardon',
-      truthContext,
-      [paramountRuled],
-      [],
-    );
-    expect(prompt).toContain('NEVER use Victorian or steampunk vocabulary');
+    it('forbids Victorian / steampunk vocabulary', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/Never use Victorian or steampunk vocabulary/);
+    });
+
+    it('requests plain text response (no JSON wrapping)', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toContain('ONLY the cover letter text');
+    });
   });
 });
 
@@ -348,5 +412,18 @@ describe('buildClosingLinePrompt', () => {
     const prompt = buildClosingLinePrompt('accuse', truthContext);
     expect(prompt).toMatch(/never indict/i);
     expect(prompt).toMatch(/found wanting/i);
+  });
+
+  it('forbids referencing gameplay framing in the closing', () => {
+    const prompt = buildClosingLinePrompt('accuse', truthContext);
+    expect(prompt).toMatch(/NEVER reference players, verdicts, courts/i);
+    expect(prompt).toMatch(/reader doesn't know a game preceded this/i);
+  });
+
+  it('instructs HTML emphasis tags only — no markdown', () => {
+    const prompt = buildClosingLinePrompt('accuse', truthContext);
+    expect(prompt).toMatch(/<em>/);
+    expect(prompt).toMatch(/<strong>/);
+    expect(prompt).toMatch(/Never markdown/i);
   });
 });
