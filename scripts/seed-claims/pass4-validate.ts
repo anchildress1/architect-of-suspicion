@@ -32,7 +32,7 @@ Recruiter-safety rule (non-negotiable): the rewritten_blurb is public text that 
 
 Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields.
 
-Source blurbs are written in first person ("I built…", "My approach was…", "I decided…"). Always convert to third person in rewritten_blurb. Use "Ashley" by name; never use pronouns (he/she/they) as a substitute. First-person phrasing in the output is always wrong.
+Source blurbs are written in first person ("I built…", "My approach was…", "I decided…"). Always convert to third person in rewritten_blurb. Refer to Ashley by name or with she/her pronouns — these are the only acceptable third-person references. Never use he/him or they/them. First-person phrasing in the output is always wrong.
 
 Tags and projects carry the work/play + deadline context:
 - "DEV Challenge > …" tag → strict external deadline, stack often unfamiliar at start. Surface the pressure where it sharpens the claim.
