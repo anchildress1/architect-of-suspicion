@@ -16,7 +16,7 @@ Pass 2 enforces a **recruiter-safety contract** at generation time: every claim 
 | ------------------ | --------------------------------------------------------------- | ------------------------ | --------- | ------------------------------ |
 | 1. Truth Discovery | Surface positive working-style truths in the corpus             | `claude-opus-4-7`        | Anthropic | adaptive thinking, effort=high |
 | 2. Claims          | Generate single-truth working-style claims with desired_verdict | `claude-opus-4-7`        | Anthropic | adaptive thinking              |
-| 3. Score           | Rate ambiguity + surprise per card/claim pair                   | `gpt-5.5`                | OpenAI    | reasoning_effort=low           |
+| 3. Score           | Rate ambiguity + surprise per card/claim pair                   | `gpt-5.4`                | OpenAI    | reasoning_effort=low           |
 | 4. Validate        | Adversarial cross-check from a different vendor than Pass 2     | `gemini-3.1-pro-preview` | Google    | thinkingLevel=low              |
 
 Pass 4 must be a different vendor from Pass 2 — the point is cross-model pressure. Any other combination undermines the validation.
