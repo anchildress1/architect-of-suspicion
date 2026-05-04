@@ -26,13 +26,12 @@ export const SYSTEM_PROMPT = `You analyze a corpus of Ashley's career facts for 
 
 A truth is the answer the brief reveals at the end of an investigation. The game wraps each truth in a surface accusation that creates reasonable doubt — the player investigates the accusation, and the brief reveals the truth (the same truth) regardless of which way they ultimately rule. Both verdicts are recruiter-safe because the truth is positive.
 
-Surface a truth only if:
-- It describes a hireable working-style trait grounded in 5+ specific cards across 3+ categories.
-- It is sharper than the surface ("Ashley weaponizes AI" — not "Ashley uses AI a lot"). The sharpness is what makes the brief memorable.
-- A reasonable observer could doubt it from limited evidence — that doubt becomes the surface claim Pass 2 generates.
-- The doubt framing must NOT indict competence, integrity, ethics, or basic professionalism. "Ashley uses AI too much" is a fair reasonable-doubt framing of "weaponizes AI"; "Ashley takes credit for the team's work" is not — moral indictments stay forbidden no matter how the brief resolves them.
+A good truth satisfies all of:
+- Hireable working-style trait grounded in 5+ specific cards across 3+ categories. The trait is something a recruiter reads as substance.
+- Sharper than the surface ("Ashley weaponizes AI" — not "Ashley uses AI a lot"). The sharpness is what makes the brief memorable.
+- A reasonable observer could doubt it from limited evidence — that doubt becomes the surface claim Pass 2 generates. The doubt framing stays in working-style territory ("Ashley uses AI too much" is fair doubt for "weaponizes AI") — style claims a hiring manager respects, not character indictments.
 
-Never surface a truth that frames Ashley as a dilettante, opportunist, or anything a hiring manager would walk away from. The brief is a public artifact — the underlying truth IS what the recruiter takes home.`;
+The recruiter-safety floor (single conceptual rule): the brief is a public artifact and the underlying truth is what the recruiter takes home. Truths describe how Ashley works as substance, never indict competence, integrity, ethics, or basic professionalism.`;
 
 const SCHEMA = {
   type: 'object',
@@ -66,7 +65,7 @@ Discover 8-15 distinct hireable truths in this corpus.
 
 For each truth:
 1. truth — one sentence. The positive professional trait the brief reveals. Sharper than the surface read of any single card.
-2. reasonable_doubt — one sentence. How a reasonable observer could doubt the truth from limited evidence. Pass 2 turns this into the surface accusation. Stays in working-style territory; never indicts competence or integrity.
+2. reasonable_doubt — one sentence. How a reasonable observer could doubt the truth from limited evidence. Pass 2 turns this into the surface accusation. Stays in working-style territory; the doubt is a style framing recruiters respect.
 3. categories — the card categories whose evidence most strongly supports the truth (3+ required).
 
 Truth shape examples:
@@ -75,10 +74,7 @@ Truth shape examples:
 - "Ashley ships rough drafts to learn faster." (Doubt: "Ashley doesn't polish before shipping.")
 - "Ashley turns failure modes into design tools." (Doubt: "Ashley breaks things to look clever.")
 
-Do NOT surface a truth as:
-- Generic ("Ashley is ambitious", "Ashley is curious") — must be a working-style observation, not a personality adjective.
-- Single-card or single-category — the truth has to live across the corpus.
-- A moral or ethical claim — even when reframed positively, the surface claim risks reading as a character indictment.
+A good truth lives across the corpus (multiple cards in 3+ categories), names a working-style observation rather than a personality adjective ("Ashley weaponizes AI" rather than "Ashley is curious"), and stays in working-style territory under both the truth and its doubt.
 
 Use the notes field for meta-observations about the corpus that did not rise to a full truth (e.g. "the THD employer tag dominates Decisions; cross-check truths there for context bleed").`;
 }

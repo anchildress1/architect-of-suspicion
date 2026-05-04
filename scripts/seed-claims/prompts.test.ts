@@ -54,12 +54,19 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       expect(PASS2).not.toMatch(/blunt,?\s+provocative\s+accusation/i);
     });
 
-    it('lists the legacy bad-shape claims as forbidden examples', () => {
-      // These exact claim shapes shipped in earlier seed runs and damaged
-      // the public artifact. They MUST appear in the rejection criteria so
-      // the model never regenerates them.
-      expect(PASS2).toMatch(/coasts on reputation/i);
-      expect(PASS2).toMatch(/takes credit/i);
+    it('teaches the abstraction floor — claims travel across chambers, no specific tools or scopes', () => {
+      // Earlier prompts also enumerated the legacy bad shapes ("Ashley
+      // coasts on reputation", "Ashley takes credit"). Listing forbidden
+      // phrasings primes the model on the very phrases the list is
+      // trying to suppress (see feedback_no_negative_anchoring.md). The
+      // current prompt teaches the abstraction floor positively: the
+      // verb has to describe a posture that recurs across 5+ chambers,
+      // and concrete examples illustrate the narrow→wide transform
+      // ("over-polices process with lint rules" → "over-polices process").
+      expect(PASS2).toMatch(/abstraction floor/i);
+      expect(PASS2).toMatch(/verbs that travel/i);
+      expect(PASS2).toMatch(/with lint rules/);
+      expect(PASS2).toMatch(/broaden the verb/i);
     });
 
     it('warns the model that downstream cross-checks drop verdict mismatches', () => {

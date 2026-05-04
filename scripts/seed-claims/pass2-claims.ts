@@ -13,17 +13,22 @@
  *  recruiters investigating the same claim reach the same conclusion about
  *  Ashley; only the storytelling differs.
  *
- *  Recruiter-safety rule (unchanged): the surface claim is a public artifact.
- *  Style claims ("Ashley over-engineers everything", "Ashley uses AI too
- *  much") are fine — both readings, and the underlying truth, describe a
- *  hireable working-style trait. Moral indictments ("Ashley takes credit",
- *  "Ashley coasts on reputation") stay forbidden — they damage the artifact
- *  no matter how the verdict resolves.
+ *  Recruiter-safety floor: the surface claim is a public artifact. Style
+ *  framings only — claims describe a working-style posture a hiring manager
+ *  reads as substance ("Ashley over-engineers everything", "Ashley uses AI
+ *  too much"). Both surface and truth stay in working-style territory.
+ *
+ *  Abstraction floor: claims need to travel across the corpus. The verb
+ *  describes a recurring posture, not a particular tool or activity, so
+ *  ~5+ categories of evidence can plausibly attach. A claim that mentions
+ *  a specific tool ("with lint rules", "via ADRs") or activity ("over-tests
+ *  her code") locks the evidence pool to one chamber and starves the
+ *  game's witness flow.
  *
  *  Model:  claude-opus-4-7 — adaptive thinking pays off here because the
  *          model has to anchor each claim to a specific truth, decide
- *          desired_verdict from corpus evidence, and stay inside the
- *          recruiter-safety constraint simultaneously.
+ *          desired_verdict from corpus evidence, hit the right abstraction
+ *          level, and stay inside the recruiter-safety floor at once.
  */
 
 import { clientFor } from './clients';
@@ -46,23 +51,23 @@ Each claim you write has three parts:
 2. hireable_truth — the single positive professional trait the brief reveals at the end. Drawn from Pass 1's truths or a sharper version of one.
 3. desired_verdict — the verdict that aligns with reality. accuse if the surface claim_text is TRUE of Ashley (the player accuses correctly to align with the truth); pardon if claim_text is FALSE (the truth contradicts the surface accusation).
 
-Recruiter-safety rule (non-negotiable): the game is a public artifact viewed by recruiters. Both the claim_text AND the hireable_truth must read as a recognizable professional trait a hiring manager would respect — even when the brief contradicts the surface claim. A claim that indicts competence, integrity, ethics, or basic professionalism is forbidden, even if the brief "exonerates" Ashley by surfacing the contradicting truth. Style framings only.
+The recruiter-safety floor (non-negotiable): the game is a public artifact recruiters read. Style framings only. Both the claim_text and the hireable_truth describe a working-style posture a hiring manager reads as substance — over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features. The trait Ashley walks away with under either verdict has to be one a recruiter respects. As a single conceptual rule: claims never indict competence, integrity, ethics, or basic professionalism — the surface claim and its underlying truth both sit in working-style territory.
 
-Forbidden claim shapes (these EXACT shapes shipped in earlier seed runs and damaged the public artifact — never regenerate them or anything functionally equivalent):
-- "Ashley coasts on reputation rather than earning it" (indicts effort)
-- "Ashley takes credit for what the team delivered" (indicts integrity)
-- "Ashley prioritizes novelty over reliability" (recruiters read this as "ships broken things")
+The abstraction floor: claims need to travel across the corpus. The verb names a recurring posture or pattern that recurs across her work, so ~5+ chambers of evidence can plausibly attach. The verb is wide; the cards underneath supply the specifics.
+- Verbs that travel: over-engineers, ships rough drafts, leans on AI heavily, over-polices process, prioritizes restraint, builds constraints before features.
+- Verbs that get stuck: over-tests, over-comments, over-uses-Svelte. The pattern only shows up in one chamber and the witness flow starves.
+The fix when a claim mentions a specific tool or activity ("with lint rules", "via ADRs", "in TypeScript", "in her side projects"): broaden the verb until the same posture surfaces in any chamber. "Ashley over-polices process with lint rules" → "Ashley over-polices process". The lint cards still attach; so do the ADR cards, the code-review cards, the team-standards cards, the documentation cards.
 
 Output contract:
-- claim_text is a single declarative sentence: "Ashley [verb] [working-style observation]"
-- hireable_truth is a single declarative sentence: the trait the brief reveals
-- The relationship between claim_text and hireable_truth is reasonable doubt: someone reading the corpus quickly could plausibly believe claim_text; the full evidence reveals hireable_truth instead
+- claim_text is a single declarative sentence: "Ashley [verb] [working-style observation]" — verb wide enough to travel, observation sharp enough to be falsifiable.
+- hireable_truth is a single declarative sentence: the trait the brief reveals.
+- The relationship between claim_text and hireable_truth is reasonable doubt: someone reading the corpus quickly could plausibly believe claim_text; the full evidence reveals hireable_truth instead.
 - desired_verdict reflects which way the FULL evidence actually leans:
-   - accuse: claim_text is roughly TRUE of Ashley, sharpened by hireable_truth (e.g. claim "Ashley over-engineers everything"; truth "Ashley builds constraints before features"; desired_verdict accuse — the surface claim is true, the truth is the hireable refinement)
-   - pardon: claim_text is roughly FALSE of Ashley; hireable_truth is the actual story (e.g. claim "Ashley uses AI too much"; truth "Ashley weaponizes AI — teaches and constrains it"; desired_verdict pardon — the surface accusation collapses under the truth)
-- Each claim must draw on at least 2 truths from the input
-- Rationale must name specific card titles or categories that support the claim
-- Return exactly the number of claims requested — no more, no fewer
+   - accuse: claim_text is roughly TRUE of Ashley, sharpened by hireable_truth (e.g. claim "Ashley over-engineers everything"; truth "Ashley builds constraints before features"; desired_verdict accuse — the surface claim is true, the truth is the hireable refinement).
+   - pardon: claim_text is roughly FALSE of Ashley; hireable_truth is the actual story (e.g. claim "Ashley uses AI too much"; truth "Ashley weaponizes AI — teaches and constrains it"; desired_verdict pardon — the surface accusation collapses under the truth).
+- Each claim must draw on at least 2 truths from the input.
+- Rationale must name specific card titles or categories that support the claim.
+- Return exactly the number of claims requested — no more, no fewer.
 
 Honesty contract: downstream Pass 4 cross-checks the desired_verdict you declare against the average ai_score sign of the claim's surviving card pool. A mismatch (claim says accuse but evidence leans pardon, or vice versa) drops the claim from the seed entirely. There is no benefit to fudging the desired_verdict — the cross-check catches it and you lose the claim anyway.`;
 
@@ -121,7 +126,7 @@ Generate exactly ${target} candidate claims. Downstream scoring selects the best
 </task>
 
 <requirements>
-1. Each claim_text is a working-style accusation a reasonable observer could doubt the truth of — not a compliment, not neutral, not a moral indictment.
+1. Each claim_text is a working-style accusation a reasonable observer could doubt the truth of — a posture sharp enough that someone reading the corpus quickly could believe it.
 2. Specific enough to evaluate against individual cards without insider knowledge.
 3. Grounded in at least 2 truths from the input — cite them in truths_targeted.
 4. Rationale must reference specific card titles or categories as supporting evidence.
@@ -131,42 +136,44 @@ Generate exactly ${target} candidate claims. Downstream scoring selects the best
 
 <variety>
 Spread claims across these axes:
-- Breadth: some claims span 5+ categories; others focus on 3-4 but go deeper.
+- Breadth: every claim should pull from 5+ categories; some go wide on 7-8, others go deeper on 5-6 but never narrower than 5.
 - Angle: speed vs craft, autonomy vs collaboration, build vs measure, breadth vs depth, plan vs improvise, ship vs polish.
 - Verdict mix: aim for roughly half accuse-leaning and half pardon-leaning across the batch so downstream selection has both shapes.
 </variety>
 
 <shape_examples>
-Each example is paired with the underlying truth and desired verdict.
+Each example pairs a working-style claim with its underlying truth and desired verdict. Notice the verbs — they describe a posture that travels across chambers, not a particular tool or activity.
+
 - "Ashley over-engineers everything"
   - hireable_truth: "Ashley builds constraints before features so failure modes become design tools."
   - desired_verdict: accuse (surface claim is roughly true; truth is the hireable refinement)
+  - travels because: every chamber has evidence of structure she added.
 - "Ashley uses AI too much"
   - hireable_truth: "Ashley weaponizes AI — teaches it, constrains it, holds it to the engineering standards she holds herself."
   - desired_verdict: pardon (surface claim is false; the truth contradicts it)
+  - travels because: AI use shows up across decision-making, experimentation, and tooling chambers.
 - "Ashley would rather build it than buy it"
   - hireable_truth: "Ashley prefers depth in load-bearing systems and leverage everywhere else."
   - desired_verdict: accuse (rough true; truth sharpens the trade-off into a hireable rule)
+  - travels because: the build-vs-buy posture surfaces wherever she chose a tech path.
 - "Ashley always knows better than the room"
   - hireable_truth: "Ashley arrives with the call already loaded but tests it against the room before committing."
-  - desired_verdict: pardon (surface reads as arrogance; the truth shows disciplined collaboration)
+  - desired_verdict: pardon (surface reads as conviction; truth shows disciplined collaboration)
+  - travels because: collaboration moments span decisions, experiments, and team work.
 - "Ashley solves first, names later"
   - hireable_truth: "Ashley ships drafts that work, then iterates names and structure once the shape is real."
   - desired_verdict: accuse
+  - travels because: every shipped artifact has the same iterate-then-name cadence.
 </shape_examples>
 
-<rejection_criteria>
-Do not generate claims that are:
-- Too soft: "Ashley is ambitious" (not falsifiable)
-- Too narrow: "Ashley over-tests her code" (too few cards apply)
-- Too specific: requires insider knowledge to evaluate
-- Character indictments — competence, integrity, ethics, basic professionalism. Examples that are FORBIDDEN even though earlier versions of this prompt accepted them:
-  - "Ashley coasts on reputation" (indicts effort)
-  - "Ashley takes credit for what the team delivered" (indicts integrity)
-  - "Ashley prioritizes novelty over reliability" (indicts judgment in a way recruiters will read as "ships broken things")
-  Reframe character claims as style claims that pass the recruiter-safety test, or drop them.
-- Truth-claim mismatches — hireable_truth must be the SAME working-style territory as claim_text, not a non-sequitur exoneration.
-</rejection_criteria>`;
+<quality_floor>
+Generate claims that satisfy each of the following at once:
+- Falsifiable: the claim makes a concrete-enough assertion that someone reading the corpus could disagree. "Ashley is ambitious" doesn't qualify because no card could counter it.
+- Wide: the verb describes a posture that recurs across at least 5 chambers. If your claim names a specific tool ("with lint rules", "via ADRs"), specific language ("in TypeScript"), or specific scope ("in her side projects"), broaden the verb until the same posture surfaces anywhere.
+- Lay-readable: a recruiter or hiring manager reading the claim with no insider context can recognize the posture. The claim doesn't depend on knowing a particular project or codebase.
+- Style framing only: the claim describes a working-style posture a hiring manager reads as substance — how she works, what she ships, where she leans. Never an indictment of competence, integrity, ethics, or basic professionalism. Two recruiters reading two playthroughs of this claim must walk away with the same conclusion about Ashley.
+- Truth-claim consistency: hireable_truth lives in the same working-style territory as claim_text — a sharper version of the same posture, not a non-sequitur exoneration.
+</quality_floor>`;
 }
 
 export async function runPass2(cards: CardRow[], truths: TruthMap): Promise<GeneratedClaim[]> {
