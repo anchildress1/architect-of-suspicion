@@ -25,9 +25,10 @@ interface RuledEntry {
  * the obvious reading. When it misses, the opener leans into how the truth
  * holds even when the surface suggests otherwise.
  *
- * The model picks the 3-5 STRONGEST exhibits from the pool and weaves
- * them into prose. Card-by-card enumeration is forbidden — the record is
- * woven, not itemized.
+ * The model picks the 2-3 STRONGEST exhibits from the pool and weaves
+ * them into ONE OR TWO tight paragraphs that print cleanly on a single
+ * page beside the resume. Card-by-card enumeration is forbidden — the
+ * record is woven, not itemized.
  *
  * AGENTS.md Invariant #8 still applies: the cover letter must read as
  * recruiter-safe under either verdict, never indicting competence,
@@ -67,7 +68,7 @@ A sparing reference to the gallery, the examination, the dial settling, or "adde
 
 EVIDENCE
 
-Pick the 3-5 STRONGEST exhibits from the pool below and weave them into prose. The record is woven, not itemized — no bulleted exhibit list, no card-by-card enumeration, no "the record shows" / "the evidence demonstrates" used as a structural device on every paragraph. Vary the rhetoric.
+Pick the 2-3 STRONGEST exhibits from the pool below and weave them into prose. The whole record is one or two tight paragraphs — this prints next to a resume, so brevity matters more than coverage. The record is woven, not itemized — no bulleted exhibit list, no card-by-card enumeration, no "the record shows" / "the evidence demonstrates" used as a structural device. Vary the rhetoric.
 
 PARAMOUNT (most load-bearing for the truth — prioritize these):
 ${paramountBlock || '  (No paramount evidence loaded — pipeline bug; reveal the truth from claim text alone.)'}
@@ -103,8 +104,8 @@ This record lives next to Ashley's name. Recruiters read it.
 REQUIREMENTS
 
 1. Reveal the hireable truth as the spine of the record. Every paragraph supports it.
-2. Pick the 3-5 strongest exhibits from the pool. Weave them into prose with concrete details — technologies, decisions, metrics, time pressure, scope.
-3. 3-5 paragraphs. Polished, specific, memorable. Mechanical authority, restrained.
+2. Pick the 2-3 strongest exhibits from the pool. Weave them into prose with concrete details — technologies, decisions, metrics, time pressure, scope. Pick fewer rather than more; brevity reads as confidence.
+3. ONE OR TWO paragraphs total. The cover letter prints on a single page beside the resume; cap the whole record at roughly six to ten sentences. Polished, specific, memorable. Mechanical authority, restrained.
 4. Open in the Architect's voice, anchored on the trait (see OPENER above). Not a salutation.
 5. Close on the hireable truth with mechanical confidence. The component renders the Architect's signature separately; your closing is the last line of prose.
 

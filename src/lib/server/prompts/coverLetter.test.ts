@@ -239,7 +239,7 @@ describe('buildCoverLetterPrompt', () => {
       expect(prompt).toContain('Ashley uses AI tools for code generation');
     });
 
-    it('instructs the model to pick 3-5 strongest pieces and weave them as prose', () => {
+    it('instructs the model to pick 2-3 strongest pieces and weave them tightly', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -247,9 +247,26 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/3-5 STRONGEST/i);
+      // Cover letter prints on one page next to the resume — brevity
+      // matters more than coverage. The pool can hold many paramount +
+      // ruled exhibits but the record only weaves the 2-3 strongest.
+      expect(prompt).toMatch(/2-3 STRONGEST/i);
       expect(prompt).toMatch(/weave them into prose/i);
       expect(prompt).toMatch(/no card-by-card enumeration/i);
+      expect(prompt).toMatch(/one or two tight paragraphs/i);
+    });
+
+    it('caps the record at one to two paragraphs / six to ten sentences', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/ONE OR TWO paragraphs total/);
+      expect(prompt).toMatch(/six to ten sentences/i);
+      expect(prompt).toMatch(/brevity reads as confidence/i);
     });
 
     it('warns when no paramount cards loaded — pipeline bug fallback', () => {
