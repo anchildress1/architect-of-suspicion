@@ -4,18 +4,20 @@ Implementation of the pipeline described in [docs/CLAIM-ENGINE-PRD.md](../../doc
 
 ## What it does
 
-Reads every eligible card from `public.cards`, runs a 4-pass AI pipeline to generate working-style claims and score each card against each claim, then writes the results to `suspicion.claims` + `suspicion.claim_cards`. The game reads those tables at runtime.
+Reads every eligible card from `public.cards`, runs a 4-pass AI pipeline to generate working-style claims, score each card against each claim, and rewrite the surviving cards' player-facing blurbs — then writes the results to `suspicion.claims` + `suspicion.claim_cards`. The game reads those tables at runtime.
 
-Every claim is filtered through a **dual-hireability** test in Pass 2: both the "guilty" reading (the claim is true of Ashley) and the "not guilty" reading (the claim is false) must describe a hireable working-style trait a recruiter would respect. Character indictments — competence, integrity, ethics, basic professionalism — are rejected before they reach scoring. The game's surface text lives publicly next to Ashley's name; the seed must never produce text that paints her badly even when the player's verdict goes the other way.
+**Single-truth model.** Every claim has exactly one underlying `hireable_truth` and one `desired_verdict` (whether the surface claim is actually true of Ashley). The cover letter at verdict time reveals the truth regardless of which way the player ruled — the verdict only swings the rhetorical opener. Two recruiters playing two playthroughs of the same claim reach the same conclusion about Ashley; only the storytelling differs.
+
+Pass 2 enforces a **recruiter-safety contract** at generation time: every claim must read as a working-style trait a recruiter respects (e.g. "Ashley over-engineers", "Ashley uses AI heavily"), never as a character indictment of competence, integrity, ethics, or basic professionalism. Pass 4 cross-checks the declared `desired_verdict` against the average `ai_score` sign of the surviving card pool and drops any claim whose declared orientation contradicts its evidence. Together these enforce Invariant #8 — the game's surface text lives publicly next to Ashley's name, and the seed must never produce text that paints her badly under either verdict.
 
 ## Passes
 
-| Pass        | Role                                                        | Default model                   | Provider  | Reasoning                      |
-| ----------- | ----------------------------------------------------------- | ------------------------------- | --------- | ------------------------------ |
-| 1. Tensions | Find fault lines in the corpus                              | `claude-sonnet-4-6`             | Anthropic | adaptive thinking, effort=high |
-| 2. Claims   | Generate dual-hireable working-style claims from tensions   | `gpt-5.4`                       | OpenAI    | reasoning_effort=medium        |
-| 3. Score    | Rate ambiguity + surprise per card/claim pair               | `gpt-5.4-mini`                  | OpenAI    | reasoning_effort=low           |
-| 4. Validate | Adversarial cross-check from a different vendor than Pass 2 | `gemini-3.1-flash-lite-preview` | Google    | thinkingLevel=low              |
+| Pass               | Role                                                            | Default model            | Provider  | Reasoning                      |
+| ------------------ | --------------------------------------------------------------- | ------------------------ | --------- | ------------------------------ |
+| 1. Truth Discovery | Surface positive working-style truths in the corpus             | `claude-opus-4-7`        | Anthropic | adaptive thinking, effort=high |
+| 2. Claims          | Generate single-truth working-style claims with desired_verdict | `claude-opus-4-7`        | Anthropic | adaptive thinking              |
+| 3. Score           | Rate ambiguity + surprise per card/claim pair                   | `gpt-5.5`                | OpenAI    | reasoning_effort=low           |
+| 4. Validate        | Adversarial cross-check from a different vendor than Pass 2     | `gemini-3.1-pro-preview` | Google    | thinkingLevel=low              |
 
 Pass 4 must be a different vendor from Pass 2 — the point is cross-model pressure. Any other combination undermines the validation.
 
