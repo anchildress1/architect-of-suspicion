@@ -40,7 +40,9 @@ describe('buildReactionPrompt', () => {
   it('describes dismiss as struck from the record', () => {
     const prompt = buildReactionPrompt('Test claim', mockCard, 'dismiss', []);
     expect(prompt).toContain('STRUCK from the record');
-    expect(prompt).toContain('struck this from the record');
+    // Action frame instructs the model to note the strike and tease hesitation.
+    expect(prompt).toMatch(/Note the strike/i);
+    expect(prompt).toMatch(/tease their hesitation to commit/i);
   });
 
   it('lists prior picks when history exists', () => {
@@ -57,9 +59,13 @@ describe('buildReactionPrompt', () => {
     expect(prompt).toContain('No prior exhibits');
   });
 
-  it('forbids revealing scores or correctness', () => {
+  it('locks the no-score-leak rule (Invariant #5)', () => {
     const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', []);
-    expect(prompt).toContain('NEVER reveal a score');
+    // Positive framing: "stay in character; never reveal..." — the negative
+    // verb is preserved here because INVARIANT #5 is one place where a hard
+    // ban is the right shape (the score is mechanically forbidden, not
+    // calibration-style guidance).
+    expect(prompt).toMatch(/never reveal scores/i);
   });
 
   it('requests plain reaction text (no JSON)', () => {

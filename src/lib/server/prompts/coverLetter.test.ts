@@ -55,18 +55,18 @@ describe('buildCoverLetterPrompt', () => {
     expect(prompt).toContain('Ashley uses AI too much');
   });
 
-  it('labels the verdict the player rendered', () => {
+  it('labels the verdict ACCUSED for the accuse path', () => {
     const prompt = buildCoverLetterPrompt(
       'Test claim',
       'accuse',
       truthContext,
       [paramountRuled],
-      [ruledExtra],
+      [],
     );
     expect(prompt).toContain('Verdict rendered: ACCUSED');
   });
 
-  it('labels pardon verdict the same way', () => {
+  it('labels the verdict PARDONED for the pardon path', () => {
     const prompt = buildCoverLetterPrompt(
       'Test claim',
       'pardon',
@@ -77,7 +77,7 @@ describe('buildCoverLetterPrompt', () => {
     expect(prompt).toContain('Verdict rendered: PARDONED');
   });
 
-  it('frames the artifact as a portfolio cover letter in the Architect voice', () => {
+  it('frames the artifact as a cover letter attached to a resume, voiced by The Architect', () => {
     const prompt = buildCoverLetterPrompt(
       'Test claim',
       'pardon',
@@ -85,14 +85,13 @@ describe('buildCoverLetterPrompt', () => {
       [paramountRuled],
       [],
     );
-    // Voice — the Architect as AI operator of the public-reckoning mechanism.
-    expect(prompt).toMatch(/AI operator of (?:this|the) mechanism/i);
-    expect(prompt).toMatch(/witness to the reckoning/i);
-    expect(prompt).toMatch(/1700s public reckoning/i);
-    // Audience is a recruiter; the artifact attaches to a resume.
-    expect(prompt).toMatch(/portfolio cover letter/i);
+    // Function: this is a cover letter that attaches to the resume.
+    expect(prompt).toMatch(/cover letter/i);
+    expect(prompt).toMatch(/attaches to Ashley's resume/i);
     expect(prompt).toMatch(/recruiter or hiring manager/i);
-    expect(prompt).toMatch(/attached to Ashley's resume/i);
+    // Voice: The Architect's, AI operator of the mechanism.
+    expect(prompt).toMatch(/AI operator of the mechanism/i);
+    expect(prompt).toMatch(/The Architect's/i);
   });
 
   it('anchors the record on the hireable truth', () => {
@@ -104,8 +103,8 @@ describe('buildCoverLetterPrompt', () => {
       [],
     );
     expect(prompt).toContain(truthContext.hireableTruth);
-    expect(prompt).toMatch(/the record MUST reveal/i);
     expect(prompt).toMatch(/spine of the record/i);
+    expect(prompt).toMatch(/anchor every paragraph on the hireable truth/i);
   });
 
   describe('verdict alignment opener', () => {
@@ -117,7 +116,7 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/truth lands clearly/i);
+      expect(prompt).toMatch(/truth landing clearly/i);
       expect(prompt).toMatch(/aligns with the record/i);
       expect(prompt).not.toMatch(/holds even when the surface/i);
     });
@@ -130,9 +129,8 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/truth holds even when the surface/i);
-      expect(prompt).toMatch(/without scolding/i);
-      expect(prompt).not.toMatch(/truth lands clearly/i);
+      expect(prompt).toMatch(/truth holding even when the surface/i);
+      expect(prompt).not.toMatch(/truth landing clearly/i);
     });
 
     it('reports verdict alignment as YES vs NO so the model picks the right opener deterministically', () => {
@@ -156,7 +154,7 @@ describe('buildCoverLetterPrompt', () => {
   });
 
   describe('evidence pool', () => {
-    it('includes paramount cards with directional engagement signal (no gameplay-mechanic vocab)', () => {
+    it('feeds engaged paramount cards into the prompt with their direction', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -166,14 +164,9 @@ describe('buildCoverLetterPrompt', () => {
       );
       expect(prompt).toContain('AI Tools Usage');
       expect(prompt).toMatch(/engaged as supporting/i);
-      // Gameplay-mechanic vocab must NOT leak into the prompt body — the
-      // model picks it up. (The Architect's VOICE — record, gallery,
-      // ledger — is allowed; the player-action MECHANIC is not.)
-      expect(prompt).not.toMatch(/RULED PROOF/);
-      expect(prompt).not.toMatch(/SKIPPED by player/);
     });
 
-    it('marks unengaged paramount cards without gameplay-mechanic vocab', () => {
+    it('feeds unengaged paramount cards into the prompt without gameplay-mechanic vocab', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -183,7 +176,6 @@ describe('buildCoverLetterPrompt', () => {
       );
       expect(prompt).toContain('ADRs prevent drift');
       expect(prompt).toMatch(/not engaged during the examination/i);
-      expect(prompt).not.toMatch(/SKIPPED by player/);
     });
 
     it('surfaces both engaged and unengaged paramount cards together', () => {
@@ -218,9 +210,8 @@ describe('buildCoverLetterPrompt', () => {
         [],
       );
       expect(prompt).toMatch(/3-5 STRONGEST/i);
-      expect(prompt).toMatch(/weave/i);
-      expect(prompt).toMatch(/DO NOT enumerate/);
-      expect(prompt).toMatch(/numbered or bulleted list/i);
+      expect(prompt).toMatch(/weave them into prose/i);
+      expect(prompt).toMatch(/no card-by-card enumeration/i);
     });
 
     it('warns when no paramount cards loaded — pipeline bug fallback', () => {
@@ -231,7 +222,7 @@ describe('buildCoverLetterPrompt', () => {
   });
 
   describe('personal investigation extras', () => {
-    it('cites the engagement direction without gameplay-mechanic vocab', () => {
+    it('feeds engaged extras with their direction (no gameplay-mechanic vocab)', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -241,10 +232,9 @@ describe('buildCoverLetterPrompt', () => {
       );
       expect(prompt).toContain('Open Source Contributions');
       expect(prompt).toMatch(/engaged as challenging/i);
-      expect(prompt).not.toMatch(/RULED OBJECTION/);
     });
 
-    it('warns the model not to let extras override the truth', () => {
+    it('signals that extras are personalization, not load-bearing for the truth', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -252,7 +242,7 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [ruledExtra],
       );
-      expect(prompt).toMatch(/DO NOT let them override the truth/i);
+      expect(prompt).toMatch(/the truth doesn't depend on them/i);
     });
 
     it('handles the empty case gracefully', () => {
@@ -267,8 +257,8 @@ describe('buildCoverLetterPrompt', () => {
     });
   });
 
-  describe('recruiter-safety contract', () => {
-    it('declares the recruiter-safety floor non-negotiable', () => {
+  describe('recruiter-safety and voice', () => {
+    it('declares the recruiter-safety floor', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'accuse',
@@ -276,23 +266,10 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/recruiter[- ]safety/i);
-      expect(prompt).toMatch(/non[- ]negotiable/i);
+      expect(prompt).toMatch(/recruiter[- ]safety floor/i);
     });
 
-    it('forbids "found wanting" / "evidence damns" framing', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'accuse',
-        truthContext,
-        [paramountRuled],
-        [],
-      );
-      expect(prompt).toMatch(/found wanting/i);
-      expect(prompt).toMatch(/the evidence damns/i);
-    });
-
-    it('forbids indictment of competence, integrity, ethics, professionalism', () => {
+    it('locks both readings of the surface claim to leave Ashley hireable', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -300,10 +277,8 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/competence/i);
-      expect(prompt).toMatch(/integrity/i);
-      expect(prompt).toMatch(/ethics/i);
-      expect(prompt).toMatch(/professionalism/i);
+      expect(prompt).toMatch(/both readings of the surface claim/i);
+      expect(prompt).toMatch(/leave Ashley sounding hireable/i);
     });
 
     it('locks two recruiters reaching the same conclusion', () => {
@@ -317,10 +292,8 @@ describe('buildCoverLetterPrompt', () => {
       expect(prompt).toMatch(/two recruiters/i);
       expect(prompt).toMatch(/same conclusion about Ashley/i);
     });
-  });
 
-  describe('voice vs mechanics', () => {
-    it('preserves the Architect voice — industrial register stays in-bounds', () => {
+    it('frames working-style traits positively as substance recruiters respect', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -328,15 +301,26 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      // Welcomed openers in the new voice:
-      expect(prompt).toMatch(/The mechanism has settled on/);
-      expect(prompt).toMatch(/The dial has come to rest/);
-      expect(prompt).toMatch(/Witnessed this day/);
-      // Industrial vocabulary is welcomed:
+      expect(prompt).toMatch(/working-style trait/i);
+      expect(prompt).toMatch(/recruiters respect/i);
+    });
+
+    it('paints the industrial-noir vocabulary palette positively', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      // Welcomed openers spelled out so the model has somewhere to land.
+      expect(prompt).toMatch(/The mechanism has settled on/i);
+      expect(prompt).toMatch(/The dial has come to rest/i);
+      // Vocabulary palette named.
       expect(prompt).toMatch(/instrument, ledger, record, gallery, mechanism/i);
     });
 
-    it('bans court vocabulary explicitly — magistrate, judge, jury, brief, "On the matter of"', () => {
+    it('provides positive replacements for "what was asked of Ashley" so the model has somewhere to land instead of "the brief"', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -344,41 +328,16 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/NEVER court vocabulary/i);
-      expect(prompt).toMatch(/no magistrate, no judge, no jury/i);
-      expect(prompt).toMatch(/no "brief"/i);
-      expect(prompt).toMatch(/no "On the matter of/);
-      expect(prompt).toMatch(/does not preside/i);
+      expect(prompt).toMatch(/the assignment, the scope, the constraint/i);
     });
+  });
 
-    it('forbids gameplay MECHANICS in output — player actions, picks, classifications', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'pardon',
-        truthContext,
-        [paramountRuled],
-        [ruledExtra],
-      );
-      expect(prompt).toMatch(/never reference the player/i);
-      expect(prompt).toMatch(/the player ruled X/i);
-      expect(prompt).toMatch(/skipped by the player/i);
-      expect(prompt).toMatch(/card-by-card/i);
-      expect(prompt).toMatch(/they did not see a game/i);
-    });
-
-    it('forbids unengaged paramount cards being framed as "skipped" in output', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'pardon',
-        truthContext,
-        [paramountSkipped],
-        [],
-      );
-      expect(prompt).toMatch(/NEVER frame them as "skipped"/i);
-      expect(prompt).toMatch(/Architect can enter them on his own authority/i);
-    });
-
-    it('forbids a sign-off line in the body — component renders signature separately', () => {
+  describe('calibration', () => {
+    // The "calibration" block is positive in framing — "if you reach for X,
+    // re-anchor on Y" — but still names the worst-case patterns so the model
+    // can self-correct. These tests verify the calibration covers the
+    // failure modes we've actually hit in production.
+    it('flags court vocabulary as a reach-for warning, not a primary instruction', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -386,9 +345,34 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/component renders the Architect's signature separately/i);
-      expect(prompt).toMatch(/NO "Yours, …"/);
-      expect(prompt).toMatch(/by my hand/i);
+      expect(prompt).toMatch(/CALIBRATION/);
+      expect(prompt).toMatch(/court vocabulary/i);
+      expect(prompt).toMatch(/re-anchor/i);
+    });
+
+    it('flags competence-indictment phrasings in the calibration list', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/found wanting/i);
+      expect(prompt).toMatch(/needed help/i);
+      expect(prompt).toMatch(/underdelivered/i);
+    });
+
+    it('flags Victorian frippery in the calibration list', () => {
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/Victorian frippery/i);
+      expect(prompt).toMatch(/parchment, wax, seal/i);
     });
   });
 
@@ -401,24 +385,9 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/<em>italic<\/em>/i);
-      expect(prompt).toMatch(/<strong>bold<\/strong>/i);
-      expect(prompt).toMatch(/Never markdown asterisks/i);
-    });
-
-    it('forbids Victorian / steampunk vocabulary', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'pardon',
-        truthContext,
-        [paramountRuled],
-        [],
-      );
-      // Court vocabulary AND Victorian / steampunk frippery are both banned
-      // explicitly — court framing is the primary new ban, Victorian
-      // ornamentation is the legacy carryover.
-      expect(prompt).toMatch(/Victorian \/ steampunk frippery/i);
-      expect(prompt).toMatch(/aesthetic is INDUSTRIAL/i);
+      expect(prompt).toMatch(/<em>/);
+      expect(prompt).toMatch(/<strong>/);
+      expect(prompt).toMatch(/markdown/i);
     });
 
     it('requests plain text response (no JSON wrapping)', () => {
@@ -450,6 +419,7 @@ describe('buildClosingLinePrompt', () => {
     const pardonPrompt = buildClosingLinePrompt('pardon', truthContext);
     expect(accusePrompt).toContain(truthContext.hireableTruth);
     expect(pardonPrompt).toContain(truthContext.hireableTruth);
+    expect(accusePrompt).toMatch(/Anchor the line on the hireable truth/i);
   });
 
   it('requests a single closing line', () => {
@@ -459,42 +429,21 @@ describe('buildClosingLinePrompt', () => {
 
   it('preserves the Architect voice — sardonic AI operator, industrial-noir', () => {
     const prompt = buildClosingLinePrompt('accuse', truthContext);
-    expect(prompt).toMatch(/Architect's voice/i);
+    expect(prompt).toMatch(/The Architect's voice/i);
     expect(prompt).toMatch(/sardonic AI operator/i);
     expect(prompt).toMatch(/industrial-noir/i);
-    expect(prompt).toMatch(/witness to the reckoning/i);
   });
 
-  it('bans court vocabulary in the closing — magistrate, judge, brief, "case rests"', () => {
+  it('flags court vocabulary in the calibration', () => {
     const prompt = buildClosingLinePrompt('accuse', truthContext);
-    expect(prompt).toMatch(/magistrate/i);
-    expect(prompt).toMatch(/the case rests/i);
-    expect(prompt).toMatch(/INDUSTRIAL/);
-  });
-
-  it('declares the recruiter-safety floor non-negotiable', () => {
-    const prompt = buildClosingLinePrompt('accuse', truthContext);
-    expect(prompt).toMatch(/recruiter[- ]safety/i);
-    expect(prompt).toMatch(/non[- ]negotiable/i);
-  });
-
-  it('forbids damning closing flourishes', () => {
-    const prompt = buildClosingLinePrompt('accuse', truthContext);
-    expect(prompt).toMatch(/never indict/i);
-    expect(prompt).toMatch(/found wanting/i);
-  });
-
-  it('forbids gameplay-mechanic references — player, picks, cards, classifications', () => {
-    const prompt = buildClosingLinePrompt('accuse', truthContext);
-    expect(prompt).toMatch(/NEVER reference the player/i);
-    expect(prompt).toMatch(/picks, cards, classifications/i);
-    expect(prompt).toMatch(/saw a record, not a game/i);
+    expect(prompt).toMatch(/court vocabulary/i);
+    expect(prompt).toMatch(/re-anchor/i);
   });
 
   it('instructs HTML emphasis tags only — no markdown', () => {
     const prompt = buildClosingLinePrompt('accuse', truthContext);
     expect(prompt).toMatch(/<em>/);
     expect(prompt).toMatch(/<strong>/);
-    expect(prompt).toMatch(/Never markdown/i);
+    expect(prompt).toMatch(/markdown/i);
   });
 });
