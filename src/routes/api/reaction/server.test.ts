@@ -71,9 +71,17 @@ interface MockOptions {
   titleRows?: Array<{ objectID: string; title: string }>;
   titlesError?: unknown;
   updateError?: unknown;
+  /** Override the result of tryClaimReactionLock's atomic UPDATE.
+   *  - true (default): the conditional UPDATE matches and we own the lock.
+   *  - false: another request holds the lock (text still NULL on re-read).
+   *  - 'cached': another request held the lock and JUST persisted text —
+   *    the second loadPick after the failed claim returns the cached text. */
+  lockClaim?: boolean | 'cached';
+  lockError?: unknown;
 }
 
 const updateCalls: Array<Record<string, unknown>> = [];
+const lockClaimCalls: Array<Record<string, unknown>> = [];
 
 const defaultPick = {
   id: validPickId,
@@ -94,6 +102,7 @@ const defaultCard = {
 
 function setupSupabase(opts: MockOptions = {}) {
   updateCalls.length = 0;
+  lockClaimCalls.length = 0;
 
   // public.cards — full card lookup
   mockFrom.mockImplementation((table: string) => {
@@ -120,6 +129,18 @@ function setupSupabase(opts: MockOptions = {}) {
     return {};
   });
 
+  // suspicion.picks call ordering (a successful generation):
+  //   1. loadPick — select.eq.eq.maybeSingle
+  //   2. tryClaimReactionLock — update.eq.is.or.select.maybeSingle
+  //   3. loadHistory — select.eq.neq.order
+  //   4. persistReactionText — update.eq
+  //
+  // When the lock claim fails (lockClaim: false | 'cached'), the route
+  // falls back to a second loadPick; lockClaim: 'cached' returns the
+  // refreshed pick with ai_reaction_text populated, and the route
+  // returns that text without ever reaching loadHistory or persist.
+  const lockClaimSucceeds = opts.lockClaim ?? true;
+  const cachedAfterRace = lockClaimSucceeds === 'cached';
   let picksCallCount = 0;
   mockSchemaFrom.mockImplementation((table: string) => {
     if (table !== 'picks') return {};
@@ -140,7 +161,47 @@ function setupSupabase(opts: MockOptions = {}) {
       };
     }
     if (picksCallCount === 2) {
-      // loadHistory: select.eq.neq.order
+      // tryClaimReactionLock: update.eq.is.or.select.maybeSingle
+      return {
+        update: vi.fn().mockImplementation((row: Record<string, unknown>) => {
+          lockClaimCalls.push(row);
+          return {
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  select: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({
+                      data: lockClaimSucceeds === true ? { id: 'pick-id' } : null,
+                      error: opts.lockError ?? null,
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }),
+      };
+    }
+    if (lockClaimSucceeds !== true && picksCallCount === 3) {
+      // Lock-claim-failed path: route does a second loadPick to see if
+      // the cached text landed. Same shape as the first loadPick.
+      const refreshed = cachedAfterRace
+        ? { ...defaultPick, ai_reaction_text: 'Cached by another request.' }
+        : { ...defaultPick, ai_reaction_text: null };
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: refreshed, error: null }),
+            }),
+          }),
+        }),
+      };
+    }
+    // Lock-succeeded path:
+    //   3 → loadHistory (select.eq.neq.order)
+    //   4 → persistReactionText (update.eq)
+    if (picksCallCount === 3) {
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -153,7 +214,6 @@ function setupSupabase(opts: MockOptions = {}) {
         }),
       };
     }
-    // persistReactionText: update().eq()
     return {
       update: vi.fn().mockImplementation((row: Record<string, unknown>) => {
         updateCalls.push(row);
@@ -253,7 +313,44 @@ describe('POST /api/reaction', () => {
     expect(callArgs.system[0].cache_control).toEqual({ type: 'ephemeral' });
 
     expect(updateCalls).toHaveLength(1);
-    expect(updateCalls[0]).toEqual({ ai_reaction_text: 'The mechanism turns.' });
+    // Persist clears the lock alongside the text — durable evidence that
+    // the generation completed.
+    expect(updateCalls[0]).toEqual({
+      ai_reaction_text: 'The mechanism turns.',
+      reaction_locked_at: null,
+    });
+    // Generation also acquired the lock first.
+    expect(lockClaimCalls).toHaveLength(1);
+    expect(lockClaimCalls[0]).toHaveProperty('reaction_locked_at');
+  });
+
+  it('returns 409 with a fallback when another request holds the in-flight lock', async () => {
+    setupSupabase({ lockClaim: false });
+
+    const res = await POST(makeRequest({ pick_id: validPickId }));
+    const body = await readAll(res);
+
+    expect(res.status).toBe(409);
+    expect(res.headers.get('X-Reaction-In-Flight')).toBe('1');
+    expect(body).toContain('mechanism seized');
+    // We must NOT have called Claude — that's the duplicate-spend race the
+    // lock is preventing.
+    expect(mockStream).not.toHaveBeenCalled();
+  });
+
+  it('returns the just-cached text when another request finished mid-race', async () => {
+    // The classic race: we read the pick (text NULL), another request claims
+    // the lock and persists, we attempt to claim and fail, we re-read the
+    // pick and find the text is now there.
+    setupSupabase({ lockClaim: 'cached' });
+
+    const res = await POST(makeRequest({ pick_id: validPickId }));
+    const body = await readAll(res);
+
+    expect(body).toBe('Cached by another request.');
+    expect(res.headers.get('X-Reaction-Cached')).toBe('1');
+    expect(res.status).toBe(200);
+    expect(mockStream).not.toHaveBeenCalled();
   });
 
   it('serves a fallback when Claude throws before streaming any text', async () => {

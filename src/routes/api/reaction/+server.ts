@@ -13,6 +13,11 @@ const FALLBACK_REACTION =
   'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
 
 const MAX_REACTION_REQUEST_BYTES = 1_024;
+// How long a generation request holds the lock before another request can
+// claim it. Sub-2s for Haiku 4.5 under normal conditions; 60s gives
+// generous headroom for retries on slow networks before treating the
+// previous request as crashed/abandoned.
+const REACTION_LOCK_TIMEOUT_MS = 60_000;
 
 interface ReactionRequest {
   pick_id?: string;
@@ -103,10 +108,12 @@ async function loadHistory(
 }
 
 async function persistReactionText(pickId: string, text: string): Promise<void> {
+  // Clear the generation lock alongside the text so a future read sees a
+  // clean state — durable evidence the generation completed.
   const { error: updateErr } = await getSupabase()
     .schema('suspicion')
     .from('picks')
-    .update({ ai_reaction_text: text })
+    .update({ ai_reaction_text: text, reaction_locked_at: null })
     .eq('id', pickId);
 
   if (updateErr) {
@@ -114,6 +121,38 @@ async function persistReactionText(pickId: string, text: string): Promise<void> 
     // persist is a downstream-analytics problem, not a UX one.
     console.error('[reaction] failed to persist reaction text:', updateErr.message);
   }
+}
+
+/**
+ * Atomically claim ownership of reaction generation for this pick. Returns
+ * `true` if this request now owns the generation, `false` if another request
+ * holds the lock (and we must NOT call Claude — see the migration comment
+ * for the race we're preventing).
+ *
+ * The conditional UPDATE only succeeds when:
+ *   - ai_reaction_text is still NULL (no completed generation), AND
+ *   - reaction_locked_at is NULL (no in-flight request) OR
+ *     older than the lock timeout (a crashed/abandoned previous attempt).
+ */
+async function tryClaimReactionLock(pickId: string): Promise<boolean> {
+  const expiry = new Date(Date.now() - REACTION_LOCK_TIMEOUT_MS).toISOString();
+
+  const { data, error: claimErr } = await getSupabase()
+    .schema('suspicion')
+    .from('picks')
+    .update({ reaction_locked_at: new Date().toISOString() })
+    .eq('id', pickId)
+    .is('ai_reaction_text', null)
+    .or(`reaction_locked_at.is.null,reaction_locked_at.lt.${expiry}`)
+    .select('id')
+    .maybeSingle();
+
+  if (claimErr) {
+    console.error('[reaction] lock claim failed:', claimErr.message);
+    error(500, 'Failed to claim reaction generation lock');
+  }
+
+  return data !== null;
 }
 
 export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
@@ -129,8 +168,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
   const pick = await loadPick(body.pick_id, session.sessionId);
 
-  // Idempotency: if the reaction was already generated and persisted (retry
-  // after a dropped stream, double-click, etc.), stream the cached text back
+  // Idempotency layer 1: completed generation.
+  // If the reaction was already generated and persisted (retry after a
+  // dropped stream, double-click, etc.), stream the cached text back
   // instead of burning another LLM call.
   if (pick.ai_reaction_text && pick.ai_reaction_text.length > 0) {
     return new Response(pick.ai_reaction_text, {
@@ -138,6 +178,34 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-store',
         'X-Reaction-Cached': '1',
+      },
+    });
+  }
+
+  // Idempotency layer 2: in-flight generation.
+  // Atomically claim ownership of generation. If another request already
+  // owns the lock, we MUST NOT call Claude — that's the duplicate-spend
+  // race the lock exists to prevent. Re-read the pick once in case the
+  // text landed in the gap between our load and our claim attempt; if
+  // still pending, return 409 so the client knows to retry.
+  const claimed = await tryClaimReactionLock(pick.id);
+  if (!claimed) {
+    const refreshed = await loadPick(pick.id, session.sessionId);
+    if (refreshed.ai_reaction_text && refreshed.ai_reaction_text.length > 0) {
+      return new Response(refreshed.ai_reaction_text, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'X-Reaction-Cached': '1',
+        },
+      });
+    }
+    return new Response(FALLBACK_REACTION, {
+      status: 409,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Reaction-In-Flight': '1',
       },
     });
   }
