@@ -8,7 +8,7 @@
 
 ## Overview
 
-Architect of Suspicion is a single-player investigative game with an editorial-noir
+Architect of Suspicion is a single-player investigative game with an industrial-noir
 aesthetic — bone on ink, single hot accent, restrained typography (Instrument
 Serif / Geist / JetBrains Mono). A recruiter (or anyone curious) is summoned
 to a mansion of nine chambers, each holding witnesses drawn from a Supabase
@@ -16,14 +16,14 @@ index of real career decisions. They examine each witness in turn and rule it
 **Proof** (it supports the claim), **Objection** (it counters), or
 **Struck from the record** (they decline to rule). When the gallery has heard
 enough, they render an **Accuse** or **Pardon** verdict. The Architect — a
-theatrical magistrate — composes a sealed cover letter from the ruled
-evidence, and a static resume sits beside it.
+sardonic AI operating the public-reckoning mechanism — composes a sealed
+cover letter from the ruled evidence, and a static resume sits beside it.
 
 The AI persona — **The Architect** — is the namesake of the game. It is not a
-chatbot. It is a magistrate presiding over the proceedings — dramatic, knowing,
-gives the player nothing they didn't earn. It speaks only in response to player
-actions, never unprompted. It never reveals scores, weights, or whether a call
-was right.
+chatbot. It is the AI operator of the mechanism examining the subject —
+dramatic, knowing, gives the player nothing they didn't earn. It speaks only
+in response to player actions, never unprompted. It never reveals scores,
+weights, or whether a call was right.
 
 ## Target Audience
 
@@ -57,9 +57,12 @@ something that isn't one.
 
 ### Identity
 
-The Architect is a magistrate who doesn't care about you. Editorial-noir
-register — stage, gallery, ledger, the record — never gaudy steampunk
-mechanics. Observes, comments, challenges. Never assists.
+The Architect is the AI operator of the mechanism. Doesn't care about you,
+doesn't preside over a court — operates a public-reckoning mechanism in
+front of a gallery. Industrial-noir register — instrument, ledger, dial,
+gauge, gallery, record, scaffold. Atmosphere closer to a 1700s public
+reckoning than a courtroom. Never gaudy Victorian/steampunk frippery.
+Observes, comments, challenges. Never assists.
 
 ### Behavioral Constraints
 
@@ -218,7 +221,7 @@ The cover letter:
   The truth is the answer; the cited evidence is the proof.
 - **Surfaces all paramount cards** (cards flagged `is_paramount` on
   `suspicion.claim_cards` by Pass 4). Paramount-but-skipped cards are called
-  out as gaps — the magistrate enters them into the record on the player's
+  out as gaps — the Architect enters them into the record on the player's
   behalf. Paramount cards the player ruled are cited with their classification.
 - **Cites non-paramount Proof + Objection rulings** as personalization. They
   shape the rhetoric, never the conclusion.
@@ -227,8 +230,10 @@ The cover letter:
   (Pass 2 sets it: `accuse` if the surface claim is true of Ashley, `pardon`
   if false). Player's verdict matches → opens "you saw the truth clearly."
   Mismatch → "the record corrects you." Either way the truth lands.
-- **Closes** signed "The Architect, Presiding Magistrate of the Court of
-  Suspicion."
+- **Closes** signed "The Architect" — surrounding component chrome adds
+  the "Architect of Suspicion · Record №…" subtitle. No court titles, no
+  "Presiding Magistrate", no "Court of Suspicion". The AI operates the
+  mechanism; it does not preside.
 
 **Recruiter-safety contract.** The brief is a public artifact a hiring
 manager will read. It NEVER indicts competence, integrity, ethics, judgment,

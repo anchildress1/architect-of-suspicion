@@ -30,9 +30,9 @@ Shared helpers live in `src/lib/server/`:
 - `validation.ts` — UUID checks, JSON body size limits
 - `sessionCapability.ts` — mint/verify capability tokens, set/clear cookies
 
-### Summons (landing page)
+### Landing page (`/`)
 
-`src/routes/+page.server.ts` picks a claim during SSR via `pickRandomClaim()` so the dossier renders on the first byte without a client fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page returns `{ claim: null }` and renders a muted "docket unavailable" state — no browser console errors.
+`src/routes/+page.server.ts` picks a claim during SSR via `pickRandomClaim()` so the entry-point record renders on the first byte without a client fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page returns `{ claim: null }` and renders a muted "record unavailable" state — no browser console errors.
 
 ### `POST /api/sessions`
 
@@ -383,7 +383,7 @@ architect-of-suspicion/
 │   │   │   ├── EvidenceTally.svelte   # Proof / Objection / Struck counts
 │   │   │   ├── WitnessCard.svelte     # The exhibit on stage (with stamps)
 │   │   │   ├── WitnessQueue.svelte    # Right-rail queue
-│   │   │   ├── CoverLetter.svelte     # Sealed editorial-noir letter
+│   │   │   ├── CoverLetter.svelte     # Sealed industrial-noir record
 │   │   │   ├── Resume.svelte          # Static resume
 │   │   │   └── MobileGate.svelte      # <768px notice
 │   │   ├── stores/                    # Svelte 5 runes-based game state

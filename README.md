@@ -8,7 +8,7 @@
 
 </div>
 
-A single-player investigative game that turns a software engineer's career into a mansion of evidence. You're handed an accusation — _"Ashley depends on AI too much"_, _"Ashley avoids hard problems"_ — and sent to rule on the witnesses. The Architect, a magistrate who doesn't care about you, reacts to every call. When the gallery has heard enough, you Accuse or Pardon, and the record seals into a cover letter written from your verdict.
+A single-player investigative game that turns a software engineer's career into a mansion of evidence. You're handed an accusation — _"Ashley depends on AI too much"_, _"Ashley avoids hard problems"_ — and sent to rule on the witnesses. The Architect, an AI operator running the public-reckoning mechanism, reacts to every call. When the gallery has heard enough, you Accuse or Pardon, and the record seals into a cover letter written from your verdict.
 
 It's a resume that argues with you.
 
