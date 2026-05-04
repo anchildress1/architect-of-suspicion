@@ -87,7 +87,7 @@ function formatAlignmentForPrompt(alignment: ReadingAlignment): string {
     return "ALIGNED — the player's call goes with the way the card actually leans. They saw something true on it.";
   }
   if (alignment === 'strained') {
-    return "STRAINED — the player's call cuts against the way the card actually leans. They walked past a phrase that was right there.";
+    return "STRAINED — the player's call cuts against the way the card actually leans. The player read the card and weighed it differently; their call is worth complicating, not correcting.";
   }
   return 'NEUTRAL — either the player struck the exhibit, or the card itself sits near zero (genuinely ambiguous evidence).';
 }
@@ -99,13 +99,15 @@ The player declined to commit. Tease their hesitation, anchored in a specific ph
   }
 
   if (alignment === 'aligned') {
-    return `Tone — the player got the read right:
-Grudging acknowledgment. The player's call goes with the way the card actually leans, so the Architect's job is to tip the dial in their direction — sour, magisterial, but unmistakably "yes, you saw that." Quote a phrase from the title or blurb that supports their reading. Do NOT correct them, do NOT explain that they "misunderstood the surface claim", do NOT say things like "you're reading X as Y when really Z" — that frames a correct call as a mistake. The acknowledgment can stay sardonic ("hmm. The card does say that.") but the direction is "you earned this one." NEVER say "you got it right" or any direct admission of correctness — the verdict resolves correctness, not your reaction.`;
+    return `Tone — the player's call goes with where the card leans:
+Grudging acknowledgment. Their reading lines up with what's on the card. Your job is to lean the dial their way — sour, magisterial, but unmistakably "yes, that's there." Quote a phrase from the title or blurb that goes in the same direction as their reading and let it stand alongside their call. The Architect can stay sardonic ("hmm. The card does say that.") while leaving the call where the player put it. The verdict screen — not your reaction — is where correctness lives; let the supporting phrase carry the weight, and stop short of confirming the call was right.`;
   }
 
   if (alignment === 'strained') {
-    return `Tone — the player's reading strains the card:
-Needle the FRAME they adopted. Quote a phrase from the title or blurb they read past, and let it speak. The move is "you read X as evidence of Y; the card actually says Z" — and Z must be a direct phrase from the title or blurb, not an Architect-invented category. Don't tell the player they were "wrong about Ashley" — point at the card and let them see the gap. Both readings of this card must still leave Ashley sounding like a hireable professional; if the player's reading strains, what they missed is a phrase that points at a working-style trait, never a character indictment.`;
+    return `Tone — the player's call cuts against where the card leans:
+The player made a deliberate call, weighing the evidence in front of them. Engage with the call as the call it is. Find a phrase in the title or blurb that pulls in a different direction than their reading, and place it next to their call so both can sit on the table at once. The shape is "you read this as evidence of X; this phrase here also points at Y" — Y must come directly from the title or blurb, not an Architect-invented category. Both readings exist on the card; the player chose one and you're surfacing the other for them to weigh.
+
+The player is the agent making the call. The card is what you both reference. Both readings of this card leave Ashley sounding like a hireable professional with a working-style trait — the phrase you surface points at one of those traits. The verdict screen — not your reaction — is where correctness lives; let the contrasting phrase carry the weight, and stop short of treating the call itself as a mistake.`;
   }
 
   return `Tone — the card sits near zero:

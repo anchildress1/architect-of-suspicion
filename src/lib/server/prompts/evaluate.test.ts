@@ -96,33 +96,44 @@ describe('buildReactionPrompt', () => {
   });
 
   describe('alignment-driven tone', () => {
-    it('signals ALIGNED when the player’s reading goes with the card', () => {
+    it('signals ALIGNED when the player’s call goes with the card', () => {
       const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
       // Server-only signal in the prompt body.
       expect(prompt).toMatch(/Reading alignment[^\n]*ALIGNED/);
-      // Tone branch fires.
-      expect(prompt).toMatch(/Tone — the player got the read right/i);
+      // Tone branch fires with positive shape: lean the dial their way,
+      // quote a supporting phrase, leave the call where the player put it.
+      expect(prompt).toMatch(/Tone — the player's call goes with where the card leans/i);
       expect(prompt).toMatch(/Grudging acknowledgment/i);
-      // Anti-correction guard.
-      expect(prompt).toMatch(/Do NOT correct them/i);
-      // Direct admission of correctness still forbidden — Invariant #5.
-      expect(prompt).toMatch(/NEVER say "you got it right"/);
+      expect(prompt).toMatch(/lean the dial their way/i);
+      expect(prompt).toMatch(/leaving the call where the player put it/i);
+      // Single conceptual ceiling on correctness reveals (Invariant #5),
+      // expressed once — not as a list of forbidden admission phrases.
+      expect(prompt).toMatch(/correctness lives/i);
+      expect(prompt).toMatch(/stop short of confirming the call was right/i);
       // Cross-check: strained-branch language not present.
-      expect(prompt).not.toMatch(/Tone — the player's reading strains/i);
+      expect(prompt).not.toMatch(/Tone — the player's call cuts against/i);
     });
 
-    it('signals STRAINED when the player’s reading cuts against the card', () => {
+    it('signals STRAINED when the player’s call cuts against the card', () => {
       const prompt = buildReactionPrompt('Test claim', mockCard, 'objection', [], 'strained');
       expect(prompt).toMatch(/Reading alignment[^\n]*STRAINED/);
-      expect(prompt).toMatch(/Tone — the player's reading strains/i);
-      expect(prompt).toMatch(/Needle the FRAME they adopted/i);
-      // The strained branch must still anchor in card phrases — not invent
-      // a category to correct the player into.
-      expect(prompt).toMatch(/direct phrase from the title or blurb/i);
-      // Don't say "you were wrong about Ashley".
-      expect(prompt).toMatch(/Don't tell the player they were "wrong about Ashley"/);
+      // Tone branch engages the call as a deliberate weighing of the
+      // evidence — not as inattention. Positive shape: place a contrasting
+      // phrase next to the player's call so both readings can sit on the
+      // table.
+      expect(prompt).toMatch(/Tone — the player's call cuts against where the card leans/i);
+      expect(prompt).toMatch(/made a deliberate call/i);
+      expect(prompt).toMatch(/place it next to their call/i);
+      expect(prompt).toMatch(/both can sit on the table at once/i);
+      // Strained reactions still anchor in card text — no Architect-
+      // invented categories.
+      expect(prompt).toMatch(/directly from the title or blurb/i);
+      // Single conceptual ceiling on correctness reveals (Invariant #5),
+      // expressed once — no enumerated bad-phrase list.
+      expect(prompt).toMatch(/correctness lives/i);
+      expect(prompt).toMatch(/stop short of treating the call itself as a mistake/i);
       // Cross-check: aligned-branch language not present.
-      expect(prompt).not.toMatch(/Tone — the player got the read right/i);
+      expect(prompt).not.toMatch(/Tone — the player's call goes with/i);
     });
 
     it('signals NEUTRAL for dismiss', () => {
