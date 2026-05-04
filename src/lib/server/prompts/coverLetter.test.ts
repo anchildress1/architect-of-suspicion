@@ -88,10 +88,31 @@ describe('buildCoverLetterPrompt', () => {
     // Function: this is a cover letter that attaches to the resume.
     expect(prompt).toMatch(/cover letter/i);
     expect(prompt).toMatch(/attaches to Ashley's resume/i);
-    expect(prompt).toMatch(/recruiter or hiring manager/i);
+    // Audience: a recruiter who is also the player who just rendered the
+    // verdict — sparing references to the gallery / dial / record anchor
+    // that recent experience.
+    expect(prompt).toMatch(/recruiter/i);
+    expect(prompt).toMatch(/the player who just rendered a verdict/i);
     // Voice: The Architect's, AI operator of the mechanism.
     expect(prompt).toMatch(/AI operator of the mechanism/i);
     expect(prompt).toMatch(/The Architect's/i);
+  });
+
+  it('allows sparing gameplay-mechanic anchors (gallery, dial, record) tied to engaged moments', () => {
+    const prompt = buildCoverLetterPrompt(
+      'Test claim',
+      'pardon',
+      truthContext,
+      [paramountRuled],
+      [],
+    );
+    // Mechanics-as-anchor are explicitly welcomed (in moderation): a
+    // playthrough-day reader picks up "the gallery"/"the dial settling"
+    // as a callback to what they just did. The prompt sets the ceiling
+    // at one or two such references.
+    expect(prompt).toMatch(/anchors the player back to the game/i);
+    expect(prompt).toMatch(/One or two such references/i);
+    expect(prompt).toMatch(/feature, not a leak/i);
   });
 
   it('anchors the record on the hireable truth', () => {
@@ -108,7 +129,7 @@ describe('buildCoverLetterPrompt', () => {
   });
 
   describe('verdict alignment opener', () => {
-    it('opens with the truth-lands-clearly framing when verdict matches desiredVerdict', () => {
+    it('opens with the dial-settled-where-evidence-pointed framing when verdict matches desiredVerdict', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -116,12 +137,16 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/truth landing clearly/i);
-      expect(prompt).toMatch(/aligns with the record/i);
-      expect(prompt).not.toMatch(/holds even when the surface/i);
+      // Match: the dial settled where the evidence pointed; lead with
+      // the trait, the verdict is validation alongside.
+      expect(prompt).toMatch(/dial settled where the evidence pointed/i);
+      expect(prompt).toMatch(/celebrates the trait/i);
+      expect(prompt).toMatch(/verdict is the validation, not the subject/i);
+      // Cross-check: mismatch language not present.
+      expect(prompt).not.toMatch(/verdict the player rendered is rhetorical context/i);
     });
 
-    it('opens with the truth-still-holds framing when verdict misses desiredVerdict', () => {
+    it('opens with the trait-holds-either-way framing when verdict misses desiredVerdict', () => {
       const prompt = buildCoverLetterPrompt(
         'Test claim',
         'accuse',
@@ -129,11 +154,24 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(prompt).toMatch(/truth holding even when the surface/i);
-      expect(prompt).not.toMatch(/truth landing clearly/i);
+      // Mismatch: lead with the trait directly; verdict is rhetorical
+      // context, NOT the subject. The trait holds either way; the prose
+      // doesn't frame the verdict as a misjudgment.
+      expect(prompt).toMatch(/Lead with what Ashley does/i);
+      expect(prompt).toMatch(/verdict the player rendered is rhetorical context/i);
+      expect(prompt).toMatch(/the trait holds either way/i);
+      // Cross-check: match-branch language not present.
+      expect(prompt).not.toMatch(/dial settled where the evidence pointed/i);
     });
 
-    it('reports verdict alignment as YES vs NO so the model picks the right opener deterministically', () => {
+    it('omits the explicit YES/NO alignment marker so the model does not narrate it in output', () => {
+      // Earlier the prompt rendered "Verdict alignment: YES (...)" as a
+      // displayable line. Sonnet treated that as alignment status to
+      // describe in the opener and produced "and yet the record does not
+      // flatter that verdict" — scolding the player for their call. The
+      // alignment is now server-only steering: the prompt's OPENER block
+      // tells the model how to lean without ever showing it the YES/NO
+      // label directly.
       const matchPrompt = buildCoverLetterPrompt(
         'Test claim',
         'pardon',
@@ -148,8 +186,8 @@ describe('buildCoverLetterPrompt', () => {
         [paramountRuled],
         [],
       );
-      expect(matchPrompt).toMatch(/YES \(the chosen reading matches the record\)/);
-      expect(missPrompt).toMatch(/NO \(the record contradicts the chosen reading\)/);
+      expect(matchPrompt).not.toMatch(/Verdict alignment:/);
+      expect(missPrompt).not.toMatch(/Verdict alignment:/);
     });
   });
 
@@ -254,6 +292,28 @@ describe('buildCoverLetterPrompt', () => {
         [],
       );
       expect(prompt).toMatch(/No additional engaged evidence beyond the paramount set/i);
+    });
+  });
+
+  describe('the trait stands on its own', () => {
+    it('instructs the model to lead with positive trait language, not refute the surface claim', () => {
+      // Caught from production: the cover letter repeatedly engaged the
+      // surface claim's negative phrasing and refuted it ("That is not
+      // underbuilding. That is a constraint enforced..."). Every "not X"
+      // puts X back in the recruiter's head. The fix is positive: lead
+      // with what Ashley DOES; let the trait stand on its own; the
+      // surface claim's phrasing goes unnamed.
+      const prompt = buildCoverLetterPrompt(
+        'Test claim',
+        'pardon',
+        truthContext,
+        [paramountRuled],
+        [],
+      );
+      expect(prompt).toMatch(/THE TRAIT STANDS ON ITS OWN/);
+      expect(prompt).toMatch(/describes Ashley positively/i);
+      expect(prompt).toMatch(/trait carries on its own and doesn't need a contrast/i);
+      expect(prompt).toMatch(/Whatever the surface claim alleges goes unnamed/i);
     });
   });
 

@@ -43,8 +43,8 @@ export function buildCoverLetterPrompt(
   const verdictMatches = verdict === context.desiredVerdict;
   const verdictLabel = verdict === 'accuse' ? 'ACCUSED' : 'PARDONED';
   const opener = verdictMatches
-    ? 'Open with the truth landing clearly through this lens — the chosen reading aligns with the record.'
-    : 'Open with the truth holding even when the surface reading suggested otherwise. Acknowledge the tension; the trait still lands.';
+    ? `Open with confidence — the dial settled where the evidence pointed. Lead with the working-style trait the record surfaces and let the verdict sit alongside it as the obvious read. The opener celebrates the trait; the verdict is the validation, not the subject.`
+    : `Open by naming the working-style trait directly. Lead with what Ashley does — her trait carries the paragraph. The verdict the player rendered is rhetorical context, not the subject of the opener; the trait holds either way and the prose treats the verdict as a settled outcome that the trait now follows.`;
 
   const paramountBlock = formatParamountBlock(paramount);
   const extrasBlock = formatRuledExtrasBlock(ruledExtras);
@@ -53,16 +53,17 @@ export function buildCoverLetterPrompt(
 
 Claim under examination: "${claim}"
 Verdict rendered: ${verdictLabel}
-Verdict alignment: ${verdictMatches ? 'YES (the chosen reading matches the record)' : 'NO (the record contradicts the chosen reading)'}
 The hireable truth this record reveals: ${context.hireableTruth}
+
+OPENER
 
 ${opener}
 
 THE ARTIFACT
 
-This is a cover letter — it attaches to Ashley's resume. The reader is a recruiter or hiring manager with the resume in their other hand. The voice is The Architect's: sardonic AI operator of the mechanism, industrial-noir register, atmosphere of a 1700s public reckoning before a gallery rather than a courtroom proceeding. The Architect operates the mechanism; the Architect does not preside.
+This is a cover letter — it attaches to Ashley's resume. In the moment a player reaches it, the reader is both a recruiter (in the long run, when the record sits next to her resume) and the player who just rendered a verdict (right now). The voice is The Architect's: sardonic AI operator of the mechanism, industrial-noir register, atmosphere of a 1700s public reckoning before a gallery rather than a courtroom proceeding. The Architect operates the mechanism; the Architect does not preside.
 
-The reader does not see the game that produced this record. They see the record itself. The Architect speaks; what's referenced is the examination, the gallery, the evidence struck into the record.
+A sparing reference to the gallery, the examination, the dial settling, or "added to the record" anchors the player back to the game they just played — that's a feature, not a leak, when it ties to a specific exhibit or moment they engaged. One or two such references across the whole record is the ceiling. The trait, not the game-frame, carries the prose.
 
 EVIDENCE
 
@@ -84,13 +85,19 @@ When you refer to what was asked of Ashley, call it the assignment, the scope, t
 
 Refer to Ashley by name or with she/her pronouns.
 
+THE TRAIT STANDS ON ITS OWN
+
+The hireable truth describes Ashley positively — what she does, what she builds, what she ships. Lead with that. A recruiter who reads "Ashley enforces constraints before features" leaves with that as her working-style posture; that's the takeaway. The trait carries on its own and doesn't need a contrast to make sense.
+
+Describe what the evidence shows Ashley doing in her own terms. The hireable truth is a positive working-style trait; the words you use to describe her are the ones the recruiter walks away with. Lead with those words. Whatever the surface claim alleges goes unnamed — its phrasing isn't load-bearing for landing the trait, and naming it puts it in the recruiter's head where you don't want it.
+
 THE RECRUITER-SAFETY FLOOR
 
 This record lives next to Ashley's name. Recruiters read it.
 
 - Anchor every paragraph on the hireable truth. The truth is the answer; the cited evidence is the proof.
 - Both readings of the surface claim (proof and objection) leave Ashley sounding hireable. The verdict swings the rhetorical opener; the truth never moves.
-- Style framings only. Recruiters respect "she over-engineers" or "she ships rough drafts" as professional traits. They will not respect a record that questions her competence, integrity, or judgment.
+- Style framings only. Recruiters respect "she over-engineers" or "she ships rough drafts" as professional traits.
 - Two recruiters reading two different playthroughs of this claim must walk away with the same conclusion about Ashley.
 
 REQUIREMENTS
@@ -98,9 +105,8 @@ REQUIREMENTS
 1. Reveal the hireable truth as the spine of the record. Every paragraph supports it.
 2. Pick the 3-5 strongest exhibits from the pool. Weave them into prose with concrete details — technologies, decisions, metrics, time pressure, scope.
 3. 3-5 paragraphs. Polished, specific, memorable. Mechanical authority, restrained.
-4. Open in the Architect's voice on the truth (or its consequence) — not a salutation.
+4. Open in the Architect's voice, anchored on the trait (see OPENER above). Not a salutation.
 5. Close on the hireable truth with mechanical confidence. The component renders the Architect's signature separately; your closing is the last line of prose.
-6. Audience: a recruiter reading a cover letter attached to Ashley's resume. The reader sees the record, not the game that produced it. Speak to that reader.
 
 For emphasis, use HTML <em> or <strong> tags. Use sparingly — at most one or two highlights per paragraph; less is stronger.
 
