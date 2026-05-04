@@ -14,7 +14,7 @@ const FALLBACK_REACTION =
 
 const MAX_REACTION_REQUEST_BYTES = 1_024;
 // How long a generation request holds the lock before another request can
-// claim it. Sub-2s for Haiku 4.5 under normal conditions; 60s gives
+// claim it. Sub-3s for Sonnet 4.6 under normal conditions; 60s gives
 // generous headroom for retries on slow networks before treating the
 // previous request as crashed/abandoned.
 const REACTION_LOCK_TIMEOUT_MS = 60_000;
@@ -28,6 +28,7 @@ interface PickRow {
   session_id: string;
   card_id: string;
   classification: Classification;
+  ai_score: number;
   ai_reaction_text: string | null;
 }
 
@@ -35,7 +36,7 @@ async function loadPick(pickId: string, sessionId: string): Promise<PickRow> {
   const { data, error: pickErr } = await getSupabase()
     .schema('suspicion')
     .from('picks')
-    .select('id, session_id, card_id, classification, ai_reaction_text')
+    .select('id, session_id, card_id, classification, ai_score, ai_reaction_text')
     .eq('id', pickId)
     .eq('session_id', sessionId)
     .maybeSingle();
@@ -46,6 +47,32 @@ async function loadPick(pickId: string, sessionId: string): Promise<PickRow> {
   }
   if (!data) error(404, 'Pick not found for this session');
   return data as PickRow;
+}
+
+/**
+ * Whether the player's classification aligns with the card's directional
+ * truth. Server-only signal — used to set the Architect's tone (grudgingly
+ * acknowledge vs needle the reading) without revealing correctness in the
+ * output text.
+ *
+ *   - PROOF + positive ai_score (card supports the surface claim)  → aligned
+ *   - OBJECTION + negative ai_score (card challenges the claim)    → aligned
+ *   - mismatched signs                                              → strained
+ *   - DISMISS                                                       → null
+ *
+ * A near-zero ai_score (|x| < 0.1) is treated as "neutral evidence" —
+ * neither aligns nor strains, so we return null and the prompt's neutral
+ * acknowledgment branch handles it.
+ */
+function readingAlignment(
+  classification: Classification,
+  aiScore: number,
+): 'aligned' | 'strained' | null {
+  if (classification === 'dismiss') return null;
+  if (Math.abs(aiScore) < 0.1) return null;
+  const cardSupportsClaim = aiScore > 0;
+  const playerCalledProof = classification === 'proof';
+  return cardSupportsClaim === playerCalledProof ? 'aligned' : 'strained';
 }
 
 async function loadFullCard(cardId: string): Promise<FullCard> {
@@ -218,7 +245,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
     loadHistory(session.sessionId, pick.id),
   ]);
 
-  const userPrompt = buildReactionPrompt(session.claimText, card, pick.classification, history);
+  const alignment = readingAlignment(pick.classification, pick.ai_score);
+  const userPrompt = buildReactionPrompt(
+    session.claimText,
+    card,
+    pick.classification,
+    history,
+    alignment,
+  );
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -228,14 +262,19 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
       try {
         const client = getClaudeClient();
-        // Haiku 4.5 — picked over Sonnet 4.6 for ~2-3x lower latency on this
-        // 1-2 sentence task. The post-recruiter-safety system prompt keeps
-        // Haiku from drifting toward the generic atmospheric filler the
-        // older prompt let through. cache_control marker is harmless at
-        // current prompt sizes (sub-4096 tokens, below Haiku's caching
-        // threshold) and auto-activates if the prompt grows past it.
+        // Sonnet 4.6 over Haiku 4.5: the per-pick prompt is doing nuanced
+        // tone work — grudgingly acknowledge when the player's reading
+        // aligns with the card's direction, needle the FRAME (never
+        // Ashley) when it strains, and stay anchored on visible card
+        // text without inventing category splits. Haiku followed those
+        // rules too literally and produced reactions that read as
+        // corrections of the player even when the player was right.
+        // Sonnet handles the alignment-tone branching with the subtlety
+        // the game needs. Latency cost (~3s vs ~1s) is absorbed by the
+        // streaming path — the player advances on /api/evaluate and
+        // the reaction streams in async.
         const messageStream = client.messages.stream({
-          model: 'claude-haiku-4-5',
+          model: 'claude-sonnet-4-6',
           max_tokens: 400,
           system: [
             {

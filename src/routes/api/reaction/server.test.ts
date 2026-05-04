@@ -295,7 +295,7 @@ describe('POST /api/reaction', () => {
     expect(mockStream).not.toHaveBeenCalled();
   });
 
-  it('streams Haiku 4.5 deltas and persists final text', async () => {
+  it('streams Sonnet 4.6 deltas and persists final text', async () => {
     setupSupabase();
     mockStream.mockReturnValue(makeFakeStream(['The ', 'mechanism ', 'turns.']));
 
@@ -309,7 +309,7 @@ describe('POST /api/reaction', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const callArgs = mockStream.mock.calls[0][0];
-    expect(callArgs.model).toBe('claude-haiku-4-5');
+    expect(callArgs.model).toBe('claude-sonnet-4-6');
     expect(Array.isArray(callArgs.system)).toBe(true);
     expect(callArgs.system[0].cache_control).toEqual({ type: 'ephemeral' });
 
