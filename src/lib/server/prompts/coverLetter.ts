@@ -135,16 +135,22 @@ Calibration: if you reach for court vocabulary (magistrate, brief, "the case res
 Respond with ONLY the closing line — no JSON, no formatting, no explanation.`;
 }
 
+// Directional label for the prompt's evidence pool. The model gets the
+// engagement direction without gameplay-mechanic vocab leaking into output.
+function engagedAs(classification: 'proof' | 'objection' | null): string {
+  if (classification === 'proof') return 'engaged as supporting the surface claim';
+  if (classification === 'objection') return 'engaged as challenging the surface claim';
+  return 'not engaged during the examination';
+}
+
 function formatParamountBlock(paramount: ParamountCardEntry[]): string {
   return paramount
-    .map((entry) => {
-      const status = entry.classification
-        ? `engaged as ${entry.classification === 'proof' ? 'supporting' : 'challenging'} the surface claim`
-        : 'not engaged during the examination';
-      return `- "${entry.card.title}" (${entry.card.category}; ${status})
+    .map(
+      (entry) =>
+        `- "${entry.card.title}" (${entry.card.category}; ${engagedAs(entry.classification)})
      ${entry.card.blurb}
-     Detail: ${entry.card.fact}`;
-    })
+     Detail: ${entry.card.fact}`,
+    )
     .join('\n\n');
 }
 
@@ -152,7 +158,7 @@ function formatRuledExtrasBlock(extras: RuledEntry[]): string {
   return extras
     .map(
       (entry) =>
-        `- "${entry.card.title}" (${entry.card.category}; engaged as ${entry.classification === 'proof' ? 'supporting' : 'challenging'} the surface claim)
+        `- "${entry.card.title}" (${entry.card.category}; ${engagedAs(entry.classification)})
      ${entry.card.blurb}
      Detail: ${entry.card.fact}`,
     )
