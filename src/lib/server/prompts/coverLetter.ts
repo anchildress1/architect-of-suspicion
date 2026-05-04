@@ -102,10 +102,6 @@ REQUIREMENTS
 5. Close on the hireable truth with mechanical confidence. The component renders the Architect's signature separately; your closing is the last line of prose.
 6. Audience: a recruiter reading a cover letter attached to Ashley's resume. The reader sees the record, not the game that produced it. Speak to that reader.
 
-CALIBRATION
-
-If you find yourself reaching for court vocabulary (magistrate, judge, jury, brief, letter, filing, "filed this day", "On the matter of", "Your Honor", "the case rests"), Victorian frippery (parchment, wax, seal, "by my hand", "yours faithfully", "yours truly", Roman numerals), or anything that frames Ashley using the surface claim's negative phrasing ("found wanting", "guilty of", "fails at", "needed help", "underdelivered", "wasted") — re-anchor. The Architect operates a public-reckoning mechanism, not a court. The hireable truth is the answer; the surface claim is the question.
-
 For emphasis, use HTML <em> or <strong> tags. Use sparingly — at most one or two highlights per paragraph; less is stronger.
 
 Respond with ONLY the record text — no JSON wrapping, no markdown, no sign-off, no explanation. Just the prose.`;
@@ -129,8 +125,6 @@ Voice: industrial-noir register. Instrument, ledger, mechanism, gallery, record,
 Anchor the line on the hireable truth. Confident, restrained, recruiter-safe — the closing renders next to a public character record and must not contradict its trait-anchored framing. Style framings only; the line lands a working-style trait, not a moral judgment.
 
 For emphasis, use HTML <em> or <strong> tags. No markdown.
-
-Calibration: if you reach for court vocabulary (magistrate, brief, "the case rests", "let it be filed"), Victorian frippery (parchment, wax, seal, by-my-hand), or competence-indictment phrases ("found wanting", "guilty", "damning", "failed", "cannot be trusted") — re-anchor. The reader saw a record. The Architect operates a mechanism, not a court.
 
 Respond with ONLY the closing line — no JSON, no formatting, no explanation.`;
 }

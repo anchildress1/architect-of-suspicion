@@ -73,4 +73,24 @@ describe('buildReactionPrompt', () => {
     expect(prompt).toContain('ONLY the reaction text');
     expect(prompt).toContain('no JSON');
   });
+
+  it('binds the Architect to the visible card as the only source of authority', () => {
+    // Positive constraint: every reference must come from the title or
+    // blurb the player can re-read. Replaces the prior calibration ban-list
+    // (which primed the model on the very vocabulary it was meant to
+    // suppress — see the "no negative anchoring" feedback memory).
+    const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', []);
+    expect(prompt).toMatch(/card title and blurb are your only source of authority/i);
+    expect(prompt).toMatch(/never invent category splits/i);
+    expect(prompt).toMatch(/the player can verify/i);
+  });
+
+  it('provides positive vocabulary for what was asked of Ashley', () => {
+    // Lands the model with somewhere to go ("the assignment / the scope /
+    // the constraint / what she shipped against / the call she made")
+    // instead of reaching for "the brief".
+    const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', []);
+    expect(prompt).toMatch(/the assignment, the scope, the constraint/i);
+    expect(prompt).toMatch(/what she shipped against/i);
+  });
 });

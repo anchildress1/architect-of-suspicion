@@ -332,49 +332,13 @@ describe('buildCoverLetterPrompt', () => {
     });
   });
 
-  describe('calibration', () => {
-    // The "calibration" block is positive in framing — "if you reach for X,
-    // re-anchor on Y" — but still names the worst-case patterns so the model
-    // can self-correct. These tests verify the calibration covers the
-    // failure modes we've actually hit in production.
-    it('flags court vocabulary as a reach-for warning, not a primary instruction', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'pardon',
-        truthContext,
-        [paramountRuled],
-        [],
-      );
-      expect(prompt).toMatch(/CALIBRATION/);
-      expect(prompt).toMatch(/court vocabulary/i);
-      expect(prompt).toMatch(/re-anchor/i);
-    });
-
-    it('flags competence-indictment phrasings in the calibration list', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'pardon',
-        truthContext,
-        [paramountRuled],
-        [],
-      );
-      expect(prompt).toMatch(/found wanting/i);
-      expect(prompt).toMatch(/needed help/i);
-      expect(prompt).toMatch(/underdelivered/i);
-    });
-
-    it('flags Victorian frippery in the calibration list', () => {
-      const prompt = buildCoverLetterPrompt(
-        'Test claim',
-        'pardon',
-        truthContext,
-        [paramountRuled],
-        [],
-      );
-      expect(prompt).toMatch(/Victorian frippery/i);
-      expect(prompt).toMatch(/parchment, wax, seal/i);
-    });
-  });
+  // Calibration block was deleted in the no-negative-anchoring rewrite.
+  // Listing forbidden phrases primes the model on the very vocabulary the
+  // list is trying to suppress; the positive-frame approach (vocabulary
+  // palette + recruiter-safety floor + hireable-truth spine) carries the
+  // safety contract without naming what to avoid. The tests in
+  // "recruiter-safety and voice" and "evidence pool" already verify the
+  // positive guidance is present.
 
   describe('formatting', () => {
     it('instructs HTML emphasis tags only — no markdown', () => {
@@ -432,12 +396,6 @@ describe('buildClosingLinePrompt', () => {
     expect(prompt).toMatch(/The Architect's voice/i);
     expect(prompt).toMatch(/sardonic AI operator/i);
     expect(prompt).toMatch(/industrial-noir/i);
-  });
-
-  it('flags court vocabulary in the calibration', () => {
-    const prompt = buildClosingLinePrompt('accuse', truthContext);
-    expect(prompt).toMatch(/court vocabulary/i);
-    expect(prompt).toMatch(/re-anchor/i);
   });
 
   it('instructs HTML emphasis tags only — no markdown', () => {
