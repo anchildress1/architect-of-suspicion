@@ -4,9 +4,12 @@
  *  Output: top-N claims ranked by card-pool quality, with their claim-specific
  *          card pools — ready for Pass 4 gameplay validation.
  *
- *  Model:  gpt-5.5 — structured bulk scoring with strict JSON Schema +
- *          enum-constrained card_ids. Tuned per OpenAI's GPT-5.2/5.5
- *          prompting guide: CTCO layout (Context/Task/Constraints/Output),
+ *  Model:  gpt-5.4 — structured bulk scoring with strict JSON Schema +
+ *          enum-constrained card_ids. gpt-5.5 is the stronger instruction-
+ *          follower but its tier-1 rate limits trip on full-corpus runs
+ *          (~50-card batches × 15 candidate claims = many parallel calls);
+ *          5.4 has the headroom. Tuned per OpenAI's GPT-5.2 prompting
+ *          guide: CTCO layout (Context/Task/Constraints/Output),
  *          reasoning_effort='none', verbosity='low'.
  *
  *  Card selection per claim:
@@ -27,9 +30,9 @@ import { config } from './config';
 import type { CardClaimScore, CardRow, GeneratedClaim, Pass3Result } from './types';
 import { CATEGORY_TO_ROOM, GAMEPLAY_ROOMS } from './types';
 
-// Per GPT-5.2/5.5 prompting guide: CTCO layout, negative constraints, tight
-// output spec. Keep the system prompt compact — GPT-5.5 follows explicit
-// rules more reliably than long rationales.
+// Per GPT-5.2 prompting guide: CTCO layout, tight output spec. Keep the
+// system prompt compact — GPT-5.x follows explicit rules more reliably
+// than long rationales.
 const SYSTEM_PROMPT = `<context>
 You are scoring Ashley's career facts against a single accusation-style claim
 about Ashley. Scores feed a ranking pipeline that selects which

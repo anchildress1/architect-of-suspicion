@@ -102,6 +102,18 @@ function createGameState() {
       state.feed = state.feed.filter((e) => e.id !== id);
       persist();
     },
+    /** Replace the text of an existing feed entry without changing its id or
+     *  timestamp. Used by the streaming reaction path to grow the Architect's
+     *  bubble token-by-token instead of churning new entries. */
+    updateFeedEntry(id: string, text: string) {
+      const idx = state.feed.findIndex((e) => e.id === id);
+      if (idx < 0) return;
+      const entry = state.feed[idx];
+      const next = state.feed.slice();
+      next[idx] = { ...entry, text };
+      state.feed = next;
+      persist();
+    },
     setAttention(value: number) {
       attention = clampAttention(value);
       persist();

@@ -12,6 +12,26 @@ export interface Claim {
   text: string;
 }
 
+/** Server-side context the cover letter prompt anchors on. The brief always
+ *  reveals `hireableTruth`; the verdict only swings the rhetorical opener
+ *  (match vs miss against `desiredVerdict`). Never serialized to the client. */
+export interface ClaimTruthContext {
+  /** Single positive professional trait the brief reveals. */
+  hireableTruth: string;
+  /** `accuse` if the surface claim is true of Ashley, `pardon` if false. */
+  desiredVerdict: Verdict;
+}
+
+/** A paramount card joined with player-ruling state for the cover letter.
+ *  Pass 4 flagged this card as essential to revealing the hireable_truth —
+ *  the runtime brief surfaces it whether or not the player ruled it. When
+ *  `classification` is null the brief calls out the gap: "the player did
+ *  not call X to the stand". Server-side only. */
+export interface ParamountCardEntry {
+  card: FullCard;
+  classification: Exclude<Classification, 'dismiss'> | null;
+}
+
 /** A claim_cards row joined with the player-visible card fields.
  *  `blurb` is the rewritten claim-specific blurb from Pass 4 — it pulls the
  *  reader two ways without revealing the direction. */
@@ -66,13 +86,13 @@ export interface CoverLetterResponse {
 }
 
 export interface EvaluateResponse {
-  ai_reaction: string;
+  /** suspicion.picks row id — pass to /api/reaction to stream the Architect's
+   *  in-character response. The pick is already committed by the time this
+   *  returns; the reaction is decoupled so the client can advance immediately. */
+  pick_id: string;
   /** Post-smoothing needle position [0, 100]. Computed server-side so the raw
    *  ai_score magnitude never reaches the client (Invariant #2). */
   attention: number;
-  /** True when the Claude reaction call fell back to a static string — lets
-   *  the UI show a subdued state instead of pretending the Architect spoke. */
-  reaction_fallback: boolean;
 }
 
 /** 409 body returned when a card has already been ruled in this session.

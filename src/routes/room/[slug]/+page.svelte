@@ -18,25 +18,33 @@
   const initialDeck = untrack(() => data.cards);
 
   let deck = $state<ClaimCardEntry[]>(initialDeck);
-  // Hydrate rulings from persisted client evidence so re-entering a chamber
-  // (or hard-reloading mid-session) doesn't let the player re-rule a card the
-  // server already has on file. The unique (session_id, card_id) constraint
-  // returns 409 otherwise.
-  let rulings = $state<Record<string, Classification>>(
-    untrack(() =>
-      Object.fromEntries(
-        gameState.current.evidence
-          .filter((e) => initialDeck.some((d) => d.objectID === e.card.objectID))
-          .map((e) => [e.card.objectID, e.classification]),
-      ),
+
+  // Single source of truth: which cards in this chamber's deck have been ruled
+  // is derived directly from the global gameState.current.evidence, not held
+  // as a separate local snapshot. The queue, the count, the pointer-advance
+  // logic — they all read the same value, and that value is automatically
+  // up-to-date with whatever the rest of the app has done to evidence (this
+  // chamber's rulings, conflict-recovery from a 409, restored state on
+  // re-entry). No dual writes, no drift.
+  const rulings = $derived<Record<string, Classification>>(
+    Object.fromEntries(
+      gameState.current.evidence
+        .filter((e) => deck.some((d) => d.objectID === e.card.objectID))
+        .map((e) => [e.card.objectID, e.classification]),
     ),
   );
   let evaluating = $state(false);
   // Start at the first unruled card so we don't land on one we can't act on.
+  // Read evidence directly here (rather than `rulings`) so the pointer's
+  // initializer doesn't have to wait on the derived's first computation.
   let pointer = $state(
     untrack(() => {
-      const ruled = new Set(Object.keys(rulings));
-      const idx = initialDeck.findIndex((c) => !ruled.has(c.objectID));
+      const ruledIds = new Set(
+        gameState.current.evidence
+          .filter((e) => initialDeck.some((d) => d.objectID === e.card.objectID))
+          .map((e) => e.card.objectID),
+      );
+      const idx = initialDeck.findIndex((c) => !ruledIds.has(c.objectID));
       return idx >= 0 ? idx : 0;
     }),
   );
@@ -44,6 +52,20 @@
   const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
   const current = $derived(deck[pointer]);
   const exhausted = $derived(remaining === 0);
+  // 1-indexed position of `current` within the remaining (unruled) deck.
+  // Matches what WitnessQueue shows in the sidebar so the card header and
+  // the queue agree on "card 03 of 25 remaining" framing. Counted by walking
+  // deck[0..=pointer] and tallying unruled entries.
+  const queuePosition = $derived.by(() => {
+    let count = 0;
+    for (let i = 0; i <= pointer && i < deck.length; i++) {
+      if (!rulings[deck[i].objectID]) count++;
+    }
+    // If `current` itself is ruled (rare — auto-advance should have moved
+    // off it), tally still gives the position the next unruled would land
+    // on. Floor at 1 so we never display "00".
+    return Math.max(1, count);
+  });
 
   function nextUnruledIndex(from: number): number {
     for (let i = from + 1; i < deck.length; i++) {
@@ -83,18 +105,61 @@
   }
 
   function commitRuling(card: ClaimCardEntry, classification: Classification, fromIndex: number) {
-    // Dedupe: if the local state already records this card, don't double-add
-    // evidence. This matters most on the 409 conflict-recovery path — the
-    // server says the card was already ruled and we may be reconciling a
-    // race or retry where the client already holds a row for this objectID.
-    const wasRuled = Object.prototype.hasOwnProperty.call(rulings, card.objectID);
-    rulings = { ...rulings, [card.objectID]: classification };
+    // Dedupe against the canonical store. This matters most on the 409
+    // conflict-recovery path — the server says the card was already ruled
+    // and we may be reconciling a race or retry where evidence already
+    // holds a row for this objectID. Reading rulings (which is derived
+    // from evidence) is the authoritative check.
+    const wasRuled = rulings[card.objectID] !== undefined;
     if (!wasRuled) gameState.addEvidence({ card, classification });
     // Only auto-advance when the player hasn't moved off this card during the
     // in-flight evaluation. Otherwise honour their manual selection.
+    // nextUnruledIndex reads `rulings` which is $derived — Svelte 5 derived
+    // values recompute lazily on read, so the post-addEvidence state is
+    // visible here.
     if (pointer === fromIndex) {
       const next = nextUnruledIndex(fromIndex);
       if (next >= 0) pointer = next;
+    }
+  }
+
+  const FALLBACK_REACTION =
+    'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
+
+  async function streamReaction(pickId: string, reactionEntryId: string) {
+    let collected = '';
+    try {
+      const res = await fetch('/api/reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pick_id: pickId }),
+      });
+      if (!res.ok || !res.body) {
+        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          collected += decoder.decode(value, { stream: true });
+          gameState.updateFeedEntry(reactionEntryId, collected);
+        }
+      }
+      const flush = decoder.decode();
+      if (flush) {
+        collected += flush;
+        gameState.updateFeedEntry(reactionEntryId, collected);
+      }
+      if (!collected.trim()) {
+        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
+      }
+    } catch {
+      if (!collected.trim()) {
+        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
+      }
     }
   }
 
@@ -104,16 +169,26 @@
     classification: Classification,
     ruledIndex: number,
   ) {
-    const { ai_reaction, attention } = (await res.json()) as EvaluateResponse;
+    const { pick_id, attention } = (await res.json()) as EvaluateResponse;
     pushFeedEntry(
       'action',
       classification === 'dismiss'
         ? `Struck "${card.title}" from the record.`
         : `Classified "${card.title}" as ${classification}.`,
     );
-    if (ai_reaction) pushFeedEntry('reaction', ai_reaction);
     gameState.setAttention(attention);
     commitRuling(card, classification, ruledIndex);
+    // Open a placeholder reaction entry now so the bubble's frame appears
+    // immediately, then stream tokens into it. The fetch runs detached — the
+    // player can pick the next card while the Architect's response lands.
+    const reactionEntryId = crypto.randomUUID();
+    gameState.addFeedEntry({
+      id: reactionEntryId,
+      type: 'reaction',
+      text: '',
+      timestamp: Date.now(),
+    });
+    void streamReaction(pick_id, reactionEntryId);
   }
 
   async function applyConflictRecovery(res: Response, card: ClaimCardEntry, ruledIndex: number) {
@@ -231,8 +306,8 @@
         {#key current.objectID}
           <WitnessCard
             card={current}
-            index={pointer}
-            total={deck.length}
+            position={queuePosition}
+            total={remaining}
             onDecide={decide}
             disabled={evaluating}
           />

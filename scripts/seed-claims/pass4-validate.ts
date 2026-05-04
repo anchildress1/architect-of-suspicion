@@ -26,11 +26,13 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
+export const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
+
+Recruiter-safety rule (non-negotiable): the rewritten_blurb is public text that lives on the page next to Ashley's name regardless of how the player ultimately rules. It must read as a description of a hireable professional under BOTH classifications. The "proof" reading and the "objection" reading must each describe a working-style trait a hiring manager would respect. If the only honest way to write a card against this claim leaves the proof OR objection reading sounding like a character flaw — drop the card by emitting your best dual-hireable version anyway and flag the strain in notes; downstream review will cut it. Never write text that indicts Ashley's competence, integrity, or basic professionalism.
 
 Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields.
 
-Source blurbs are written in first person ("I built…", "My approach was…", "I decided…"). Always convert to third person in rewritten_blurb. Use "Ashley" by name; never use pronouns (he/she/they) as a substitute. First-person phrasing in the output is always wrong.
+Source blurbs are written in first person ("I built…", "My approach was…", "I decided…"). Always convert to third person in rewritten_blurb. Refer to Ashley by name or with she/her pronouns — these are the only acceptable third-person references. Never use he/him or they/them. First-person phrasing in the output is always wrong.
 
 Tags and projects carry the work/play + deadline context:
 - "DEV Challenge > …" tag → strict external deadline, stack often unfamiliar at start. Surface the pressure where it sharpens the claim.
@@ -45,9 +47,9 @@ Temporal reasoning rules:
 
 Output per card (all four fields required — no proof/objection scratch work, go straight to the final fields):
 1. card_id — the exact id from the ELIGIBLE CARDS block. Copy it; never invent or modify.
-2. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic.
-3. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = supports. Negative = undermines. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. Hidden from the player.
-4. notes — server-only auditor note (1-3 sentences). State the tension levers this rewrite pulls, how work/play + deadline context were handled, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't see the 2-week constraint", or "work-vs-play ambiguity intentional; blurb reads as production but the fact is a hackathon build"). This is the QA trail.`;
+2. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic. Both the "proof" and "objection" readings of this text must describe a hireable working-style trait — never write content that reads as a character flaw under either classification.
+3. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = supports. Negative = undermines. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. Hidden from the player. Note: because Pass 2 enforces dual-hireability on every claim, "supports" and "undermines" both translate to professional traits — the score is directional, not moral.
+4. notes — server-only auditor note (1-3 sentences). State the tension levers this rewrite pulls, how work/play + deadline context were handled, whether the dual-hireability check holds for both readings of the rewritten_blurb, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't see the 2-week constraint", or "dual-hireability strained: proof reading verges on 'misses deadlines' — recommend reviewer cut"). This is the QA trail.`;
 
 /** Build a batch-specific schema. Keeps `card_id` constrained to the batch's
  *  UUIDs via `enum`; drops `minItems`/`maxItems`, `additionalProperties: false`,
@@ -187,6 +189,11 @@ async function processBatch(
       rewrittenBlurb: arg.rewritten_blurb.trim(),
       aiScore: clampScore(arg.ai_score),
       notes: arg.notes.trim(),
+      // isParamount defaults to false here — runPass4 picks the paramount
+      // set after all batches complete and rewrites this flag for the
+      // chosen cards. Doing it post-batch lets us balance |ai_score| against
+      // room coverage with the full pool in hand.
+      isParamount: false,
     });
   }
 
@@ -251,7 +258,22 @@ export async function runPass4(
     const coveredRooms = roomsCovered(rewrittenCards);
     const passedCoverage = coveredRooms >= config.targets.minRooms;
     const passedTotal = rewrittenCards.length >= config.targets.minTotalCards;
-    const survived = passedCoverage && passedTotal;
+    const verdictAlignment = checkVerdictAlignment(claim, claimArguments);
+    const survived = passedCoverage && passedTotal && verdictAlignment.aligned;
+
+    // Paramount selection runs only for survivors — there's no point
+    // flagging cards on a claim that won't ship. Mutates claimArguments
+    // in-place to set isParamount=true on the chosen card_ids.
+    if (survived) {
+      const paramount = selectParamount(rewrittenCards, claimArguments);
+      for (const cardId of paramount) {
+        const arg = claimArguments.get(cardId);
+        if (arg) claimArguments.set(cardId, { ...arg, isParamount: true });
+      }
+      console.log(
+        `[pass4] "${claim.claim_text}": flagged ${paramount.size} paramount card${paramount.size === 1 ? '' : 's'}`,
+      );
+    }
 
     validations.push({
       claim_id: claim.id,
@@ -261,18 +283,84 @@ export async function runPass4(
       survived,
       cut_reason: survived
         ? undefined
-        : !passedCoverage
-          ? `only ${coveredRooms}/${config.targets.minRooms} rooms covered`
-          : `only ${rewrittenCards.length} rewritten cards (need ≥${config.targets.minTotalCards})`,
+        : cutReason(claim, verdictAlignment, {
+            passedCoverage,
+            coveredRooms,
+            passedTotal,
+            rewrittenCount: rewrittenCards.length,
+          }),
       eligible_card_ids: rewrittenCards.map((c) => c.objectID),
     });
 
     console.log(
-      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${rewrittenCards.length} cards, ${coveredRooms} rooms)`,
+      `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${rewrittenCards.length} cards, ${coveredRooms} rooms, avg ai_score=${verdictAlignment.average.toFixed(2)} vs desired=${claim.desired_verdict})`,
     );
   }
 
   return { validations, arguments: argumentsByClaim };
+}
+
+interface VerdictAlignment {
+  /** Average ai_score across the claim's pool. Sign indicates which way the
+   *  full evidence leans against the surface claim. */
+  average: number;
+  /** True when the evidence's directional sign matches the claim's declared
+   *  desired_verdict (positive avg → accuse, negative avg → pardon). */
+  aligned: boolean;
+}
+
+/**
+ * Cross-check Pass 2's declared desired_verdict against the directional
+ * evidence Pass 4 just produced. desired_verdict says "the surface claim is
+ * roughly TRUE/FALSE of Ashley"; the average ai_score across the pool says
+ * "here's how the cards actually lean." Mismatch = the model contradicted
+ * itself across passes — drop the claim rather than ship a brief whose
+ * verdict-as-self-assessment opener will misfire.
+ *
+ * Threshold: |average| must clear MIN_VERDICT_MAGNITUDE. A near-zero average
+ * means the pool is genuinely ambivalent, which makes desired_verdict
+ * unreliable regardless of sign — drop those too.
+ */
+function checkVerdictAlignment(
+  claim: GeneratedClaim,
+  claimArguments: Map<string, CardArgument>,
+): VerdictAlignment {
+  if (claimArguments.size === 0) return { average: 0, aligned: false };
+  let sum = 0;
+  for (const arg of claimArguments.values()) sum += arg.aiScore;
+  const average = sum / claimArguments.size;
+
+  if (Math.abs(average) < MIN_VERDICT_MAGNITUDE) {
+    return { average, aligned: false };
+  }
+  const signMatches =
+    (claim.desired_verdict === 'accuse' && average > 0) ||
+    (claim.desired_verdict === 'pardon' && average < 0);
+  return { average, aligned: signMatches };
+}
+
+const MIN_VERDICT_MAGNITUDE = 0.1;
+
+function cutReason(
+  claim: GeneratedClaim,
+  verdict: VerdictAlignment,
+  coverage: {
+    passedCoverage: boolean;
+    coveredRooms: number;
+    passedTotal: boolean;
+    rewrittenCount: number;
+  },
+): string {
+  if (!coverage.passedCoverage) {
+    return `only ${coverage.coveredRooms}/${config.targets.minRooms} rooms covered`;
+  }
+  if (!coverage.passedTotal) {
+    return `only ${coverage.rewrittenCount} rewritten cards (need ≥${config.targets.minTotalCards})`;
+  }
+  // Alignment failure — surface it loudly so a rerun can investigate the
+  // upstream Pass 2 vs Pass 4 disagreement instead of silently shipping a
+  // claim whose verdict opener would mislead the player.
+  return `desired_verdict=${claim.desired_verdict} mismatches evidence avg ai_score=${verdict.average.toFixed(2)} (need |avg|≥${MIN_VERDICT_MAGNITUDE} with matching sign)`;
 }
 
 function roomsCovered(cards: CardRow[]): number {
@@ -282,4 +370,57 @@ function roomsCovered(cards: CardRow[]): number {
     if (room) rooms.add(room);
   }
   return rooms.size;
+}
+
+const PARAMOUNT_BASE = 5;
+const PARAMOUNT_MAX = 8;
+const PARAMOUNT_MIN_ROOMS = 3;
+
+/**
+ * Pick the small set of cards that the runtime cover letter prompt MUST
+ * surface — whether or not the player ruled them. Chosen by descending
+ * |ai_score| (the most directionally decisive evidence), with room-coverage
+ * balancing so a single chamber can't dominate the must-surface set. The
+ * prompt uses these to call out paramount-but-skipped cards as gaps.
+ *
+ * Algorithm:
+ *  1. Sort survivors by |ai_score| descending. Pick the top PARAMOUNT_BASE.
+ *  2. If that picks fewer than PARAMOUNT_MIN_ROOMS distinct rooms, expand
+ *     down the ranked list (up to PARAMOUNT_MAX) adding cards from rooms
+ *     not yet covered, until either the room minimum is met or the cap
+ *     hits.
+ *  3. Returns the chosen card_id set.
+ */
+function selectParamount(
+  rewrittenCards: CardRow[],
+  claimArguments: Map<string, CardArgument>,
+): Set<string> {
+  const ranked = [...rewrittenCards]
+    .map((card) => ({ card, score: claimArguments.get(card.objectID)?.aiScore ?? 0 }))
+    .sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+
+  const chosen = new Set<string>();
+  const roomsHit = new Set<RoomSlug>();
+
+  for (let i = 0; i < ranked.length && chosen.size < PARAMOUNT_BASE; i++) {
+    const { card } = ranked[i];
+    chosen.add(card.objectID);
+    const room = roomFor(card);
+    if (room) roomsHit.add(room);
+  }
+
+  if (roomsHit.size < PARAMOUNT_MIN_ROOMS) {
+    for (let i = 0; i < ranked.length && chosen.size < PARAMOUNT_MAX; i++) {
+      const { card } = ranked[i];
+      if (chosen.has(card.objectID)) continue;
+      const room = roomFor(card);
+      if (room && !roomsHit.has(room)) {
+        chosen.add(card.objectID);
+        roomsHit.add(room);
+        if (roomsHit.size >= PARAMOUNT_MIN_ROOMS) break;
+      }
+    }
+  }
+
+  return chosen;
 }

@@ -5,13 +5,15 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
   return {
     claim: {
       id: 'claim-1',
-      claim_text: 'Ashley prioritizes novelty over reliability',
-      rationale: 'Targets speed vs quality tension',
-      tensions_targeted: ['speed-vs-quality'],
+      claim_text: 'Ashley uses AI too much',
+      rationale: 'Targets the AI tooling tension across Decisions and Experimentation',
+      truths_targeted: ['ai-as-leverage'],
+      hireable_truth: 'Ashley weaponizes AI — teaches it, constrains it, holds it to standard.',
+      desired_verdict: 'pardon',
     },
     validation: {
       claim_id: 'claim-1',
-      claim_text: 'Ashley prioritizes novelty over reliability',
+      claim_text: 'Ashley uses AI too much',
       room_coverage: 6,
       total_eligible_cards: 2,
       survived: true,
@@ -24,7 +26,12 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
     arguments: new Map([
       [
         'card-1',
-        { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: 'Leans on hidden DEV deadline.' },
+        {
+          rewrittenBlurb: 'Rewrite 1',
+          aiScore: 0.6,
+          notes: 'Leans on hidden DEV deadline.',
+          isParamount: true,
+        },
       ],
       [
         'card-2',
@@ -32,6 +39,7 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
           rewrittenBlurb: 'Rewrite 2',
           aiScore: -0.4,
           notes: 'Work-vs-play ambiguity intentional.',
+          isParamount: false,
         },
       ],
     ]),
@@ -40,7 +48,7 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
 }
 
 describe('buildSeedPayload', () => {
-  it('returns only surviving claims with validated card payload rows (including notes)', () => {
+  it('returns only surviving claims with validated card payload rows (including paramount + verdict)', () => {
     const survivor = makeInput();
     const cut = makeInput({
       claim: { ...makeInput().claim, id: 'claim-2', claim_text: 'Cut claim' },
@@ -58,6 +66,8 @@ describe('buildSeedPayload', () => {
       {
         claim_text: survivor.claim.claim_text,
         rationale: survivor.claim.rationale,
+        hireable_truth: survivor.claim.hireable_truth,
+        desired_verdict: survivor.claim.desired_verdict,
         room_coverage: 6,
         total_eligible_cards: 2,
         cards: [
@@ -68,6 +78,7 @@ describe('buildSeedPayload', () => {
             ai_score: 0.6,
             rewritten_blurb: 'Rewrite 1',
             notes: 'Leans on hidden DEV deadline.',
+            is_paramount: true,
           },
           {
             card_id: 'card-2',
@@ -76,6 +87,7 @@ describe('buildSeedPayload', () => {
             ai_score: -0.4,
             rewritten_blurb: 'Rewrite 2',
             notes: 'Work-vs-play ambiguity intentional.',
+            is_paramount: false,
           },
         ],
       },
@@ -95,7 +107,9 @@ describe('buildSeedPayload', () => {
 
   it('throws when an argument is missing for an eligible card', () => {
     const invalid = makeInput({
-      arguments: new Map([['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: 'ok' }]]),
+      arguments: new Map([
+        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: 'ok', isParamount: true }],
+      ]),
     });
 
     expect(() => buildSeedPayload([invalid])).toThrow(/Missing argument/);
@@ -104,8 +118,8 @@ describe('buildSeedPayload', () => {
   it('throws when ai_score is out of [-1.0, 1.0] bounds', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 1.5, notes: 'ok' }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok' }],
+        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 1.5, notes: 'ok', isParamount: true }],
+        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
       ]),
     });
 
@@ -115,8 +129,11 @@ describe('buildSeedPayload', () => {
   it('throws when ai_score is NaN', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: Number.NaN, notes: 'ok' }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok' }],
+        [
+          'card-1',
+          { rewrittenBlurb: 'Rewrite 1', aiScore: Number.NaN, notes: 'ok', isParamount: true },
+        ],
+        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
       ]),
     });
 
@@ -126,8 +143,8 @@ describe('buildSeedPayload', () => {
   it('throws when notes is missing', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: '' }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok' }],
+        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: '', isParamount: true }],
+        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
       ]),
     });
 
@@ -137,8 +154,8 @@ describe('buildSeedPayload', () => {
   it('throws when notes is only whitespace', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: '   ' }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok' }],
+        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: '   ', isParamount: true }],
+        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
       ]),
     });
 
@@ -173,5 +190,63 @@ describe('buildSeedPayload', () => {
     });
 
     expect(() => buildSeedPayload([invalid])).toThrow(/Duplicate eligible card/);
+  });
+
+  it('throws when hireable_truth is missing — runtime brief would have no anchor', () => {
+    const invalid = makeInput({
+      claim: { ...makeInput().claim, hireable_truth: '' },
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing hireable_truth/);
+  });
+
+  it('throws when hireable_truth is whitespace-only', () => {
+    const invalid = makeInput({
+      claim: { ...makeInput().claim, hireable_truth: '   ' },
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing hireable_truth/);
+  });
+
+  it('trims surrounding whitespace from hireable_truth before persisting', () => {
+    const padded = makeInput({
+      claim: {
+        ...makeInput().claim,
+        hireable_truth: '  weaponizes AI with discipline  ',
+      },
+    });
+
+    const [row] = buildSeedPayload([padded]);
+    expect(row.hireable_truth).toBe('weaponizes AI with discipline');
+  });
+
+  it('throws when desired_verdict is invalid', () => {
+    const invalid = makeInput({
+      claim: {
+        ...makeInput().claim,
+        desired_verdict: 'maybe' as unknown as 'accuse' | 'pardon',
+      },
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Invalid desired_verdict/);
+  });
+
+  it('persists desired_verdict for both accuse and pardon', () => {
+    const accuseInput = makeInput({
+      claim: { ...makeInput().claim, desired_verdict: 'accuse' },
+    });
+    const [row] = buildSeedPayload([accuseInput]);
+    expect(row.desired_verdict).toBe('accuse');
+  });
+
+  it('throws when no card on a surviving claim is paramount — pipeline bug', () => {
+    const noneFlagged = makeInput({
+      arguments: new Map([
+        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: 'ok', isParamount: false }],
+        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
+      ]),
+    });
+
+    expect(() => buildSeedPayload([noneFlagged])).toThrow(/No paramount cards/);
   });
 });

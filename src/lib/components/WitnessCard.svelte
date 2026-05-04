@@ -3,13 +3,19 @@
 
   interface Props {
     card: ClaimCardEntry;
-    index: number;
+    /** 1-indexed position of this card in the remaining (unruled) deck.
+     *  Matches the WitnessQueue's sidebar numbering — when the queue says
+     *  "03", this card's header reads "Exhibit 03 / N". The two displays
+     *  count the same thing. */
+    position: number;
+    /** Total cards still remaining (unruled). Same as the sidebar's
+     *  "{N} remaining" count — shrinks as cards are ruled. */
     total: number;
     onDecide: (card: ClaimCardEntry, classification: Classification) => void;
     disabled?: boolean;
   }
 
-  let { card, index, total, onDecide, disabled = false }: Props = $props();
+  let { card, position, total, onDecide, disabled = false }: Props = $props();
   let chosen = $state<Classification | null>(null);
 
   function decide(c: Classification) {
@@ -27,12 +33,14 @@
   class:exit-proof={chosen === 'proof'}
   class:exit-objection={chosen === 'objection'}
   class:exit-dismiss={chosen === 'dismiss'}
-  aria-label="Exhibit {index + 1} of {total}: {card.title}"
+  aria-label="Exhibit {position} of {total}: {card.title}"
 >
   <div class="wc-edge" aria-hidden="true"></div>
 
   <header class="wc-head">
-    <span class="wc-id">Exhibit {index + 1} / {total}</span>
+    <span class="wc-id"
+      >Exhibit {String(position).padStart(2, '0')} / {String(total).padStart(2, '0')}</span
+    >
   </header>
 
   <h2 class="wc-title">{card.title}</h2>

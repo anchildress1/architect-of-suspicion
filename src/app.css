@@ -13,7 +13,7 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Editorial noir — bone on ink, single hot accent */
+  /* Industrial noir — bone on ink, single hot accent */
   --color-ink: #0b0b0d;
   --color-void: #141417;
   --color-iron: #1a1a1e;
