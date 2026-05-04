@@ -52,6 +52,20 @@
   const remaining = $derived(deck.filter((c) => !rulings[c.objectID]).length);
   const current = $derived(deck[pointer]);
   const exhausted = $derived(remaining === 0);
+  // 1-indexed position of `current` within the remaining (unruled) deck.
+  // Matches what WitnessQueue shows in the sidebar so the card header and
+  // the queue agree on "card 03 of 25 remaining" framing. Counted by walking
+  // deck[0..=pointer] and tallying unruled entries.
+  const queuePosition = $derived.by(() => {
+    let count = 0;
+    for (let i = 0; i <= pointer && i < deck.length; i++) {
+      if (!rulings[deck[i].objectID]) count++;
+    }
+    // If `current` itself is ruled (rare — auto-advance should have moved
+    // off it), tally still gives the position the next unruled would land
+    // on. Floor at 1 so we never display "00".
+    return Math.max(1, count);
+  });
 
   function nextUnruledIndex(from: number): number {
     for (let i = from + 1; i < deck.length; i++) {
@@ -292,8 +306,8 @@
         {#key current.objectID}
           <WitnessCard
             card={current}
-            index={pointer}
-            total={deck.length}
+            position={queuePosition}
+            total={remaining}
             onDecide={decide}
             disabled={evaluating}
           />
