@@ -96,8 +96,8 @@
 </article>
 
 <style>
-  /* Industrial verdict brief — dark instrument-panel surface, the same
-     ink + bone palette as the dossier and chamber rails. No bone paper,
+  /* Industrial verdict record — dark instrument-panel surface, the same
+     ink + bone palette as the foyer and chamber rails. No bone paper,
      no wax seal, no italic letter face. */
   .letter {
     position: relative;

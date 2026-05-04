@@ -60,60 +60,58 @@
   <title>Architect of Suspicion</title>
 </svelte:head>
 
-<main class="summons noise" aria-label="The examination">
+<main class="foyer noise" aria-label="The examination">
   <div class="ember-floor" aria-hidden="true"></div>
 
-  <div class="summons-title reveal">
-    <p class="summons-eyebrow">From the gallery</p>
-    <h1 class="summons-headline">
-      Architect <span class="summons-amp">of</span> Suspicion
+  <div class="foyer-title reveal">
+    <p class="foyer-eyebrow">From the gallery</p>
+    <h1 class="foyer-headline">
+      Architect <span class="foyer-amp">of</span> Suspicion
     </h1>
-    <p class="summons-sub">
+    <p class="foyer-sub">
       An examination <span class="dot">&middot;</span> in IX chambers
       <span class="dot">&middot;</span> concerning one Ashley Childress
     </p>
   </div>
 
-  <section class="dossier reveal" aria-label="The investigation record">
-    <div class="dossier-head">
-      <span class="dossier-id">Record &numero;&nbsp;0426 &middot; Examination&nbsp;AA-XII</span>
-      <span class="dossier-date"
+  <section class="record reveal" aria-label="The investigation record">
+    <div class="record-head">
+      <span class="record-id">Record &numero;&nbsp;0426 &middot; Examination&nbsp;AA-XII</span>
+      <span class="record-date"
         >{new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span
       >
     </div>
 
-    <p class="dossier-eyebrow">The Claim, entered into evidence</p>
+    <p class="record-eyebrow">The Claim, entered into evidence</p>
 
     {#if data.claim}
-      <h2 class="dossier-claim transition-claim">{data.claim.text}</h2>
+      <h2 class="record-claim transition-claim">{data.claim.text}</h2>
     {:else if loadingClaim}
-      <h2 class="dossier-claim dossier-claim-loading">
-        &hellip;the record is being struck&hellip;
-      </h2>
+      <h2 class="record-claim record-claim-loading">&hellip;the record is being struck&hellip;</h2>
     {:else}
-      <h2 class="dossier-claim dossier-claim-error">
+      <h2 class="record-claim record-claim-error">
         &ldquo;The record is empty. Seed the claims pipeline.&rdquo;
       </h2>
     {/if}
 
-    <div class="dossier-meta-row">
+    <div class="record-meta-row">
       <div>
-        <p class="dossier-field">Subject</p>
-        <p class="dossier-value">Ashley Childress</p>
+        <p class="record-field">Subject</p>
+        <p class="record-value">Ashley Childress</p>
       </div>
-      <span class="dossier-sep" aria-hidden="true"></span>
-      <div class="dossier-meta-right">
-        <p class="dossier-field">Reported by</p>
-        <p class="dossier-value">Anonymous</p>
+      <span class="record-sep" aria-hidden="true"></span>
+      <div class="record-meta-right">
+        <p class="record-field">Reported by</p>
+        <p class="record-value">Anonymous</p>
       </div>
     </div>
 
-    <p class="dossier-intro">
+    <p class="record-intro">
       The doors are bolted. The gallery has assembled. Witnesses await &mdash; you will pick, you
       will rule. And I, the Architect, will be watching.
     </p>
 
-    <div class="dossier-cta">
+    <div class="record-cta">
       <button class="lever-btn" disabled={entering || !data.claim} onclick={enterMansion}>
         <svg
           class="lever-btn-key"
@@ -136,23 +134,23 @@
           {entering ? 'Bolting the doors…' : 'Enter the Mansion'}
         </span>
       </button>
-      <p class="dossier-meta-text">
+      <p class="record-meta-text">
         Verdict required <br />
         no accounts &middot; no timer
       </p>
     </div>
 
     {#if errorMsg}
-      <p class="dossier-error" role="alert">{errorMsg}</p>
+      <p class="record-error" role="alert">{errorMsg}</p>
     {/if}
   </section>
 </main>
 
 <style>
-  .summons {
+  .foyer {
     position: relative;
     /* Same viewport-locked pattern as the chamber and mansion shells —
-       no page-level scroll. The dossier is sized with fluid clamps below
+       no page-level scroll. The record is sized with fluid clamps below
        so it fits inside `100dvh` on a typical laptop without overflow. */
     height: 100dvh;
     overflow: hidden;
@@ -161,7 +159,7 @@
     align-items: center;
     justify-content: center;
     /* Vertical padding scales with viewport height so short laptops don't
-       fight the dossier for room while wide displays still feel airy. */
+       fight the record for room while wide displays still feel airy. */
     padding: clamp(0.75rem, 2vh, 2rem) 2rem;
     background:
       radial-gradient(ellipse 60% 40% at 50% 55%, #1a1420 0%, transparent 70%),
@@ -184,14 +182,14 @@
     pointer-events: none;
   }
 
-  .summons-title {
+  .foyer-title {
     position: relative;
     z-index: 5;
     text-align: center;
     margin-bottom: clamp(1rem, 2.5vh, 2.5rem);
   }
 
-  .summons-eyebrow {
+  .foyer-eyebrow {
     font-family: var(--font-readout);
     font-size: 12px;
     letter-spacing: 0.14em;
@@ -200,7 +198,7 @@
     margin-bottom: clamp(0.5rem, 1.2vh, 1rem);
   }
 
-  .summons-headline {
+  .foyer-headline {
     font-family: var(--font-display);
     font-style: italic;
     /* Fluid clamp that respects height too — keeps the marquee from
@@ -211,13 +209,13 @@
     text-shadow: 0 4px 40px rgba(210, 58, 42, 0.18);
   }
 
-  .summons-amp {
+  .foyer-amp {
     font-style: italic;
     color: var(--color-ember);
     padding: 0 0.2em;
   }
 
-  .summons-sub {
+  .foyer-sub {
     font-family: var(--font-readout);
     font-size: 12px;
     letter-spacing: 0.12em;
@@ -226,13 +224,13 @@
     margin-top: clamp(0.5rem, 1.4vh, 1.1rem);
   }
 
-  .summons-sub .dot {
+  .foyer-sub .dot {
     color: var(--color-brass-dim);
     margin: 0 0.3em;
   }
 
-  /* The dossier — the centerpiece */
-  .dossier {
+  /* The record — the centerpiece */
+  .record {
     position: relative;
     z-index: 5;
     width: min(100%, 640px);
@@ -248,7 +246,7 @@
       0 0 80px rgba(210, 58, 42, 0.06);
   }
 
-  .dossier::before {
+  .record::before {
     content: '';
     position: absolute;
     inset: 12px;
@@ -256,7 +254,7 @@
     pointer-events: none;
   }
 
-  .dossier-head {
+  .record-head {
     display: flex;
     justify-content: space-between;
     margin-bottom: clamp(0.75rem, 2vh, 1.7rem);
@@ -269,7 +267,7 @@
     color: var(--color-brass-dim);
   }
 
-  .dossier-eyebrow {
+  .record-eyebrow {
     font-family: var(--font-readout);
     font-size: 11px;
     letter-spacing: 0.14em;
@@ -278,7 +276,7 @@
     margin-bottom: clamp(0.4rem, 0.8vh, 0.6rem);
   }
 
-  .dossier-claim {
+  .record-claim {
     position: relative;
     font-family: var(--font-display);
     font-style: italic;
@@ -289,17 +287,17 @@
     text-wrap: balance;
   }
 
-  .dossier-claim-loading {
+  .record-claim-loading {
     color: var(--color-brass-dim);
     font-size: 1.1rem;
   }
 
-  .dossier-claim-error {
+  .record-claim-error {
     color: var(--color-ember);
     font-size: 1.1rem;
   }
 
-  .dossier-meta-row {
+  .record-meta-row {
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -308,18 +306,18 @@
     border-bottom: 1px solid rgba(233, 228, 216, 0.1);
   }
 
-  .dossier-meta-right {
+  .record-meta-right {
     margin-left: auto;
     text-align: right;
   }
 
-  .dossier-sep {
+  .record-sep {
     width: 1px;
     height: 32px;
     background: rgba(233, 228, 216, 0.2);
   }
 
-  .dossier-field {
+  .record-field {
     font-family: var(--font-readout);
     font-size: 11px;
     letter-spacing: 0.12em;
@@ -327,14 +325,14 @@
     color: var(--color-brass-dim);
   }
 
-  .dossier-value {
+  .record-value {
     font-family: var(--font-display);
     font-size: 1.05rem;
     color: var(--color-bone);
     margin-top: 0.2rem;
   }
 
-  .dossier-intro {
+  .record-intro {
     font-family: var(--font-body);
     font-size: 0.92rem;
     color: var(--color-paper-dim);
@@ -343,7 +341,7 @@
     text-wrap: pretty;
   }
 
-  .dossier-cta {
+  .record-cta {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -403,7 +401,7 @@
     cursor: wait;
   }
 
-  .dossier-meta-text {
+  .record-meta-text {
     font-family: var(--font-readout);
     font-size: 11px;
     letter-spacing: 0.18em;
@@ -413,7 +411,7 @@
     line-height: 1.6;
   }
 
-  .dossier-error {
+  .record-error {
     margin-top: 1rem;
     font-family: var(--font-readout);
     font-size: 12px;
