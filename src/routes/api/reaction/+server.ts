@@ -129,30 +129,33 @@ async function persistReactionText(pickId: string, text: string): Promise<void> 
  * holds the lock (and we must NOT call Claude — see the migration comment
  * for the race we're preventing).
  *
- * The conditional UPDATE only succeeds when:
- *   - ai_reaction_text is still NULL (no completed generation), AND
- *   - reaction_locked_at is NULL (no in-flight request) OR
- *     older than the lock timeout (a crashed/abandoned previous attempt).
+ * Implemented as an RPC (suspicion.try_claim_reaction_lock) rather than a
+ * builder-chain UPDATE: PostgREST validates column names in chain UPDATEs
+ * against its schema cache, and a stale cache after recent DDL surfaces as
+ * "column picks.reaction_locked_at does not exist" even when the column is
+ * live in Postgres. RPC bodies are opaque to PostgREST's column validator,
+ * so the cache state is irrelevant. The function does the same conditional
+ * UPDATE — only succeeds when the row is unclaimed (ai_reaction_text NULL
+ * AND reaction_locked_at NULL or older than the lock timeout) — and returns
+ * the pick id when the claim succeeds, empty set when another request
+ * holds the lock.
  */
 async function tryClaimReactionLock(pickId: string): Promise<boolean> {
-  const expiry = new Date(Date.now() - REACTION_LOCK_TIMEOUT_MS).toISOString();
+  const lockTimeoutSeconds = Math.round(REACTION_LOCK_TIMEOUT_MS / 1000);
 
   const { data, error: claimErr } = await getSupabase()
     .schema('suspicion')
-    .from('picks')
-    .update({ reaction_locked_at: new Date().toISOString() })
-    .eq('id', pickId)
-    .is('ai_reaction_text', null)
-    .or(`reaction_locked_at.is.null,reaction_locked_at.lt.${expiry}`)
-    .select('id')
-    .maybeSingle();
+    .rpc('try_claim_reaction_lock', {
+      p_pick_id: pickId,
+      p_lock_timeout_seconds: lockTimeoutSeconds,
+    });
 
   if (claimErr) {
-    console.error('[reaction] lock claim failed:', claimErr.message);
+    console.error('[reaction] lock claim RPC failed:', claimErr.message);
     error(500, 'Failed to claim reaction generation lock');
   }
 
-  return data !== null;
+  return Array.isArray(data) && data.length > 0;
 }
 
 export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
