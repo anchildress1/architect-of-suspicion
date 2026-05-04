@@ -165,5 +165,32 @@ export async function getParamountCards(
     return { cards: [], error: 'Failed to fetch paramount cards' };
   }
 
-  return { cards: (cardRows ?? []) as FullCard[], error: null };
+  const cards = (cardRows ?? []) as FullCard[];
+
+  // Consistency check: every claim_cards.is_paramount row should resolve to a
+  // live public.cards row. The on_card_soft_delete trigger
+  // (20260423115705_remove_soft_deleted_cards_from_claim_cards.sql) removes
+  // claim_cards entries when their source card is soft-deleted, so a count
+  // mismatch here means either the trigger fired between step 1 and step 2
+  // (race window) OR the trigger is missing/disabled and we're seeing a
+  // genuine consistency violation. Either way, the cover letter must surface
+  // every paramount card per AGENTS.md Invariant #8 — failing loud is the
+  // correct response. Silently emitting a partial brief lets a recruiter-
+  // unsafe artifact ship.
+  if (cards.length !== cardIds.length) {
+    const present = new Set(cards.map((c) => c.objectID));
+    const missing = cardIds.filter((id) => !present.has(id));
+    console.error(
+      '[claims] getParamountCards: paramount source rows missing for claim',
+      claimId,
+      '— missing card_ids:',
+      missing,
+    );
+    return {
+      cards: [],
+      error: 'Paramount source rows missing — pipeline must reseed',
+    };
+  }
+
+  return { cards, error: null };
 }

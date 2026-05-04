@@ -365,9 +365,16 @@ describe('getParamountCards', () => {
     expect(cards.map((c) => c.objectID)).toEqual(['c-1', 'c-2']);
   });
 
-  it('skips orphaned paramount rows when the cards lookup drops them', async () => {
-    // Soft-deleted cards drop out of step 2 even though the claim_cards row
-    // still references them. The resulting set is the intersection.
+  it('fails loud when paramount source rows are missing (consistency violation)', async () => {
+    // claim_cards.is_paramount = true says "this card MUST surface in the
+    // cover letter" (AGENTS.md Invariant #8). If step 2 returns fewer cards
+    // than step 1's id list, either the on_card_soft_delete trigger fired
+    // mid-query (race) or a card was soft-deleted without the trigger
+    // running (consistency violation). Either way, silently dropping the
+    // orphaned id and emitting a partial brief is unsafe — recruiters get
+    // a record missing required evidence. Fail loud so the route 500s and
+    // the operator can reseed.
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setup({
       claimRows: [{ card_id: 'c-orphan' }, { card_id: 'c-1' }],
       cardRows: [
@@ -382,9 +389,16 @@ describe('getParamountCards', () => {
       ],
     });
 
-    const { cards } = await getParamountCards('claim-1');
-    expect(cards).toHaveLength(1);
-    expect(cards[0].objectID).toBe('c-1');
+    const { cards, error } = await getParamountCards('claim-1');
+    expect(cards).toEqual([]);
+    expect(error).toBe('Paramount source rows missing — pipeline must reseed');
+    expect(errSpy).toHaveBeenCalledWith(
+      expect.stringContaining('paramount source rows missing'),
+      'claim-1',
+      expect.any(String),
+      ['c-orphan'],
+    );
+    errSpy.mockRestore();
   });
 
   it('returns empty array (no step 2 query) when no paramount cards exist', async () => {
