@@ -18,25 +18,33 @@
   const initialDeck = untrack(() => data.cards);
 
   let deck = $state<ClaimCardEntry[]>(initialDeck);
-  // Hydrate rulings from persisted client evidence so re-entering a chamber
-  // (or hard-reloading mid-session) doesn't let the player re-rule a card the
-  // server already has on file. The unique (session_id, card_id) constraint
-  // returns 409 otherwise.
-  let rulings = $state<Record<string, Classification>>(
-    untrack(() =>
-      Object.fromEntries(
-        gameState.current.evidence
-          .filter((e) => initialDeck.some((d) => d.objectID === e.card.objectID))
-          .map((e) => [e.card.objectID, e.classification]),
-      ),
+
+  // Single source of truth: which cards in this chamber's deck have been ruled
+  // is derived directly from the global gameState.current.evidence, not held
+  // as a separate local snapshot. The queue, the count, the pointer-advance
+  // logic — they all read the same value, and that value is automatically
+  // up-to-date with whatever the rest of the app has done to evidence (this
+  // chamber's rulings, conflict-recovery from a 409, restored state on
+  // re-entry). No dual writes, no drift.
+  const rulings = $derived<Record<string, Classification>>(
+    Object.fromEntries(
+      gameState.current.evidence
+        .filter((e) => deck.some((d) => d.objectID === e.card.objectID))
+        .map((e) => [e.card.objectID, e.classification]),
     ),
   );
   let evaluating = $state(false);
   // Start at the first unruled card so we don't land on one we can't act on.
+  // Read evidence directly here (rather than `rulings`) so the pointer's
+  // initializer doesn't have to wait on the derived's first computation.
   let pointer = $state(
     untrack(() => {
-      const ruled = new Set(Object.keys(rulings));
-      const idx = initialDeck.findIndex((c) => !ruled.has(c.objectID));
+      const ruledIds = new Set(
+        gameState.current.evidence
+          .filter((e) => initialDeck.some((d) => d.objectID === e.card.objectID))
+          .map((e) => e.card.objectID),
+      );
+      const idx = initialDeck.findIndex((c) => !ruledIds.has(c.objectID));
       return idx >= 0 ? idx : 0;
     }),
   );
@@ -83,15 +91,18 @@
   }
 
   function commitRuling(card: ClaimCardEntry, classification: Classification, fromIndex: number) {
-    // Dedupe: if the local state already records this card, don't double-add
-    // evidence. This matters most on the 409 conflict-recovery path — the
-    // server says the card was already ruled and we may be reconciling a
-    // race or retry where the client already holds a row for this objectID.
-    const wasRuled = Object.prototype.hasOwnProperty.call(rulings, card.objectID);
-    rulings = { ...rulings, [card.objectID]: classification };
+    // Dedupe against the canonical store. This matters most on the 409
+    // conflict-recovery path — the server says the card was already ruled
+    // and we may be reconciling a race or retry where evidence already
+    // holds a row for this objectID. Reading rulings (which is derived
+    // from evidence) is the authoritative check.
+    const wasRuled = rulings[card.objectID] !== undefined;
     if (!wasRuled) gameState.addEvidence({ card, classification });
     // Only auto-advance when the player hasn't moved off this card during the
     // in-flight evaluation. Otherwise honour their manual selection.
+    // nextUnruledIndex reads `rulings` which is $derived — Svelte 5 derived
+    // values recompute lazily on read, so the post-addEvidence state is
+    // visible here.
     if (pointer === fromIndex) {
       const next = nextUnruledIndex(fromIndex);
       if (next >= 0) pointer = next;
