@@ -49,12 +49,12 @@
       <p class="letter-from-sub">Software Engineer &middot; Architect of Systems</p>
     </div>
     <div class="letter-meta">
-      Filed &middot; {new Date().toLocaleDateString(undefined, {
+      Recorded &middot; {new Date().toLocaleDateString(undefined, {
         month: 'long',
         year: 'numeric',
       })}<br />
-      Case &numero;&nbsp;0426<br />
-      Architect of record
+      Record &numero;&nbsp;0426<br />
+      Architect of Suspicion
     </div>
   </header>
 
@@ -78,7 +78,7 @@
   <footer class="letter-sign">
     <div>
       <p class="letter-signature">The Architect</p>
-      <p class="letter-role">Magistrate, Case 0426</p>
+      <p class="letter-role">Architect of Suspicion &middot; Record &numero;&nbsp;0426</p>
     </div>
     <div class="verdict-stamp" data-verdict={verdict}>
       <span class="verdict-stamp-word">{stampWord}</span>

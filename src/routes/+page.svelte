@@ -10,7 +10,7 @@
   // data.claim doesn't change mid-session on this page.
   let loadingClaim = $state(!untrack(() => data.claim));
   let entering = $state(false);
-  let errorMsg = $state(untrack(() => (data.claim ? '' : 'The docket could not be read.')));
+  let errorMsg = $state(untrack(() => (data.claim ? '' : 'The record could not be read.')));
 
   onMount(() => {
     gameState.reset();
@@ -57,26 +57,26 @@
 </script>
 
 <svelte:head>
-  <title>The Summons | Architect of Suspicion</title>
+  <title>Architect of Suspicion</title>
 </svelte:head>
 
-<main class="summons noise" aria-label="The summons">
+<main class="summons noise" aria-label="The examination">
   <div class="ember-floor" aria-hidden="true"></div>
 
   <div class="summons-title reveal">
-    <p class="summons-eyebrow">The Court of Suspicion presents</p>
+    <p class="summons-eyebrow">From the gallery</p>
     <h1 class="summons-headline">
       Architect <span class="summons-amp">of</span> Suspicion
     </h1>
     <p class="summons-sub">
-      An investigation <span class="dot">&middot;</span> in IX chambers
+      An examination <span class="dot">&middot;</span> in IX chambers
       <span class="dot">&middot;</span> concerning one Ashley Childress
     </p>
   </div>
 
-  <section class="dossier reveal" aria-label="The case dossier">
+  <section class="dossier reveal" aria-label="The investigation record">
     <div class="dossier-head">
-      <span class="dossier-id">Case &numero;&nbsp;0426 &middot; Docket&nbsp;AA-XII</span>
+      <span class="dossier-id">Record &numero;&nbsp;0426 &middot; Examination&nbsp;AA-XII</span>
       <span class="dossier-date"
         >{new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span
       >
@@ -88,11 +88,11 @@
       <h2 class="dossier-claim transition-claim">{data.claim.text}</h2>
     {:else if loadingClaim}
       <h2 class="dossier-claim dossier-claim-loading">
-        &hellip;the docket is being read aloud&hellip;
+        &hellip;the record is being struck&hellip;
       </h2>
     {:else}
       <h2 class="dossier-claim dossier-claim-error">
-        &ldquo;The docket is empty. Seed the claims pipeline.&rdquo;
+        &ldquo;The record is empty. Seed the claims pipeline.&rdquo;
       </h2>
     {/if}
 
@@ -103,7 +103,7 @@
       </div>
       <span class="dossier-sep" aria-hidden="true"></span>
       <div class="dossier-meta-right">
-        <p class="dossier-field">Filed by</p>
+        <p class="dossier-field">Reported by</p>
         <p class="dossier-value">Anonymous</p>
       </div>
     </div>
