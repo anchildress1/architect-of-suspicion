@@ -55,4 +55,17 @@ describe('hooks.server handle', () => {
     });
     expect(response.headers.get('Content-Type')).toBe('application/json');
   });
+
+  it('sets worker-src so Vite HMR (dev) and bundled workers (prod) load without falling back to script-src', async () => {
+    const response = await handle({
+      event: {} as Parameters<typeof handle>[0]['event'],
+      resolve: () => resolve(200),
+    });
+    const csp = response.headers.get('Content-Security-Policy') ?? '';
+    expect(csp).toMatch(/worker-src 'self'/);
+    // In the test runtime (Vitest under Vite) `import.meta.env.DEV` is true,
+    // so the dev-mode `blob:` allowance is in effect. Production builds
+    // serve workers from same-origin URLs and drop `blob:`.
+    expect(csp).toContain("worker-src 'self' blob:");
+  });
 });
