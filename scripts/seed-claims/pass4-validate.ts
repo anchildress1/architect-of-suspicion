@@ -26,30 +26,30 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-export const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls a player in two directions against a specific claim without tipping them toward the answer — and assign the card a directional score against the claim.
+export const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls the player in two directions against a specific claim without tipping toward the answer — and assign a directional score against the claim.
 
-Recruiter-safety rule (non-negotiable): the rewritten_blurb is public text that lives on the page next to Ashley's name regardless of how the player ultimately rules. It must read as a description of a hireable professional under BOTH classifications. The "proof" reading and the "objection" reading must each describe a working-style trait a hiring manager would respect. If the only honest way to write a card against this claim leaves the proof OR objection reading sounding like a character flaw — drop the card by emitting your best dual-hireable version anyway and flag the strain in notes; downstream review will cut it. Never write text that indicts Ashley's competence, integrity, or basic professionalism.
+RECRUITER-SAFETY (non-negotiable): rewritten_blurb is public text living next to Ashley's name regardless of verdict. Both the "proof" reading and "objection" reading must describe a working-style trait a hiring manager respects. Never indicts competence, integrity, or basic professionalism. If the only honest version leaves either reading sounding like a character flaw, emit the best dual-hireable version anyway and flag the strain in notes — downstream review cuts it.
 
-Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Do not fabricate anything absent from these fields.
+Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Don't fabricate.
 
-Source blurbs are written in first person ("I built…", "My approach was…", "I decided…"). Always convert to third person in rewritten_blurb. Refer to Ashley by name or with she/her pronouns — these are the only acceptable third-person references. Never use he/him or they/them. First-person phrasing in the output is always wrong.
+Source blurbs are first-person ("I built…", "My approach was…"). Always convert to third person — Ashley by name or she/her pronouns. Never he/him or they/them. First-person in output is always wrong.
 
-Tags and projects carry the work/play + deadline context:
-- "DEV Challenge > …" tag → strict external deadline, stack often unfamiliar at start. Surface the pressure where it sharpens the claim.
-- "THD" tag (or other employer/client names) → corporate-layer work; stricter guidance, negotiated trade-offs.
-- Personal-brand projects ("CheckMark", "System Notes", "Legacy Smelter", "Carbon Trace", "Underfoot Travel") → play mode; Ashley sets the rules and self-imposes constraints.
-- Lean on these signals when the surface blurb alone would mislead a player about the nature of the work.
+Tags + projects carry work/play + deadline context:
+- "DEV Challenge > …" → strict external deadline, often unfamiliar stack. Surface the pressure where it sharpens the claim.
+- "THD" or other employer/client tags → corporate-layer work; negotiated trade-offs.
+- Personal-brand projects ("CheckMark", "System Notes", "Legacy Smelter", "Carbon Trace", "Underfoot Travel") → play; Ashley sets the rules.
+- Lean on these signals when the surface blurb would mislead.
 
-Temporal reasoning rules:
-- DIFFERENT time periods + apparent contradiction → may show evolution, not hypocrisy. Weaken the claim.
-- SAME period + contradiction, or a pattern consistent across ALL years → real weight. Strengthen the claim.
-- Surface timing in the rewritten_blurb when it adds tension (e.g., "early in Ashley's career" or "more recently") without signaling which reading it supports.
+Temporal reasoning:
+- DIFFERENT periods + apparent contradiction → evolution, not hypocrisy. Weakens the claim.
+- SAME period + contradiction, or pattern consistent across all years → strengthens the claim.
+- Surface timing in rewritten_blurb when it adds tension ("early in Ashley's career", "more recently") without signaling which reading it supports.
 
-Output per card (all four fields required — no proof/objection scratch work, go straight to the final fields):
-1. card_id — the exact id from the ELIGIBLE CARDS block. Copy it; never invent or modify.
-2. rewritten_blurb — synthesize title, blurb, fact, and temporal context into player-facing text that creates genuine tension against this specific claim. Match original blurb length and register. The tension must be claim-specific, not generic. Both the "proof" and "objection" readings of this text must describe a hireable working-style trait — never write content that reads as a character flaw under either classification.
-3. ai_score — a number in [-1.0, 1.0] judging which way the FULL evidence (including the hidden fact) actually leans against the claim. Positive = supports. Negative = undermines. Magnitude = confidence: 0.1 = nearly neutral, 0.9 = decisive. Use the full range; do not bunch around 0.5. Hidden from the player. Note: because Pass 2 enforces dual-hireability on every claim, "supports" and "undermines" both translate to professional traits — the score is directional, not moral.
-4. notes — server-only auditor note (1-3 sentences). State the tension levers this rewrite pulls, how work/play + deadline context were handled, whether the dual-hireability check holds for both readings of the rewritten_blurb, and anything a reviewer should sanity-check (e.g. "leans on hidden DEV challenge deadline — player won't see the 2-week constraint", or "dual-hireability strained: proof reading verges on 'misses deadlines' — recommend reviewer cut"). This is the QA trail.`;
+Output per card (all four required, no scratch work):
+1. card_id — exact id from ELIGIBLE CARDS. Copy; never invent.
+2. rewritten_blurb — synthesizes title + blurb + fact + temporal context into player-facing text creating claim-specific tension. Match original length and register. Both proof and objection readings must describe a hireable working-style trait.
+3. ai_score — number in [-1.0, 1.0]. Positive = supports the claim, negative = undermines. Magnitude = confidence (0.1 = near-neutral, 0.9 = decisive). Use the full range; don't bunch at 0.5. Hidden from player. Pass 2 guarantees dual-hireability, so "supports" and "undermines" both translate to professional traits — score is directional, not moral.
+4. notes — 1-3 sentences for QA trail: tension levers, work/play + deadline handling, dual-hireability check on both readings, anything to sanity-check (e.g. "hidden DEV challenge deadline — player won't see the 2-week constraint", "dual-hireability strained on proof reading — recommend cut").`;
 
 /** Build a batch-specific schema. Keeps `card_id` constrained to the batch's
  *  UUIDs via `enum`; drops `minItems`/`maxItems`, `additionalProperties: false`,

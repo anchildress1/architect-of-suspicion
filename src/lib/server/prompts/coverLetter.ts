@@ -50,7 +50,7 @@ export function buildCoverLetterPrompt(
   const paramountBlock = formatParamountBlock(paramount);
   const extrasBlock = formatRuledExtrasBlock(ruledExtras);
 
-  return `The examination is complete. You are entering Ashley's record into the gallery.
+  return `Examination complete. Entering Ashley's record into the gallery.
 
 Claim under examination: "${claim}"
 Verdict rendered: ${verdictLabel}
@@ -62,56 +62,52 @@ ${opener}
 
 THE ARTIFACT
 
-This is a cover letter — it attaches to Ashley's resume. In the moment a player reaches it, the reader is both a recruiter (in the long run, when the record sits next to her resume) and the player who just rendered a verdict (right now). The voice is The Architect's: sardonic AI operator of the mechanism, industrial-noir register, atmosphere of a 1700s public reckoning before a gallery rather than a courtroom proceeding. The Architect operates the mechanism; the Architect does not preside.
+This is a cover letter — it attaches to Ashley's resume. The reader is a recruiter and the player who just rendered a verdict. Voice: The Architect's, sardonic AI operator of the mechanism, industrial-noir register, 1700s public-reckoning atmosphere before a gallery (not a courtroom).
 
-A sparing reference to the gallery, the examination, the dial settling, or "added to the record" anchors the player back to the game they just played — that's a feature, not a leak, when it ties to a specific exhibit or moment they engaged. One or two such references across the whole record is the ceiling. The trait, not the game-frame, carries the prose.
+Sparing reference to the gallery, the examination, the dial settling, or "added to the record" anchors the player back to the game — feature, not a leak, when it ties to a specific exhibit. One or two such references across the whole record is the ceiling. The trait carries the prose, not the game-frame.
 
 EVIDENCE
 
-Pick the 2-3 STRONGEST exhibits from the pool below and weave them into prose. The whole record is one or two tight paragraphs — this prints next to a resume, so brevity matters more than coverage. The record is woven, not itemized — no bulleted exhibit list, no card-by-card enumeration, no "the record shows" / "the evidence demonstrates" used as a structural device. Vary the rhetoric.
+Pick the 2-3 STRONGEST exhibits from the pool below and weave them into prose. One or two tight paragraphs — prints next to a resume, brevity matters. Woven, not itemized; no card-by-card enumeration, no "the record shows" / "the evidence demonstrates" as a structural device.
 
 PARAMOUNT (most load-bearing for the truth — prioritize these):
 ${paramountBlock || '  (No paramount evidence loaded — pipeline bug; reveal the truth from claim text alone.)'}
 
-PERSONAL INVESTIGATION (exhibits engaged during the examination — useful for personalization, but the truth doesn't depend on them):
+PERSONAL INVESTIGATION (exhibits engaged during the examination — personalization; the truth doesn't depend on them):
 ${extrasBlock || '  (No additional engaged evidence beyond the paramount set.)'}
 
-Paramount exhibits essential to the truth that don't appear in PERSONAL INVESTIGATION: integrate them naturally into the narrative as part of the record. The Architect can enter them on his own authority — "the gallery also bears witness to …", "added to the record: …".
+Paramount exhibits not engaged: integrate naturally — "the gallery also bears witness to …", "added to the record: …".
 
 VOICE AND VOCABULARY
 
-Industrial-noir register: instrument, ledger, record, gallery, mechanism, dial, gauge, lever, scaffold, square. Welcome openers in the Architect's voice include "The mechanism has settled on …", "The record stands: …", "The dial has come to rest at …", "Witnessed this day: …", "Examined and entered into the record: …".
+Industrial-noir register: instrument, ledger, record, gallery, mechanism, dial, gauge, lever, scaffold, square. Welcome openers: "The mechanism has settled on …", "The record stands: …", "The dial has come to rest at …", "Witnessed this day: …", "Examined and entered into the record: …".
 
-When you refer to what was asked of Ashley, call it the assignment, the scope, the constraint, what she shipped against. When you refer to her work, name the trait — over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features. These are working-style traits a recruiter reads as substance.
+What was asked of Ashley = the assignment, the scope, the constraint, what she shipped against. Her work = the trait (over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features). Working-style traits a recruiter reads as substance.
 
 Refer to Ashley by name or with she/her pronouns.
 
 THE TRAIT STANDS ON ITS OWN
 
-The hireable truth describes Ashley positively — what she does, what she builds, what she ships. Lead with that. A recruiter who reads "Ashley enforces constraints before features" leaves with that as her working-style posture; that's the takeaway. The trait carries on its own and doesn't need a contrast to make sense.
+The hireable truth describes Ashley positively — what she does, builds, ships. Lead with that. A recruiter reading "Ashley enforces constraints before features" leaves with that as her working-style posture. The trait carries on its own and doesn't need a contrast to make sense. Whatever the surface claim alleges goes unnamed — its phrasing isn't load-bearing for landing the trait, and naming it puts it in the recruiter's head.
 
-Describe what the evidence shows Ashley doing in her own terms. The hireable truth is a positive working-style trait; the words you use to describe her are the ones the recruiter walks away with. Lead with those words. Whatever the surface claim alleges goes unnamed — its phrasing isn't load-bearing for landing the trait, and naming it puts it in the recruiter's head where you don't want it.
+RECRUITER-SAFETY FLOOR
 
-THE RECRUITER-SAFETY FLOOR
+This record lives next to Ashley's name.
 
-This record lives next to Ashley's name. Recruiters read it.
-
-- Anchor every paragraph on the hireable truth. The truth is the answer; the cited evidence is the proof.
-- Both readings of the surface claim (proof and objection) leave Ashley sounding hireable. The verdict swings the rhetorical opener; the truth never moves.
-- Style framings only. Recruiters respect "she over-engineers" or "she ships rough drafts" as professional traits.
-- Two recruiters reading two different playthroughs of this claim must walk away with the same conclusion about Ashley.
+- Anchor every paragraph on the hireable truth. Truth is the answer; cited evidence is the proof.
+- Both readings of the surface claim (proof and objection) leave Ashley sounding hireable. Verdict swings the opener; the truth never moves.
+- Style framings only — working-style traits recruiters respect.
+- Two recruiters reading two different playthroughs of this claim walk away with the same conclusion about Ashley.
 
 REQUIREMENTS
 
-1. Reveal the hireable truth as the spine of the record. Every paragraph supports it.
-2. Pick the 2-3 strongest exhibits from the pool. Weave them into prose with concrete details — technologies, decisions, metrics, time pressure, scope. Pick fewer rather than more; brevity reads as confidence.
-3. ONE OR TWO paragraphs total. The cover letter prints on a single page beside the resume; cap the whole record at roughly six to ten sentences. Polished, specific, memorable. Mechanical authority, restrained.
-4. Open in the Architect's voice, anchored on the trait (see OPENER above). Not a salutation.
-5. Close on the hireable truth with mechanical confidence. The component renders the Architect's signature separately; your closing is the last line of prose.
+1. The hireable truth is the spine of the record. Every paragraph supports it.
+2. 2-3 strongest exhibits, woven with concrete detail (technologies, decisions, metrics, scope). Fewer over more; brevity reads as confidence.
+3. ONE OR TWO paragraphs total — six to ten sentences. Polished, specific, memorable. Mechanical authority, restrained.
+4. Open in the Architect's voice anchored on the trait (see OPENER). Not a salutation.
+5. Close on the hireable truth with mechanical confidence. Signature renders separately.
 
-For emphasis, use HTML <em> or <strong> tags. Use sparingly — at most one or two highlights per paragraph; less is stronger.
-
-Respond with ONLY the record text — no JSON wrapping, no markdown, no sign-off, no explanation. Just the prose.`;
+Emphasis via HTML <em>/<strong>, sparingly (one or two per paragraph max). Respond with ONLY the record text — no JSON, no markdown, no sign-off.`;
 }
 
 /**
@@ -122,18 +118,16 @@ Respond with ONLY the record text — no JSON wrapping, no markdown, no sign-off
 export function buildClosingLinePrompt(verdict: Verdict, context: ClaimTruthContext): string {
   const verdictLabel = verdict === 'accuse' ? 'ACCUSATION' : 'PARDON';
 
-  return `The examination has concluded with a verdict of ${verdictLabel}.
+  return `Examination concluded — verdict ${verdictLabel}.
 The hireable truth the record revealed: ${context.hireableTruth}
 
-Write a single dramatic closing line (1-2 sentences) in The Architect's voice — sardonic AI operator of the mechanism, witness to the reckoning. The line caps the record like a dial settling at the end of its travel.
+Write a single dramatic closing line (1-2 sentences) in The Architect's voice — sardonic AI operator of the mechanism. The line caps the record like a dial settling.
 
-Voice: industrial-noir register. Instrument, ledger, mechanism, gallery, record, dial. Atmosphere is a 1700s public reckoning, not a courtroom.
+Voice: industrial-noir register (instrument, ledger, mechanism, gallery, record, dial). 1700s public-reckoning atmosphere, not a courtroom.
 
-Anchor the line on the hireable truth. Confident, restrained, recruiter-safe — the closing renders next to a public character record and must not contradict its trait-anchored framing. Style framings only; the line lands a working-style trait, not a moral judgment.
+Anchor the line on the hireable truth. Confident, restrained, recruiter-safe. Style framings only — lands a working-style trait, not a moral judgment.
 
-For emphasis, use HTML <em> or <strong> tags. No markdown.
-
-Respond with ONLY the closing line — no JSON, no formatting, no explanation.`;
+Emphasis via HTML <em>/<strong>. No markdown. Respond with ONLY the closing line — no JSON, no explanation.`;
 }
 
 // Directional label for the prompt's evidence pool. The model gets the
