@@ -56,9 +56,26 @@ QUALITY FLOOR — every claim satisfies all of:
 
 A. Style framing only. Claims describe Ashley's working style — over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features. They never indict competence, integrity, ethics, or basic professionalism. Two recruiters reading two playthroughs of this claim walk away with the same conclusion about Ashley.
 
-B. Presence, not absence. Claims describe what Ashley DOES — what she ships, builds, leans into, structures around. The verb names a posture; the predicate names where or how that posture shows up. If grammar points at what she ISN'T doing or SHOULD be doing instead, the framing has crossed into competence judgment and no hireable refinement recovers it.
-  - presence: "Ashley leans on AI too heavily" (posture; truth: "Ashley weaponizes AI")
-  - absence: "Ashley leans on AI too heavily to do her actual thinking" (predicate names a missing thing — no refinement recovers)
+B. Presence, not absence. The predicate must describe a posture in action — a thing Ashley does, ships, builds, leans into, structures around. The grammar points at her work, not at what is missing from it. Truth refinements only sharpen postures; they cannot rescue a predicate built around a deficit. Recruiters read the surface first.
+
+  Presence-shape predicates (use these grammars):
+  - "[verb] [observable thing]" → "over-engineers everything", "ships rough drafts", "leans on AI heavily"
+  - "[verb] [scope] before [scope]" → "builds constraints before features"
+  - "[verb] [object]" → "weaponizes AI", "polices process"
+
+  Absence-shape predicates (deficit framing — the surface verb may read positive but the predicate posts a loss column, and the hireable_truth cannot recover it):
+  - "X at the cost of Y" / "X at the expense of Y" — predicate names what is being paid
+  - "X instead of Y" / "X rather than Y" — predicate names what she should be doing instead
+  - "X without Y" — predicate names a missing thing
+  - "X to do her actual Y" — predicate names what she is supposedly avoiding
+
+  Worked examples:
+  - presence ✓ "Ashley leans on AI too heavily" → truth "Ashley weaponizes AI"
+  - absence ✗ "Ashley leans on AI too heavily to do her actual thinking" → "to do her actual thinking" names missing thinking
+  - presence ✓ "Ashley enables others through standardization" → truth "Ashley scales impact through standardization"
+  - absence ✗ "Ashley enables others at the cost of her own delivery" → "at the cost of" posts a delivery loss column
+
+  Before finalizing each claim, check the predicate. If it takes any absence shape, scrap the predicate and rewrite around what Ashley is actively DOING in the same territory.
 
 C. Abstraction floor — verbs that travel. The verb names a posture that surfaces across 5+ chambers, not a particular tool or activity. If a claim names a specific tool, language, or scope ("with lint rules", "via ADRs", "in TypeScript", "in her side projects"), broaden the verb until the same posture shows up anywhere.
   - narrow: "Ashley over-polices process with lint rules" (only lint cards attach)
@@ -185,7 +202,7 @@ export async function runPass2(cards: CardRow[], truths: TruthMap): Promise<Gene
     );
   }
 
-  const claims: GeneratedClaim[] = parsed.claims.map((claim, index) => {
+  const allClaims: GeneratedClaim[] = parsed.claims.map((claim, index) => {
     assertNonEmpty(claim.hireable_truth, 'hireable_truth', claim.claim_text);
     assertVerdict(claim.desired_verdict, claim.claim_text);
     assertTruthsTargeted(claim.truths_targeted, claim.claim_text);
@@ -199,7 +216,25 @@ export async function runPass2(cards: CardRow[], truths: TruthMap): Promise<Gene
     };
   });
 
-  console.log(`[pass2] ${claims.length} claims:`);
+  const claims: GeneratedClaim[] = [];
+  for (const claim of allClaims) {
+    const absence = detectAbsenceShape(claim.claim_text);
+    if (absence) {
+      console.log(
+        `[pass2] DROPPED absence-shape "${claim.claim_text}" — ${absence.shape} via "${absence.match}"`,
+      );
+      continue;
+    }
+    claims.push(claim);
+  }
+
+  if (claims.length === 0) {
+    throw new Error(
+      `[pass2] every candidate claim had absence-shape predicates — re-run, raise reasoning effort, or tighten Rule B contrast examples`,
+    );
+  }
+
+  console.log(`[pass2] ${claims.length} claims (after absence-shape filter):`);
   for (const claim of claims) {
     console.log(`  - [${claim.id}] (${claim.desired_verdict.toUpperCase()}) "${claim.claim_text}"`);
     console.log(`     truth: ${claim.hireable_truth}`);
@@ -207,6 +242,34 @@ export async function runPass2(cards: CardRow[], truths: TruthMap): Promise<Gene
   }
 
   return claims;
+}
+
+interface AbsenceMatch {
+  shape: string;
+  match: string;
+}
+
+/**
+ * Backstop for Rule B (Presence, not absence). Pass 2's prompt teaches the
+ * cut, but Opus 4.7 occasionally emits absence-shape predicates anyway when
+ * the surface verb reads positive ("enables others at the cost of …"). The
+ * connectives below are the dominant failure surface — match conservatively
+ * to avoid false positives on presence-shape phrasings that share words
+ * (e.g. "Ashley would rather build than buy" uses "rather X than Y", not
+ * "rather than" as a substitution connective).
+ */
+export function detectAbsenceShape(claimText: string): AbsenceMatch | null {
+  const patterns: Array<{ shape: string; pattern: RegExp }> = [
+    { shape: 'cost frame', pattern: /\bat the (?:cost|expense) of\b/i },
+    { shape: 'instead-of frame', pattern: /\binstead of\b/i },
+    { shape: 'substitution frame', pattern: /\brather than\b/i },
+    { shape: 'avoidance frame', pattern: /\bto do (?:her|the) actual\b/i },
+  ];
+  for (const { shape, pattern } of patterns) {
+    const found = claimText.match(pattern);
+    if (found) return { shape, match: found[0] };
+  }
+  return null;
 }
 
 // Both fields are persisted to suspicion.claims (NOT NULL with CHECK

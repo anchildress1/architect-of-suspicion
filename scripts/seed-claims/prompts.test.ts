@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { SYSTEM_PROMPT as PASS1 } from './pass1-tensions';
-import { SYSTEM_PROMPT as PASS2 } from './pass2-claims';
+import { detectAbsenceShape, SYSTEM_PROMPT as PASS2 } from './pass2-claims';
 import { SYSTEM_PROMPT as PASS4 } from './pass4-validate';
 
 describe('seed prompts: single-truth + recruiter-safety invariants', () => {
@@ -74,6 +74,67 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       // the prompt must signal that the model can't lie about it without
       // losing the claim.
       expect(PASS2).toMatch(/cross[- ]check|drops the claim|mismatch/i);
+    });
+
+    it('teaches Rule B with all four absence-shape grammars (cost, instead-of, substitution, avoidance)', () => {
+      // The first seed leaked "Ashley enables others at the cost of her own
+      // delivery" past Rule B because the prompt only carried one absence
+      // example ("to do her actual …"). Opus 4.7 reads literally — naming
+      // each connective grammar with paired contrast examples is the move
+      // per the official prompting guide.
+      expect(PASS2).toMatch(/Presence-shape predicates/i);
+      expect(PASS2).toMatch(/Absence-shape predicates/i);
+      expect(PASS2).toMatch(/at the cost of/i);
+      expect(PASS2).toMatch(/at the expense of/i);
+      expect(PASS2).toMatch(/instead of/i);
+      expect(PASS2).toMatch(/rather than/i);
+      expect(PASS2).toMatch(/without/i);
+      expect(PASS2).toMatch(/to do (?:her|the) actual/i);
+    });
+  });
+
+  describe('detectAbsenceShape (runtime backstop)', () => {
+    it('flags the cost-frame predicate that survived the first seed', () => {
+      const result = detectAbsenceShape('Ashley enables others at the cost of her own delivery.');
+      expect(result?.shape).toBe('cost frame');
+      expect(result?.match).toMatch(/at the cost of/i);
+    });
+
+    it('flags the expense-frame variant', () => {
+      expect(detectAbsenceShape('Ashley pushes through at the expense of teammates.')?.shape).toBe(
+        'cost frame',
+      );
+    });
+
+    it('flags instead-of substitution', () => {
+      expect(detectAbsenceShape('Ashley ships fast instead of testing properly.')?.shape).toBe(
+        'instead-of frame',
+      );
+    });
+
+    it('flags rather-than substitution', () => {
+      expect(
+        detectAbsenceShape('Ashley reaches for AI rather than reasoning herself.')?.shape,
+      ).toBe('substitution frame');
+    });
+
+    it('flags the to-do-her-actual avoidance frame', () => {
+      expect(
+        detectAbsenceShape('Ashley leans on AI too heavily to do her actual thinking.')?.shape,
+      ).toBe('avoidance frame');
+    });
+
+    it('passes presence-shape predicates through (no false positive)', () => {
+      expect(detectAbsenceShape('Ashley over-engineers everything before she ships.')).toBeNull();
+      expect(detectAbsenceShape('Ashley leans on AI too heavily.')).toBeNull();
+      expect(detectAbsenceShape('Ashley builds constraints before features.')).toBeNull();
+    });
+
+    it('does not false-positive on "rather X than Y" preference framing', () => {
+      // "Ashley would rather build than buy" uses "rather" as a preference
+      // marker, not "rather than" as a substitution connective. The verb
+      // separates "rather" from "than", so the regex correctly skips it.
+      expect(detectAbsenceShape('Ashley would rather build it than buy it.')).toBeNull();
     });
   });
 
