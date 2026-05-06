@@ -56,26 +56,20 @@ QUALITY FLOOR — every claim satisfies all of:
 
 A. Style framing only. Claims describe Ashley's working style — over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features. They never indict competence, integrity, ethics, or basic professionalism. Two recruiters reading two playthroughs of this claim walk away with the same conclusion about Ashley.
 
-B. Presence, not absence. The predicate must describe a posture in action — a thing Ashley does, ships, builds, leans into, structures around. The grammar points at her work, not at what is missing from it. Truth refinements only sharpen postures; they cannot rescue a predicate built around a deficit. Recruiters read the surface first.
+B. Presence, not absence. The predicate must describe a posture in action — what Ashley does, ships, builds, leans into, prioritizes, structures around. The grammar points at her work itself. Recruiters read the surface first; truth refinements only sharpen postures, they cannot rescue a predicate that does not name a posture.
 
-  Presence-shape predicates (use these grammars):
+  Predicate grammars in active use:
   - "[verb] [observable thing]" → "over-engineers everything", "ships rough drafts", "leans on AI heavily"
   - "[verb] [scope] before [scope]" → "builds constraints before features"
   - "[verb] [object]" → "weaponizes AI", "polices process"
 
-  Absence-shape predicates (deficit framing — the surface verb may read positive but the predicate posts a loss column, and the hireable_truth cannot recover it):
-  - "X at the cost of Y" / "X at the expense of Y" — predicate names what is being paid
-  - "X instead of Y" / "X rather than Y" — predicate names what she should be doing instead
-  - "X without Y" — predicate names a missing thing
-  - "X to do her actual Y" — predicate names what she is supposedly avoiding
+  Worked claim/truth pairs:
+  - "Ashley over-engineers everything" → "Ashley builds constraints before features so failure modes become design tools"
+  - "Ashley leans on AI too heavily" → "Ashley weaponizes AI — teaches it, constrains it, holds it to her standards"
+  - "Ashley enables others through standardization" → "Ashley scales impact through standardization while still delivering"
+  - "Ashley solves first, names later" → "Ashley ships drafts that work, then iterates names and structure once the shape is real"
 
-  Worked examples:
-  - presence ✓ "Ashley leans on AI too heavily" → truth "Ashley weaponizes AI"
-  - absence ✗ "Ashley leans on AI too heavily to do her actual thinking" → "to do her actual thinking" names missing thinking
-  - presence ✓ "Ashley enables others through standardization" → truth "Ashley scales impact through standardization"
-  - absence ✗ "Ashley enables others at the cost of her own delivery" → "at the cost of" posts a delivery loss column
-
-  Before finalizing each claim, check the predicate. If it takes any absence shape, scrap the predicate and rewrite around what Ashley is actively DOING in the same territory.
+  Before finalizing each claim, name the posture the predicate puts into action. If the predicate names a posture you can point to in the corpus, keep it. If naming the posture is hard, the predicate is doing something else — rewrite around what Ashley is actively doing in the same territory.
 
 C. Abstraction floor — verbs that travel. The verb names a posture that surfaces across 5+ chambers, not a particular tool or activity. If a claim names a specific tool, language, or scope ("with lint rules", "via ADRs", "in TypeScript", "in her side projects"), broaden the verb until the same posture shows up anywhere.
   - narrow: "Ashley over-polices process with lint rules" (only lint cards attach)

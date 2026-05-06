@@ -76,20 +76,22 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       expect(PASS2).toMatch(/cross[- ]check|drops the claim|mismatch/i);
     });
 
-    it('teaches Rule B with all four absence-shape grammars (cost, instead-of, substitution, avoidance)', () => {
-      // The first seed leaked "Ashley enables others at the cost of her own
-      // delivery" past Rule B because the prompt only carried one absence
-      // example ("to do her actual …"). Opus 4.7 reads literally — naming
-      // each connective grammar with paired contrast examples is the move
-      // per the official prompting guide.
-      expect(PASS2).toMatch(/Presence-shape predicates/i);
-      expect(PASS2).toMatch(/Absence-shape predicates/i);
-      expect(PASS2).toMatch(/at the cost of/i);
-      expect(PASS2).toMatch(/at the expense of/i);
-      expect(PASS2).toMatch(/instead of/i);
-      expect(PASS2).toMatch(/rather than/i);
-      expect(PASS2).toMatch(/without/i);
-      expect(PASS2).toMatch(/to do (?:her|the) actual/i);
+    it('teaches Rule B with positive shapes only — no absence connectives in the prompt', () => {
+      // The model never sees the absence connectives ("at the cost of",
+      // "instead of", "rather than", "to do her actual"). Naming bad shapes
+      // in the prompt primes the model on them — see
+      // feedback_no_negative_anchoring.md. Rule B carries presence-shape
+      // grammars and worked claim/truth pairs only; the runtime regex in
+      // detectAbsenceShape() catches anything that slips through.
+      expect(PASS2).toMatch(/Presence, not absence/i);
+      expect(PASS2).toMatch(/posture in action/i);
+      expect(PASS2).toMatch(/Predicate grammars/i);
+      expect(PASS2).toMatch(/Worked claim\/truth pairs/i);
+      expect(PASS2).not.toMatch(/at the cost of/i);
+      expect(PASS2).not.toMatch(/at the expense of/i);
+      expect(PASS2).not.toMatch(/\binstead of\b/i);
+      expect(PASS2).not.toMatch(/\brather than\b/i);
+      expect(PASS2).not.toMatch(/to do (?:her|the) actual/i);
     });
   });
 
