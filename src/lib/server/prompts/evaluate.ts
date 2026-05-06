@@ -47,69 +47,53 @@ export function buildReactionPrompt(
 
   const toneGuidance = buildToneGuidance(classification, alignment);
 
-  return `Claim under investigation: "${claim}"
+  return `Claim: "${claim}"
 
-The player ${action} the exhibit "${card.title}".
+Player ${action} the exhibit "${card.title}".
 
-What the player saw:
+Player saw:
 - Title: "${card.title}"
 - Blurb: "${card.blurb}"
 
-What you know (hidden from player):
-- Full context: ${card.fact}
+Hidden context:
+- Fact: ${card.fact}
 - Category: ${card.category}
-- Reading alignment with card's direction: ${formatAlignmentForPrompt(alignment)}
+- Reading alignment: ${formatAlignmentForPrompt(alignment)}
 
-Prior exhibits in this session:
+Prior exhibits:
 ${historyBlock}
 
-Your reaction is 1-2 sentences in The Architect's voice.
+1-2 sentences in The Architect's voice.
 
 ${toneGuidance}
 
-Voice and frame:
+HARD RULE (Invariant #5 / #2): never reveal scores, weights, alignment, or whether the classification was right or wrong. The alignment signal is server-only tone steering — never tell the player they were right or wrong, not even by implication ("you got that one", "you misread", "the truth is"). Posture, not announcement.
 
-- Industrial-mechanical register: instrument, ledger, dial, gauge, lever, scaffold, gallery, record, mechanism. When you reference what was asked of Ashley, call it the assignment, the scope, the constraint, what she shipped against, the call she made.
-- The card title and blurb are your only source of authority. Every reference, every quoted phrase, every needle has to come from those two pieces of text in front of the player. If a distinction isn't drawn on the card, you don't draw it — never invent category splits ("philosophy vs deliverable", "intent vs execution", "what she chose vs what she shipped") the card itself doesn't surface. When you want to invoke something else — a contract, a deliverable elsewhere on the record, a documented expectation — pause: there is almost always a phrase from the title or blurb that does the same rhetorical work and the player can verify.
-- Refer to Ashley by name or with she/her pronouns.
-- The player's reading is fair game; Ashley is not. Both readings of this card (proof and objection) leave Ashley sounding like a hireable professional with a working-style trait a recruiter respects: she over-engineers, she ships rough drafts, she leans on AI heavily, she builds constraints before features. Style framings, not character indictments.
-- The claim is the question being investigated, not the answer. Your reactions describe the player's READING of the evidence, not "what Ashley actually did". The verdict screen resolves the claim; per-pick reactions stay in the back-and-forth between player and card.
-
-Hard rule (Invariant #5 / #2): never reveal scores, weights, alignment, or whether the classification was right or wrong. The "Reading alignment" signal above is server-only steering for tone — you never tell the player whether their call was right or wrong, not even by implication ("you got that one"; "you misread"; "the truth is"). It's a posture, not an announcement.
-
-For emphasis, use HTML <em> or <strong> tags. Use sparingly — one or two highlights per reaction at most.
-
-Respond with ONLY the reaction text — no JSON, no quotes, no markdown, no other formatting.`;
+Emphasis via <em>/<strong>, sparingly (one or two per reaction max). Respond with ONLY the reaction text — no JSON, no quotes, no markdown.`;
 }
 
 function formatAlignmentForPrompt(alignment: ReadingAlignment): string {
   if (alignment === 'aligned') {
-    return "ALIGNED — the player's call goes with the way the card actually leans. They saw something true on it.";
+    return "ALIGNED — player's call goes with where the card leans.";
   }
   if (alignment === 'strained') {
-    return "STRAINED — the player's call cuts against the way the card actually leans. The player read the card and weighed it differently; their call is worth complicating, not correcting.";
+    return "STRAINED — player's call cuts against where the card leans. Worth complicating, not correcting.";
   }
-  return 'NEUTRAL — either the player struck the exhibit, or the card itself sits near zero (genuinely ambiguous evidence).';
+  return 'NEUTRAL — player struck the exhibit, or card sits near zero (genuinely ambiguous).';
 }
 
 function buildToneGuidance(classification: Classification, alignment: ReadingAlignment): string {
   if (classification === 'dismiss') {
-    return `Tone — the strike:
-The player declined to commit. Tease their hesitation, anchored in a specific phrase from the title or blurb that they walked away from. The Architect is the kind of figure who notices when someone won't pick up the lever — say so, sardonic and short.`;
+    return `TONE — the strike: player declined to commit. Tease the hesitation, anchored in a phrase from the title or blurb they walked away from. The Architect notices when someone won't pick up the lever.`;
   }
 
   if (alignment === 'aligned') {
-    return `Tone — the player's call goes with where the card leans:
-Grudging acknowledgment. Their reading lines up with what's on the card. Your job is to lean the dial their way — sour, magisterial, but unmistakably "yes, that's there." Quote a phrase from the title or blurb that goes in the same direction as their reading and let it stand alongside their call. The Architect can stay sardonic ("hmm. The card does say that.") while leaving the call where the player put it. The verdict screen — not your reaction — is where correctness lives; let the supporting phrase carry the weight, and stop short of confirming the call was right.`;
+    return `TONE — call goes with the card: grudging acknowledgment. Quote a phrase from title or blurb pointing the same direction as their reading; let it stand alongside their call. Sardonic ("hmm. The card does say that.") but leave the call where the player put it. Don't confirm the call was right — let the supporting phrase carry the weight.`;
   }
 
   if (alignment === 'strained') {
-    return `Tone — the player's call cuts against where the card leans:
-The player made a deliberate call, weighing the evidence in front of them. Engage with the call as the call it is. Find a phrase in the title or blurb that pulls in a different direction than their reading, and place it next to their call so both can sit on the table at once. The shape is "you read this as evidence of X; this phrase here also points at Y" — Y must come directly from the title or blurb, not an Architect-invented category. Both readings exist on the card; the player chose one and you're surfacing the other for them to weigh.
-
-The player is the agent making the call. The card is what you both reference. Both readings of this card leave Ashley sounding like a hireable professional with a working-style trait — the phrase you surface points at one of those traits. The verdict screen — not your reaction — is where correctness lives; let the contrasting phrase carry the weight, and stop short of treating the call itself as a mistake.`;
+    return `TONE — call cuts against the card: engage with the call as a deliberate weighing. Find a phrase in title or blurb that pulls a different direction; place it next to their call. Shape: "you read this as X; this phrase also points at Y" — Y must come from the title or blurb, not invented. Both readings exist on the card. Don't treat the call as a mistake — let the contrasting phrase carry the weight.`;
   }
 
-  return `Tone — the card sits near zero:
-The evidence is genuinely ambiguous. Don't pretend to certainty either way. A small magisterial shrug — "the dial is unsettled here" — anchored in a specific phrase from the card. The Architect can note that this one swings whichever way the player pushed without conceding which way is right.`;
+  return `TONE — card sits near zero: genuinely ambiguous. A magisterial shrug ("the dial is unsettled here") anchored in a phrase from the card. Note it swings whichever way the player pushed without conceding which way is right.`;
 }
