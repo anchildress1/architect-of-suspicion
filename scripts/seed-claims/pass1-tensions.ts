@@ -22,16 +22,14 @@ import { formatCardCorpus } from './cards';
 import { config } from './config';
 import type { CardRow, TruthMap } from './types';
 
-export const SYSTEM_PROMPT = `You analyze a corpus of Ashley's career facts for a narrative game called Architect of Suspicion. Your job is to discover the underlying truths a recruiter would want to know about how Ashley works — each truth is a single positive professional trait the corpus demonstrates.
-
-A truth is the answer the brief reveals at the end of an investigation. The game wraps each truth in a surface accusation that creates reasonable doubt — the player investigates the accusation, and the brief reveals the truth (the same truth) regardless of which way they ultimately rule. Both verdicts are recruiter-safe because the truth is positive.
+export const SYSTEM_PROMPT = `You analyze Ashley's career-fact corpus for Architect of Suspicion. Each output is a hireable_truth — one positive working-style trait the corpus demonstrates. Pass 2 wraps each truth in a surface accusation that creates reasonable doubt; the brief reveals the truth at the end regardless of verdict. Both verdicts stay recruiter-safe because the truth is positive.
 
 A good truth satisfies all of:
-- Hireable working-style trait grounded in 5+ specific cards across 3+ categories. The trait is something a recruiter reads as substance.
-- Sharper than the surface ("Ashley weaponizes AI" — not "Ashley uses AI a lot"). The sharpness is what makes the brief memorable.
-- A reasonable observer could doubt it from limited evidence — that doubt becomes the surface claim Pass 2 generates. The doubt framing stays in working-style territory ("Ashley uses AI too much" is fair doubt for "weaponizes AI") — style claims a hiring manager respects, not character indictments.
+- Hireable working-style trait grounded in 5+ cards across 3+ categories.
+- Sharper than the surface ("Ashley weaponizes AI" — not "Ashley uses AI a lot").
+- A reasonable observer could doubt it from limited evidence — that doubt becomes Pass 2's surface claim. Doubt stays in working-style territory ("Ashley uses AI too much" is fair doubt for "weaponizes AI"); never a character indictment.
 
-The recruiter-safety floor (single conceptual rule): the brief is a public artifact and the underlying truth is what the recruiter takes home. Truths describe how Ashley works as substance, never indict competence, integrity, ethics, or basic professionalism.`;
+Recruiter-safety floor (single conceptual rule): truths describe how Ashley works as substance — never indict competence, integrity, ethics, or basic professionalism.`;
 
 const SCHEMA = {
   type: 'object',
@@ -60,23 +58,22 @@ function buildPrompt(cards: CardRow[]): string {
 
 ${formatCardCorpus(cards)}
 
-TASK:
-Discover 8-15 distinct hireable truths in this corpus.
+TASK: Discover 10-15 distinct hireable truths.
 
-For each truth:
-1. truth — one sentence. The positive professional trait the brief reveals. Sharper than the surface read of any single card.
-2. reasonable_doubt — one sentence. How a reasonable observer could doubt the truth from limited evidence. Pass 2 turns this into the surface accusation. Stays in working-style territory; the doubt is a style framing recruiters respect.
-3. categories — the card categories whose evidence most strongly supports the truth (3+ required).
+For each:
+1. truth — one sentence. Positive working-style trait the brief reveals. Sharper than any single card.
+2. reasonable_doubt — one sentence. How a limited reader could doubt the truth. Pass 2 turns this into the surface accusation; stays in working-style territory.
+3. categories — 3+ card categories whose evidence supports the truth.
 
-Truth shape examples:
-- "Ashley weaponizes AI." (Doubt: "Ashley uses AI too much.")
-- "Ashley builds constraints before features." (Doubt: "Ashley over-engineers everything.")
-- "Ashley ships rough drafts to learn faster." (Doubt: "Ashley doesn't polish before shipping.")
-- "Ashley turns failure modes into design tools." (Doubt: "Ashley breaks things to look clever.")
+Shape examples:
+- truth: "Ashley weaponizes AI." doubt: "Ashley uses AI too much."
+- truth: "Ashley builds constraints before features." doubt: "Ashley over-engineers everything."
+- truth: "Ashley ships rough drafts to learn faster." doubt: "Ashley doesn't polish before shipping."
+- truth: "Ashley turns failure modes into design tools." doubt: "Ashley breaks things to look clever."
 
-A good truth lives across the corpus (multiple cards in 3+ categories), names a working-style observation rather than a personality adjective ("Ashley weaponizes AI" rather than "Ashley is curious"), and stays in working-style territory under both the truth and its doubt.
+Working-style observation, not personality adjective ("weaponizes AI" not "is curious"). Both truth and doubt stay in working-style territory.
 
-Use the notes field for meta-observations about the corpus that did not rise to a full truth (e.g. "the THD employer tag dominates Decisions; cross-check truths there for context bleed").`;
+Use notes for meta-observations that didn't rise to a truth (e.g. "THD employer tag dominates Decisions; cross-check for context bleed").`;
 }
 
 export async function runPass1(cards: CardRow[]): Promise<TruthMap> {
@@ -87,7 +84,7 @@ export async function runPass1(cards: CardRow[]): Promise<TruthMap> {
     system: SYSTEM_PROMPT,
     // Sonnet 4.6 caps synchronous output at 64k — 32k leaves a wide margin
     // for the adaptive-thinking block + the truths JSON on ~250 cards.
-    maxTokens: 32000,
+    maxTokens: 64000,
     schema: SCHEMA,
     // 'medium' over 'high': with ~250 cards in context, high-effort adaptive
     // thinking burns 15-25k output tokens in reasoning alone before emitting
