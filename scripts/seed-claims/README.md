@@ -44,7 +44,7 @@ Every real run calls `suspicion.replace_claim_seed(payload)`, a DB-side RPC that
 See `config.ts` for thresholds:
 
 - `CLAIM_ENGINE_GENERATE_CLAIMS` — how many candidate claims Pass 2 generates (default 15)
-- `CLAIM_ENGINE_SELECT_CLAIMS` — how many Pass 3 selects for Pass 4 (default 5)
+- `CLAIM_ENGINE_SELECT_CLAIMS` — how many Pass 3 selects for Pass 4 (default 7)
 - `CLAIM_ENGINE_TOP_CARDS` — max cards kept per claim pool after Pass 3 scoring (default 50)
 - `CLAIM_ENGINE_CARD_FLOOR` — combined `ambiguity+surprise` minimum for a card to count toward claim quality (default 3)
 - `CLAIM_ENGINE_SCORE_BATCH` — cards per Pass 3 scoring API call (default 50)
