@@ -56,7 +56,7 @@ QUALITY FLOOR — every claim satisfies all of:
 
 A. Style framing only. Claims describe Ashley's working style — over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features. They never indict competence, integrity, ethics, or basic professionalism. Two recruiters reading two playthroughs of this claim walk away with the same conclusion about Ashley.
 
-B. Presence, not absence. The predicate must describe a posture in action — what Ashley does, ships, builds, leans into, prioritizes, structures around. The grammar points at her work itself. Recruiters read the surface first; truth refinements only sharpen postures, they cannot rescue a predicate that does not name a posture.
+B. Presence, not absence. The predicate must describe a posture in action — what Ashley does, ships, builds, leans into, prioritizes, structures around. The grammar points at her work itself.
 
   Predicate grammars in active use:
   - "[verb] [observable thing]" → "over-engineers everything", "ships rough drafts", "leans on AI heavily"
@@ -69,7 +69,9 @@ B. Presence, not absence. The predicate must describe a posture in action — wh
   - "Ashley enables others through standardization" → "Ashley scales impact through standardization while still delivering"
   - "Ashley solves first, names later" → "Ashley ships drafts that work, then iterates names and structure once the shape is real"
 
-  Before finalizing each claim, name the posture the predicate puts into action. If the predicate names a posture you can point to in the corpus, keep it. If naming the posture is hard, the predicate is doing something else — rewrite around what Ashley is actively doing in the same territory.
+  Where the cut sits: a predicate that names a posture belongs in the claim; one that points at what is missing or being paid for in her work has crossed into deficit territory, and a sharper hireable_truth on the back end cannot recover it. Recruiters read the surface first.
+
+  Before finalizing each claim, name the posture the predicate puts into action. If naming the posture is hard, the predicate is doing something else — rewrite around what Ashley is actively doing in the same territory.
 
 C. Abstraction floor — verbs that travel. The verb names a posture that surfaces across 5+ chambers, not a particular tool or activity. If a claim names a specific tool, language, or scope ("with lint rules", "via ADRs", "in TypeScript", "in her side projects"), broaden the verb until the same posture shows up anywhere.
   - narrow: "Ashley over-polices process with lint rules" (only lint cards attach)

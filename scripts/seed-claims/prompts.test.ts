@@ -76,17 +76,20 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       expect(PASS2).toMatch(/cross[- ]check|drops the claim|mismatch/i);
     });
 
-    it('teaches Rule B with positive shapes only — no absence connectives in the prompt', () => {
-      // The model never sees the absence connectives ("at the cost of",
-      // "instead of", "rather than", "to do her actual"). Naming bad shapes
-      // in the prompt primes the model on them — see
-      // feedback_no_negative_anchoring.md. Rule B carries presence-shape
-      // grammars and worked claim/truth pairs only; the runtime regex in
-      // detectAbsenceShape() catches anything that slips through.
+    it('teaches Rule B with positive shapes plus one conceptual contrast — never the connective taxonomy', () => {
+      // Rule B carries presence-shape grammars + worked claim/truth pairs,
+      // and one sparing conceptual contrast ("deficit territory"). The
+      // connective taxonomy ("at the cost of", "instead of", "rather than",
+      // "to do her actual") is the prompt-author's classification language,
+      // not the agent's — naming it in the prompt primes the model on the
+      // very shapes the rule is trying to suppress (see
+      // feedback_no_negative_anchoring.md). Detection of those connectives
+      // lives in detectAbsenceShape() in code.
       expect(PASS2).toMatch(/Presence, not absence/i);
       expect(PASS2).toMatch(/posture in action/i);
       expect(PASS2).toMatch(/Predicate grammars/i);
       expect(PASS2).toMatch(/Worked claim\/truth pairs/i);
+      expect(PASS2).toMatch(/deficit territory/i);
       expect(PASS2).not.toMatch(/at the cost of/i);
       expect(PASS2).not.toMatch(/at the expense of/i);
       expect(PASS2).not.toMatch(/\binstead of\b/i);
