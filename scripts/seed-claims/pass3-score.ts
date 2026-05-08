@@ -121,23 +121,19 @@ Score every card against the claim. Return exactly ${cards.length} score objects
 </instruction>`;
 }
 
-/** Validate the scoring batch and clean up provider-side schema slop.
- *
- * Flash's `responseJsonSchema` doesn't enforce `enum` constraints or array
- * length as strictly as gpt-5.4's strict mode did. The model occasionally
- * returns duplicates or out-of-batch IDs even though the schema names them.
- * Rather than fail the seed run on cosmetic drift, we clean up the array in
- * place: drop out-of-batch IDs, drop duplicates (keep first), validate
- * remaining ranges, then verify completeness against `batch`.
- *
- * Throws only when the surviving set still doesn't cover the batch — that's
- * a real bug, not slop. Mutates `scores` in place to the cleaned subset. */
-function assertBatchScores(
+/** Clean up provider-side schema slop. Returns the cleaned scores plus any
+ *  card IDs from `batch` that didn't show up in `scores`. The caller decides
+ *  whether to retry or accept the partial result. */
+function cleanBatchScores(
   claim: GeneratedClaim,
   batch: CardRow[],
   scores: CardClaimScore[],
-  offset: number,
-): void {
+): {
+  cleaned: CardClaimScore[];
+  missingIds: string[];
+  droppedOutOfBatch: number;
+  droppedDuplicates: number;
+} {
   const allowedIds = new Set(batch.map((c) => c.objectID));
   const cleaned: CardClaimScore[] = [];
   const seen = new Set<string>();
@@ -167,22 +163,8 @@ function assertBatchScores(
     cleaned.push(score);
   }
 
-  if (cleaned.length !== batch.length) {
-    const missingIds = batch.filter((c) => !seen.has(c.objectID)).map((c) => c.objectID);
-    throw new Error(
-      `[pass3] model returned ${cleaned.length} unique in-batch scores for ${batch.length} cards (claim="${claim.claim_text}", claim_id=${claim.id}, batch offset=${offset}). Missing card IDs: ${missingIds.join(', ')}`,
-    );
-  }
-
-  if (droppedOutOfBatch > 0 || droppedDuplicates > 0) {
-    console.warn(
-      `[pass3] cleaned ${droppedOutOfBatch} out-of-batch + ${droppedDuplicates} duplicate score(s) for "${claim.claim_text}" (offset=${offset}); kept ${cleaned.length} unique`,
-    );
-  }
-
-  // Replace the caller's array contents with the cleaned subset.
-  scores.length = 0;
-  scores.push(...cleaned);
+  const missingIds = batch.filter((c) => !seen.has(c.objectID)).map((c) => c.objectID);
+  return { cleaned, missingIds, droppedOutOfBatch, droppedDuplicates };
 }
 
 /** Compute a quality score for a claim given its floor-cleared cards.
@@ -205,6 +187,47 @@ function claimQuality(floorCards: CardClaimScore[], allCards: CardRow[]): number
   return rooms.size * rooms.size * floorCards.length * avgScore;
 }
 
+/** One scoring call against `batch`. Parses, cleans for provider slop,
+ *  returns whatever survived plus a list of card IDs the model didn't
+ *  return. Caller decides whether to retry the missing or accept partial. */
+async function scoreOnce(
+  client: ReturnType<typeof clientFor>,
+  claim: GeneratedClaim,
+  batch: CardRow[],
+  offset: number,
+): Promise<{ cleaned: CardClaimScore[]; missingIds: string[] }> {
+  if (batch.length === 0) return { cleaned: [], missingIds: [] };
+  const raw = await client.complete(buildPrompt(claim, batch), {
+    system: SYSTEM_PROMPT,
+    // 16k accommodates Flash's default thinking budget on top of the
+    // ~2.5k JSON output for 50 score objects.
+    maxTokens: 16000,
+    schema: schemaForBatch(batch.map((c) => c.objectID)),
+    reasoning: 'low',
+    verbosity: 'low',
+  });
+  let batchResult: { scores: CardClaimScore[] };
+  try {
+    batchResult = JSON.parse(raw) as { scores: CardClaimScore[] };
+  } catch (err) {
+    throw new Error(
+      `[pass3] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch offset=${offset}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+      { cause: err },
+    );
+  }
+  const { cleaned, missingIds, droppedOutOfBatch, droppedDuplicates } = cleanBatchScores(
+    claim,
+    batch,
+    batchResult.scores,
+  );
+  if (droppedOutOfBatch > 0 || droppedDuplicates > 0) {
+    console.warn(
+      `[pass3] cleaned ${droppedOutOfBatch} out-of-batch + ${droppedDuplicates} duplicate score(s) for "${claim.claim_text}" (offset=${offset}); kept ${cleaned.length}`,
+    );
+  }
+  return { cleaned, missingIds };
+}
+
 export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Promise<Pass3Result> {
   const client = clientFor(config.models.pass3);
   const batches = Math.ceil(cards.length / config.thresholds.scoreBatch);
@@ -222,38 +245,27 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
     const allScores: CardClaimScore[] = [];
     for (let offset = 0; offset < cards.length; offset += batchSize) {
       const batch = cards.slice(offset, offset + batchSize);
-      const raw = await client.complete(buildPrompt(claim, batch), {
-        system: SYSTEM_PROMPT,
-        // 16k accommodates Flash's default thinking budget on top of the
-        // ~2.5k JSON output for 50 score objects. The prior 4k cap was
-        // sized for gpt-5.4 with reasoning='low' — Flash burns more output
-        // tokens on reasoning by default and tripped MAX_TOKENS at 4k.
-        maxTokens: 16000,
-        schema: schemaForBatch(batch.map((c) => c.objectID)),
-        // Pass 3 is calibrated judgment: simulate the player's gut read from
-        // title+blurb, compare against what the hidden fact actually reveals,
-        // weigh against the specific claim. 'none' under-thinks borderline
-        // cases (which are the whole point of AMBIGUITY/SURPRISE). The
-        // GeminiClient currently ignores this option (a documented Pro 3.1
-        // preview bug); Flash respects its own default thinking and tends
-        // to over-think — the maxTokens bump above absorbs that.
-        reasoning: 'low',
-        // GPT-5+ verbosity knob — silently ignored by Gemini. Left in case
-        // someone overrides Pass 3 back to gpt-5.4 to compare scoring.
-        verbosity: 'low',
-      });
-      let batchResult: { scores: CardClaimScore[] };
-      try {
-        batchResult = JSON.parse(raw) as { scores: CardClaimScore[] };
-      } catch (err) {
-        throw new Error(
-          `[pass3] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch offset=${offset}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
-          { cause: err },
+      const primary = await scoreOnce(client, claim, batch, offset);
+      allScores.push(...primary.cleaned);
+
+      // Flash occasionally drops cards mid-batch even with the schema's
+      // enum constraint. Retry once with just the missing IDs — a small
+      // batch size makes truncation/skipping much less likely. Cards still
+      // missing after the retry are skipped with a prominent warning so
+      // one model hiccup doesn't tank the whole seed run.
+      if (primary.missingIds.length > 0) {
+        const missingCards = batch.filter((c) => primary.missingIds.includes(c.objectID));
+        console.warn(
+          `[pass3] retrying ${missingCards.length} missing card(s) for "${claim.claim_text}" (offset=${offset}): ${primary.missingIds.join(', ')}`,
         );
+        const retry = await scoreOnce(client, claim, missingCards, offset);
+        allScores.push(...retry.cleaned);
+        if (retry.missingIds.length > 0) {
+          console.warn(
+            `[pass3] SKIPPED ${retry.missingIds.length} card(s) after retry for "${claim.claim_text}": ${retry.missingIds.join(', ')}`,
+          );
+        }
       }
-      const { scores } = batchResult;
-      assertBatchScores(claim, batch, scores, offset);
-      allScores.push(...scores);
     }
 
     // Verify all returned card IDs are in the corpus — hallucinated IDs distort
