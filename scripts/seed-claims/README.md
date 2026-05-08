@@ -50,7 +50,18 @@ See `config.ts` for thresholds:
 - `CLAIM_ENGINE_SCORE_BATCH` — cards per Pass 3 scoring API call (default 50)
 - `CLAIM_ENGINE_MIN_TOTAL_CARDS` — Pass 4 survival floor: rewritten cards per claim (default 30)
 - `CLAIM_ENGINE_MIN_ROOMS` — Pass 4 survival floor: distinct gameplay rooms that must be covered (default 5)
+- `CLAIM_ENGINE_PASS4_BATCH` — cards per Pass 4 rewrite call (default 20)
+- `CLAIM_ENGINE_CACHE_DISABLED` — set to `1` to bypass the Pass 4 rewrite cache while iterating on the Pass 4 prompt itself (default off)
 
 Pass 3 ranks claims by `rooms² × cardCount × avgScore`, where rooms is the count of gameplay rooms with at least one floor-cleared card. The quadratic room factor heavily rewards cross-category claims. The top `SELECT_CLAIMS` are sent to Pass 4.
 
 A claim survives Pass 4 if it has at least `CLAIM_ENGINE_MIN_ROOMS` rooms covered (default 5) AND at least `CLAIM_ENGINE_MIN_TOTAL_CARDS` rewritten cards (default 30).
+
+## Open question — corpus coverage
+
+Recent runs cut a high fraction of generated claims at Pass 4 validation (verdict-evidence mismatch or insufficient room coverage). Two hypotheses, only one of which the pipeline can fix:
+
+1. **Pass 2 prompt drift** — claim candidates skew narrow or absence-shaped, so the evidence pool doesn't support the declared verdict. Rule B + the runtime backstop in `pass2-claims.ts` is meant to catch this.
+2. **Corpus coverage gaps** — some categories (Decisions in particular) may be too repetitive or narrow to support the diversity of postures Pass 2 attempts. If the corpus only meaningfully supports 2-3 distinct working-style postures, generating 7+ claim candidates against it is a recipe for cuts.
+
+Investigation path when cut rate stays high: capture `cut_reason` from Pass 4 over a few runs, group by category mix of the generated claim, and cross-reference against the per-category card count. If a posture fails repeatedly because no Decisions cards engage with it, that's a corpus gap, not a pipeline gap.
