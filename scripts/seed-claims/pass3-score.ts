@@ -210,18 +210,22 @@ export async function runPass3(cards: CardRow[], claims: GeneratedClaim[]): Prom
       const batch = cards.slice(offset, offset + batchSize);
       const raw = await client.complete(buildPrompt(claim, batch), {
         system: SYSTEM_PROMPT,
-        maxTokens: 4000,
+        // 16k accommodates Flash's default thinking budget on top of the
+        // ~2.5k JSON output for 50 score objects. The prior 4k cap was
+        // sized for gpt-5.4 with reasoning='low' — Flash burns more output
+        // tokens on reasoning by default and tripped MAX_TOKENS at 4k.
+        maxTokens: 16000,
         schema: schemaForBatch(batch.map((c) => c.objectID)),
         // Pass 3 is calibrated judgment: simulate the player's gut read from
         // title+blurb, compare against what the hidden fact actually reveals,
         // weigh against the specific claim. 'none' under-thinks borderline
-        // cases (which are the whole point of AMBIGUITY/SURPRISE). GPT-5.5
-        // doesn't accept 'minimal' (dropped in the 5.5 retrain — API rejects
-        // with 400), so 'low' is the lowest tier with real deliberation.
+        // cases (which are the whole point of AMBIGUITY/SURPRISE). The
+        // GeminiClient currently ignores this option (a documented Pro 3.1
+        // preview bug); Flash respects its own default thinking and tends
+        // to over-think — the maxTokens bump above absorbs that.
         reasoning: 'low',
-        // GPT-5+ verbosity knob: 'low' suppresses narrative padding around
-        // structured JSON. The schema already forbids extra fields; this
-        // belt-and-suspenders keeps output latency + token spend tight.
+        // GPT-5+ verbosity knob — silently ignored by Gemini. Left in case
+        // someone overrides Pass 3 back to gpt-5.4 to compare scoring.
         verbosity: 'low',
       });
       let batchResult: { scores: CardClaimScore[] };
