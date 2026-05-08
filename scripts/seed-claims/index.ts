@@ -76,42 +76,46 @@ export async function main(): Promise<void> {
   // signature matches, we resume without a paid re-run. Maps serialize via
   // Object.fromEntries and are rehydrated on load.
 
-  // pass1-truths: Pass 1 now produces a TruthMap (positive professional
-  // truths + reasonable-doubt framings), not a TensionMap. Cache key changed
-  // so any v1 checkpoint on disk is left orphaned and pruneStaleCheckpoints
-  // wipes it on the next run.
+  // pass1-truths-v2: bumped after the SYSTEM_PROMPT tightening on the
+  // recruiter-safe-framing branch (style framings + recruiter-safety floor
+  // compressed). Old v1 truth lists were generated under the prior prompt
+  // and may carry framings that the new pass would reject — force a fresh
+  // run so downstream passes see current-prompt outputs.
   const truths =
-    (await loadCheckpoint<TruthMap>('pass1-truths', sig)) ??
+    (await loadCheckpoint<TruthMap>('pass1-truths-v2', sig)) ??
     (await (async () => {
       const result = await runPass1(cards);
-      await saveCheckpoint('pass1-truths', sig, result);
+      await saveCheckpoint('pass1-truths-v2', sig, result);
       return result;
     })());
 
-  // pass2-claims-v3: GeneratedClaim grew hireable_truth + desired_verdict
-  // and lost the dual-reading fields. v2 caches lack hireable_truth/
-  // desired_verdict and would crash persist; v3 caches are guaranteed to
-  // have the new shape.
+  // pass2-claims-v4: bumped because Rule B now teaches predicate grammars
+  // and the runtime detectAbsenceShape() backstop drops absence-shape
+  // claims that older v3 checkpoints don't filter for. Resuming a v3
+  // checkpoint would skip the backstop and re-introduce shapes the new
+  // prompt is designed to suppress.
   const candidates =
-    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims-v3', sig)) ??
+    (await loadCheckpoint<GeneratedClaim[]>('pass2-claims-v4', sig)) ??
     (await (async () => {
       const result = await runPass2(cards, truths);
-      await saveCheckpoint('pass2-claims-v3', sig, result);
+      await saveCheckpoint('pass2-claims-v4', sig, result);
       return result;
     })());
 
-  // pass3-score-v3: bumped alongside pass2-claims-v3. Cached `selected`
-  // array is GeneratedClaim[] which now carries hireable_truth +
-  // desired_verdict; older shapes are not interpretable.
+  // pass3-score-v4: bumped because the default Pass 3 model changed
+  // (gpt-5.4 → gemini-3-flash-preview) and the topCards cap was removed
+  // (default 50 → 10000). Cached scores from a different model are
+  // suspect; cached `selected` arrays were ranked against the old
+  // top-50-cap pool shape.
   const pass3Cache = await loadCheckpoint<{
     scored: Array<[string, CardClaimScore[]]>;
     selected: GeneratedClaim[];
-  }>('pass3-score-v3', sig);
+  }>('pass3-score-v4', sig);
   const { scored, selected } = pass3Cache
     ? { scored: new Map(pass3Cache.scored), selected: pass3Cache.selected }
     : await (async () => {
         const result = await runPass3(cards, candidates);
-        await saveCheckpoint('pass3-score-v3', sig, {
+        await saveCheckpoint('pass3-score-v4', sig, {
           scored: Array.from(result.scored.entries()),
           selected: result.selected,
         });
