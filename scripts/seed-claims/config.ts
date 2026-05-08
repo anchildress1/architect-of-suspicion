@@ -42,11 +42,12 @@ export const config = {
     // if Flash scoring quality drops on borderline cards.
     pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gemini-3-flash-preview'),
     // Pass 4: adversarial — MUST be a different vendor than Pass 2. With
-    // Pass 2 on Anthropic (Opus 4.7), gpt-5.4 satisfies that constraint and
-    // is moderately cheaper per token than gemini-3.1-pro-preview at the
-    // pool sizes Pass 4 sees once topCards is uncapped (250+ cards/claim).
-    // Strict mode + verbosity knob also help on the rewrite quality bar.
-    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gpt-5.4'),
+    // Pass 2 on Anthropic (Opus 4.7), gpt-5.4-mini satisfies that
+    // constraint at ~$0.75/M input + $4.50/M output, roughly 3x cheaper
+    // than gpt-5.4 flagship. Strict mode + verbosity knob still apply on
+    // mini, so the schema-enforcement story is unchanged. Override to
+    // gpt-5.4 if rewrite quality on borderline cards drops noticeably.
+    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gpt-5.4-mini'),
   },
   targets: {
     // Pass 2 generates this many candidate claims. More = better odds of finding
