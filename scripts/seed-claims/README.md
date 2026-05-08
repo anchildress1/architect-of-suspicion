@@ -16,8 +16,8 @@ Pass 2 enforces a **recruiter-safety contract** at generation time: every claim 
 | ------------------ | --------------------------------------------------------------- | ------------------------ | --------- | ------------------------------ |
 | 1. Truth Discovery | Surface positive working-style truths in the corpus             | `claude-opus-4-7`        | Anthropic | adaptive thinking, effort=high |
 | 2. Claims          | Generate single-truth working-style claims with desired_verdict | `claude-opus-4-7`        | Anthropic | adaptive thinking              |
-| 3. Score           | Rate ambiguity + surprise per card/claim pair                   | `gpt-5.4`                | OpenAI    | reasoning_effort=low           |
-| 4. Validate        | Adversarial cross-check from a different vendor than Pass 2     | `gemini-3.1-pro-preview` | Google    | thinkingLevel=low              |
+| 3. Score           | Rate ambiguity + surprise per card/claim pair                   | `gemini-3-flash-preview` | Google    | default thinking               |
+| 4. Validate        | Adversarial cross-check from a different vendor than Pass 2     | `gpt-5.4`                | OpenAI    | reasoning_effort=low           |
 
 Pass 4 must be a different vendor from Pass 2 — the point is cross-model pressure. Any other combination undermines the validation.
 
@@ -45,7 +45,7 @@ See `config.ts` for thresholds:
 
 - `CLAIM_ENGINE_GENERATE_CLAIMS` — how many candidate claims Pass 2 generates (default 15)
 - `CLAIM_ENGINE_SELECT_CLAIMS` — how many Pass 3 selects for Pass 4 (default 7)
-- `CLAIM_ENGINE_TOP_CARDS` — max cards kept per claim pool after Pass 3 scoring (default 50)
+- `CLAIM_ENGINE_TOP_CARDS` — max cards kept per claim pool after Pass 3 scoring (default 10000 — effectively uncapped so paramount selection in Pass 4 can pick from the full pool; lower this to bound Pass 4 cost when iterating)
 - `CLAIM_ENGINE_CARD_FLOOR` — combined `ambiguity+surprise` minimum for a card to count toward claim quality (default 3)
 - `CLAIM_ENGINE_SCORE_BATCH` — cards per Pass 3 scoring API call (default 50)
 - `CLAIM_ENGINE_MIN_TOTAL_CARDS` — Pass 4 survival floor: rewritten cards per claim (default 30)

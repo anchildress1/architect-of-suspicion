@@ -4,20 +4,21 @@
  *  Output: top-N claims ranked by card-pool quality, with their claim-specific
  *          card pools — ready for Pass 4 gameplay validation.
  *
- *  Model:  gpt-5.4 — structured bulk scoring with strict JSON Schema +
- *          enum-constrained card_ids. gpt-5.5 is the stronger instruction-
- *          follower but its tier-1 rate limits trip on full-corpus runs
- *          (~50-card batches × 15 candidate claims = many parallel calls);
- *          5.4 has the headroom. Tuned per OpenAI's GPT-5.2 prompting
- *          guide: CTCO layout (Context/Task/Constraints/Output),
- *          reasoning_effort='none', verbosity='low'.
+ *  Model:  gemini-3-flash-preview — bulk structured scoring at ~5x lower
+ *          cost than gpt-5.4 for the same task. Flash respects the
+ *          enum-constrained card_id schema reliably; the post-parse
+ *          asserts in assertBatchScores remain the correctness backstop.
+ *          Prompt structure was originally tuned for OpenAI's CTCO layout
+ *          but Flash also responds well to it.
  *
  *  Card selection per claim:
  *    1. Score all cards (in batches to stay within token limits)
  *    2. Drop cards below cardFloor (ambiguity+surprise minimum)
- *    3. Sort remainder by score descending, keep top topCards
- *  This produces a claim-specific pool — the same card may rank in the
- *  top-50 for one claim and not another, so pools diverge naturally.
+ *    3. Sort remainder by score descending, keep top topCards (default
+ *       10000 = effectively uncapped, so paramount selection in Pass 4
+ *       has the full pool to choose from)
+ *  Each claim still gets its own pool because the same card scores
+ *  differently against different claims.
  *
  *  Claim ranking metric: rooms² × cardCount × avgScore
  *  Quadratic room factor rewards claims whose top-N pool already spans
@@ -79,9 +80,13 @@ Strict JSON matching the provided schema. One object per card. No prose.
 </output>`;
 
 /** Build a batch-specific schema that constrains `card_id` to the exact UUID
- *  set in the batch via JSON Schema `enum`. OpenAI strict mode enforces this,
- *  so the model cannot hallucinate or mistype a UUID — GPT-5.4-mini was doing
- *  both on ~250-card runs with 50-card batches. */
+ *  set in the batch via JSON Schema `enum`. Drops `minItems`/`maxItems` and
+ *  `additionalProperties: false` to stay inside Gemini's `responseJsonSchema`
+ *  validator (Pass 3 now runs on gemini-3-flash-preview; the prior gpt-5.4
+ *  configuration accepted those keywords under strict mode). Post-parse
+ *  asserts in assertBatchScores below enforce batch-size and required-field
+ *  presence in JS, so correctness is preserved without provider-side
+ *  enforcement. */
 function schemaForBatch(batchIds: string[]): Record<string, unknown> {
   return {
     type: 'object',
@@ -96,14 +101,10 @@ function schemaForBatch(batchIds: string[]): Record<string, unknown> {
             surprise: { type: 'integer', minimum: 1, maximum: 5 },
           },
           required: ['card_id', 'ambiguity', 'surprise'],
-          additionalProperties: false,
         },
-        minItems: batchIds.length,
-        maxItems: batchIds.length,
       },
     },
     required: ['scores'],
-    additionalProperties: false,
   };
 }
 

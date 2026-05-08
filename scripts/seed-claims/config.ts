@@ -34,21 +34,19 @@ export const config = {
     // better-shaped provocative claims in our tests. Prompt is tuned for
     // Claude's XML-ish section tags; see pass2-claims.ts.
     pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-opus-4-7'),
-    // Pass 3: bulk structured scoring (OpenAI per PRD). gpt-5.4 — gpt-5.5
-    // is the better instruction-follower and verbosity-tuner, but its
-    // tier-1 rate limits trip during full-corpus runs (~50-card batches
-    // x 15 candidate claims = many parallel calls). 5.4 has the headroom
-    // and produces sufficient scoring quality for this pass. The prompt
-    // remains tuned per OpenAI's GPT-5.2 cookbook: CTCO layout,
-    // reasoning_effort='low', verbosity unset (5.4 honors the verbosity
-    // knob too if present). See pass3-score.ts.
-    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.4'),
-    // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google
-    // per PRD). Pro over Flash-Lite-Preview — Pass 4 does the heaviest
-    // per-claim work (validate + rewrite 30-50 blurbs + assign ai_score per
-    // claim) and only runs on the top-N selected claims, so the spend is
-    // proportionate to the stakes.
-    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gemini-3.1-pro-preview'),
+    // Pass 3: bulk structured scoring. gemini-3-flash-preview at ~$0.50/M
+    // input + $3/M output is roughly 5x cheaper than gpt-5.4 for the same
+    // task and Flash's enum-constrained JSON output handles the 50-card
+    // batch shape reliably. Prompt was originally tuned for OpenAI's CTCO
+    // format but Flash respects the same structure. Override to gpt-5.4
+    // if Flash scoring quality drops on borderline cards.
+    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gemini-3-flash-preview'),
+    // Pass 4: adversarial — MUST be a different vendor than Pass 2. With
+    // Pass 2 on Anthropic (Opus 4.7), gpt-5.4 satisfies that constraint and
+    // is moderately cheaper per token than gemini-3.1-pro-preview at the
+    // pool sizes Pass 4 sees once topCards is uncapped (250+ cards/claim).
+    // Strict mode + verbosity knob also help on the rewrite quality bar.
+    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gpt-5.4'),
   },
   targets: {
     // Pass 2 generates this many candidate claims. More = better odds of finding
@@ -57,8 +55,12 @@ export const config = {
     // Pass 3 selects this many top-ranked claims to send to Pass 4.
     select: num('CLAIM_ENGINE_SELECT_CLAIMS', 7),
     // Pass 3 keeps this many top-scoring cards per claim (sorted by
-    // ambiguity+surprise descending). Keeps pools claim-specific and bounded.
-    topCards: num('CLAIM_ENGINE_TOP_CARDS', 50),
+    // ambiguity+surprise descending). Effectively uncapped at 10_000 so
+    // every floor-clearing card reaches Pass 4 — paramount selection
+    // works on |ai_score| (a different signal from ambiguity+surprise),
+    // and capping here threw out cards that would have been paramount.
+    // Override to a smaller value to bound Pass 4 cost when iterating.
+    topCards: num('CLAIM_ENGINE_TOP_CARDS', 10_000),
     // Pass 4 survival floor: rewritten cards per claim.
     minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 30),
     // Pass 4 survival floor: distinct gameplay rooms that must be covered.

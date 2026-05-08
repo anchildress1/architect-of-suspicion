@@ -52,13 +52,13 @@ Output per card (all four required, no scratch work):
 3. ai_score — number in [-1.0, 1.0]. Positive = supports the claim, negative = undermines. Magnitude = confidence (0.1 = near-neutral, 0.9 = decisive). Use the full range; don't bunch at 0.5. Hidden from player. Pass 2 guarantees dual-hireability, so "supports" and "undermines" both translate to professional traits — score is directional, not moral.
 4. notes — 1-3 sentences for QA trail: tension levers, work/play + deadline handling, dual-hireability check on both readings, anything to sanity-check (e.g. "hidden DEV challenge deadline — player won't see the 2-week constraint", "dual-hireability strained on proof reading — recommend cut").`;
 
-/** Build a batch-specific schema. Keeps `card_id` constrained to the batch's
- *  UUIDs via `enum`; drops `minItems`/`maxItems`, `additionalProperties: false`,
- *  and `minLength` to stay inside Gemini's `responseJsonSchema` validator
- *  (gemini-3.1-pro-preview returns 400 INVALID_ARGUMENT on the fuller JSON
- *  Schema set). Post-parse code below asserts batch-size and required-field
- *  presence in JS, so correctness is preserved; we just lean less on the
- *  provider's schema enforcement. */
+/** Build a batch-specific schema. Pass 4 now runs on gpt-5.4 with strict
+ *  mode enabled (see clients.ts), which requires `additionalProperties:
+ *  false` at every object level and every property listed in `required`.
+ *  Gemini's `responseJsonSchema` validator rejected those keywords on
+ *  gemini-3.1-pro-preview, so if Pass 4 is ever overridden back to a
+ *  Gemini model the schema will need to be relaxed. The post-parse
+ *  asserts below remain the source of truth for correctness. */
 function schemaForBatch(batchIds: string[]): Record<string, unknown> {
   return {
     type: 'object',
@@ -74,10 +74,12 @@ function schemaForBatch(batchIds: string[]): Record<string, unknown> {
             notes: { type: 'string' },
           },
           required: ['card_id', 'rewritten_blurb', 'ai_score', 'notes'],
+          additionalProperties: false,
         },
       },
     },
     required: ['arguments'],
+    additionalProperties: false,
   };
 }
 
