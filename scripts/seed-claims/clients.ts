@@ -4,7 +4,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 export interface CompletionOptions {
   system?: string;
@@ -135,6 +135,27 @@ class OpenAIClient implements AIClient {
   }
 }
 
+/** Map the cross-provider `reasoning` string to Gemini's ThinkingLevel enum.
+ *  Returns undefined for unrecognized inputs so the caller can fall back to
+ *  the model's default thinking budget. */
+function thinkingLevelFor(reasoning: string | undefined): ThinkingLevel | undefined {
+  switch (reasoning) {
+    case 'minimal':
+    case 'none':
+      return ThinkingLevel.MINIMAL;
+    case 'low':
+      return ThinkingLevel.LOW;
+    case 'medium':
+      return ThinkingLevel.MEDIUM;
+    case 'high':
+    case 'xhigh':
+    case 'max':
+      return ThinkingLevel.HIGH;
+    default:
+      return undefined;
+  }
+}
+
 class GeminiClient implements AIClient {
   private readonly client: GoogleGenAI;
   constructor(public readonly model: string) {
@@ -150,10 +171,15 @@ class GeminiClient implements AIClient {
         `[gemini] per-call timeoutMs=${opts.timeoutMs} ignored — Gemini SDK only honors the constructor-time timeout (${DEFAULT_TIMEOUT_MS}ms).`,
       );
     }
-    // No `thinkingConfig` — gemini-3.1-pro-preview has a documented bug
-    // where passing thinking levels returns 400 INVALID_ARGUMENT. Model's
-    // default thinking is fine for creative rewriting tasks; we drop `opts.reasoning`
-    // on the Gemini path. Revisit when the preview moves to GA.
+    // gemini-3.1-pro-preview has a documented bug where passing
+    // thinkingConfig returns 400 INVALID_ARGUMENT — skip the field on
+    // that model only. Other Gemini variants (Flash etc.) accept it
+    // normally. Without thinkingConfig, Flash defaults to medium-ish
+    // thinking and burns the entire output budget on reasoning.
+    const supportsThinkingConfig = !this.model.startsWith('gemini-3.1-pro-preview');
+    const thinkingLevel = thinkingLevelFor(opts.reasoning);
+    const thinkingConfig =
+      supportsThinkingConfig && thinkingLevel ? { thinkingConfig: { thinkingLevel } } : {};
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: prompt,
@@ -162,6 +188,7 @@ class GeminiClient implements AIClient {
         maxOutputTokens: opts.maxTokens ?? 4000,
         responseMimeType: 'application/json',
         responseJsonSchema: opts.schema,
+        ...thinkingConfig,
       },
     });
     const candidate = response.candidates?.[0];
