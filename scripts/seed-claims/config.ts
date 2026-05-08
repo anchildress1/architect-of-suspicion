@@ -79,6 +79,11 @@ export const config = {
     pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 10),
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),
+  // Disable the Pass 4 rewrite cache. Set to true (or `1`) when iterating on
+  // the Pass 4 prompt itself and you need every (card, claim) pair to
+  // re-run, even though the prompt-version hash should normally invalidate
+  // automatically. Leaving the cache enabled is the cost-reduction default.
+  cacheDisabled: bool('CLAIM_ENGINE_CACHE_DISABLED', false),
 } as const;
 
 export type Config = typeof config;

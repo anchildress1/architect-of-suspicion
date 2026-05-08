@@ -16,6 +16,7 @@
 
 import { clientFor } from './clients';
 import { config } from './config';
+import { buildPass4Cache, deriveCachePromptVersion, type Pass4Cache } from './pass4Cache';
 import type {
   CardArgument,
   CardClaimScore,
@@ -133,17 +134,29 @@ async function processBatch(
   claim: GeneratedClaim,
   batchCards: CardRow[],
   scoreById: Map<string, CardClaimScore>,
+  cache: Pass4Cache,
 ): Promise<Map<string, CardArgument>> {
   const client = clientFor(config.models.pass4);
-  const batchIds = batchCards.map((c) => c.objectID);
-  const raw = await client.complete(buildPrompt(claim, batchCards, scoreById), {
+
+  // Cache lookup. Cards with hits skip the LLM call entirely; cards with
+  // misses fall through to the model. If every card in the batch is a hit,
+  // we never construct the request.
+  const cachedArgs = await cache.lookup(batchCards, claim, client.model);
+  const freshCards = batchCards.filter((c) => !cachedArgs.has(c.objectID));
+
+  if (freshCards.length === 0) {
+    return cachedArgs;
+  }
+
+  const freshIds = freshCards.map((c) => c.objectID);
+  const raw = await client.complete(buildPrompt(claim, freshCards, scoreById), {
     system: SYSTEM_PROMPT,
     // Gemini 3.1 Pro Preview's default thinking budget is non-trivial and
     // counts against maxOutputTokens. 8k truncated with MAX_TOKENS; 24k
     // leaves ~20k for thinking and ~4k for the actual rewrites (10 cards ×
     // ~300 tokens). Still well under the model's sync output cap.
     maxTokens: 24000,
-    schema: schemaForBatch(batchIds),
+    schema: schemaForBatch(freshIds),
     reasoning: 'low',
   });
 
@@ -152,17 +165,18 @@ async function processBatch(
     parsed = JSON.parse(raw) as { arguments: RawCardArgument[] };
   } catch (err) {
     throw new Error(
-      `[pass4] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch of ${batchCards.length}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+      `[pass4] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch of ${freshCards.length}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
       { cause: err },
     );
   }
 
-  if (!Array.isArray(parsed.arguments) || parsed.arguments.length !== batchIds.length) {
+  if (!Array.isArray(parsed.arguments) || parsed.arguments.length !== freshIds.length) {
     throw new Error(
-      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) returned ${parsed.arguments?.length ?? 0} args, expected ${batchIds.length}`,
+      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) returned ${parsed.arguments?.length ?? 0} args, expected ${freshIds.length}`,
     );
   }
 
+  const freshById = new Map<string, CardRow>(freshCards.map((c) => [c.objectID, c]));
   const batchArgs = new Map<string, CardArgument>();
   for (const arg of parsed.arguments) {
     if (typeof arg.ai_score !== 'number' || Number.isNaN(arg.ai_score)) {
@@ -185,7 +199,7 @@ async function processBatch(
         `[pass4] duplicate card_id=${arg.card_id} in batch for "${claim.claim_text}" (claim_id=${claim.id})`,
       );
     }
-    batchArgs.set(arg.card_id, {
+    const cardArg: CardArgument = {
       rewrittenBlurb: arg.rewritten_blurb.trim(),
       aiScore: clampScore(arg.ai_score),
       notes: arg.notes.trim(),
@@ -194,17 +208,29 @@ async function processBatch(
       // chosen cards. Doing it post-batch lets us balance |ai_score| against
       // room coverage with the full pool in hand.
       isParamount: false,
-    });
+    };
+    batchArgs.set(arg.card_id, cardArg);
+
+    // Write through to cache. Done in-loop so partial-batch failures still
+    // persist the entries we did get back. Errors inside store() are logged
+    // but don't fail the seed.
+    const sourceCard = freshById.get(arg.card_id);
+    if (sourceCard) {
+      await cache.store(sourceCard, claim, client.model, cardArg);
+    }
   }
 
-  const missing = batchIds.filter((id) => !batchArgs.has(id));
+  const missing = freshIds.filter((id) => !batchArgs.has(id));
   if (missing.length > 0) {
     throw new Error(
       `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) omitted ${missing.length} card(s). Missing: ${missing.join(', ')}`,
     );
   }
 
-  return batchArgs;
+  // Merge cached entries with fresh entries so callers see the full batch.
+  const merged = new Map<string, CardArgument>(cachedArgs);
+  for (const [cardId, arg] of batchArgs) merged.set(cardId, arg);
+  return merged;
 }
 
 export async function runPass4(
@@ -214,8 +240,12 @@ export async function runPass4(
 ): Promise<Pass4Output> {
   const client = clientFor(config.models.pass4);
   const batchSize = config.thresholds.pass4Batch;
+  const cache = buildPass4Cache({
+    disabled: config.cacheDisabled,
+    promptVersion: deriveCachePromptVersion(SYSTEM_PROMPT),
+  });
   console.log(
-    `[pass4] model=${client.model} validating ${claims.length} claims batch=${batchSize}`,
+    `[pass4] model=${client.model} validating ${claims.length} claims batch=${batchSize} cache=${cache.enabled ? 'enabled' : 'disabled'}`,
   );
 
   const cardById = new Map(cards.map((c) => [c.objectID, c]));
@@ -238,7 +268,7 @@ export async function runPass4(
       `[pass4] "${claim.claim_text}": ${claimCards.length} cards → ${batches.length} batch${batches.length === 1 ? '' : 'es'}`,
     );
     for (let i = 0; i < batches.length; i++) {
-      const batchArgs = await processBatch(claim, batches[i], scoreById);
+      const batchArgs = await processBatch(claim, batches[i], scoreById, cache);
       for (const [cardId, arg] of batchArgs) {
         claimArguments.set(cardId, arg);
       }
@@ -295,6 +325,13 @@ export async function runPass4(
     console.log(
       `[pass4] "${claim.claim_text}": ${survived ? 'SURVIVED' : 'CUT'} (${rewrittenCards.length} cards, ${coveredRooms} rooms, avg ai_score=${verdictAlignment.average.toFixed(2)} vs desired=${claim.desired_verdict})`,
     );
+  }
+
+  if (cache.enabled) {
+    const { hits, misses, writes } = cache.stats();
+    const total = hits + misses;
+    const rate = total > 0 ? ((hits / total) * 100).toFixed(1) : '0.0';
+    console.log(`[pass4] cache: ${hits}/${total} hits (${rate}%), ${writes} writes`);
   }
 
   return { validations, arguments: argumentsByClaim };
