@@ -72,11 +72,13 @@ export const config = {
     // Cards per scoring batch. Smaller = fewer output tokens per call.
     // 50 cards × ~48 tokens/entry ≈ 2,400 tokens output — well within any limit.
     scoreBatch: num('CLAIM_ENGINE_SCORE_BATCH', 50),
-    // Cards per Pass 4 rewrite batch. 10 keeps each call around ~3k output
-    // tokens of actual rewrite + notes, leaving headroom for Gemini 3.1
-    // Pro's non-trivial default thinking budget under maxOutputTokens.
-    // A flaky batch only costs its own retry — not the whole claim's spend.
-    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 10),
+    // Cards per Pass 4 rewrite batch. 20 cards × ~300 tokens/rewrite ≈ 6k
+    // output, well under maxTokens=24k after Gemini's default thinking
+    // budget (~15k typical). Halving the batch count vs the prior default
+    // of 10 cuts per-batch system-prompt overhead in half. If a model
+    // hits the truncation throw on a 20-card batch, override
+    // CLAIM_ENGINE_PASS4_BATCH=10 to fall back to the conservative size.
+    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 20),
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),
   // Disable the Pass 4 rewrite cache. Set to true (or `1`) when iterating on
