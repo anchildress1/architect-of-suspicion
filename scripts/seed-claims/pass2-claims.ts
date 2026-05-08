@@ -56,7 +56,7 @@ QUALITY FLOOR — every claim satisfies all of:
 
 A. Style framing only. Claims describe Ashley's working style — over-engineers, ships rough drafts, leans on AI heavily, builds constraints before features. They never indict competence, integrity, ethics, or basic professionalism. Two recruiters reading two playthroughs of this claim walk away with the same conclusion about Ashley.
 
-B. Presence, not absence. The predicate must describe a posture in action — what Ashley does, ships, builds, leans into, prioritizes, structures around. The grammar points at her work itself.
+B. Presence, not absence. The verb names something Ashley actively does — ships, builds, leans into, prioritizes, structures around, weaponizes, polices, over-engineers. The predicate names the observable thing the verb acts on. Both halves of the sentence point at her work itself.
 
   Predicate grammars in active use:
   - "[verb] [observable thing]" → "over-engineers everything", "ships rough drafts", "leans on AI heavily"
@@ -256,10 +256,23 @@ interface AbsenceMatch {
  */
 export function detectAbsenceShape(claimText: string): AbsenceMatch | null {
   const patterns: Array<{ shape: string; pattern: RegExp }> = [
+    // Modal absence: the verb itself frames inability or non-action.
+    // Catches "can't", "cannot", "won't", "doesn't", "does not", "fails to",
+    // "unable to". These all describe what Ashley is NOT doing, which is
+    // the same trap as a deficit predicate but located in the verb slot.
+    // Checked first because a claim with BOTH modal absence and a lacking
+    // qualifier (e.g. "can't X without Y") is most diagnostic at the verb.
+    {
+      shape: 'modal absence',
+      pattern: /\b(?:can'?t|cannot|won'?t|doesn'?t|does not|fails to|unable to)\b/i,
+    },
     { shape: 'cost frame', pattern: /\bat the (?:cost|expense) of\b/i },
     { shape: 'instead-of frame', pattern: /\binstead of\b/i },
     { shape: 'substitution frame', pattern: /\brather than\b/i },
     { shape: 'avoidance frame', pattern: /\bto do (?:her|the) actual\b/i },
+    // Lacking frame: the qualifier names what is missing from her work.
+    // Common shape: "Ashley X without Y" where Y is the absent thing.
+    { shape: 'lacking frame', pattern: /\bwithout\b/i },
   ];
   for (const { shape, pattern } of patterns) {
     const found = claimText.match(pattern);

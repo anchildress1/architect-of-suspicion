@@ -86,7 +86,8 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       // feedback_no_negative_anchoring.md). Detection of those connectives
       // lives in detectAbsenceShape() in code.
       expect(PASS2).toMatch(/Presence, not absence/i);
-      expect(PASS2).toMatch(/posture in action/i);
+      // Positive framing: the verb names something Ashley actively does.
+      expect(PASS2).toMatch(/actively does/i);
       expect(PASS2).toMatch(/Predicate grammars/i);
       expect(PASS2).toMatch(/Worked claim\/truth pairs/i);
       expect(PASS2).toMatch(/deficit territory/i);
@@ -127,6 +128,40 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       expect(
         detectAbsenceShape('Ashley leans on AI too heavily to do her actual thinking.')?.shape,
       ).toBe('avoidance frame');
+    });
+
+    it('flags the without-X lacking frame', () => {
+      // "Ashley can't get unstuck without an external deadline" slipped
+      // through the original four-shape backstop because "without" wasn't
+      // in the pattern set.
+      expect(
+        detectAbsenceShape("Ashley can't get unstuck without an external deadline.")?.shape,
+      ).toBe('modal absence');
+      // Also matches "without" alone when modal absence isn't present.
+      expect(
+        detectAbsenceShape('Ashley ships features without testing them properly.')?.shape,
+      ).toBe('lacking frame');
+    });
+
+    it("flags modal-absence verbs (can't, cannot, won't, doesn't, fails to, unable to)", () => {
+      expect(detectAbsenceShape("Ashley can't push back on bad specs.")?.shape).toBe(
+        'modal absence',
+      );
+      expect(detectAbsenceShape('Ashley cannot prioritize maintenance work.')?.shape).toBe(
+        'modal absence',
+      );
+      expect(detectAbsenceShape("Ashley won't ship until everything is perfect.")?.shape).toBe(
+        'modal absence',
+      );
+      expect(detectAbsenceShape("Ashley doesn't iterate after the first draft.")?.shape).toBe(
+        'modal absence',
+      );
+      expect(detectAbsenceShape('Ashley fails to validate her assumptions.')?.shape).toBe(
+        'modal absence',
+      );
+      expect(detectAbsenceShape('Ashley is unable to delegate effectively.')?.shape).toBe(
+        'modal absence',
+      );
     });
 
     it('passes presence-shape predicates through (no false positive)', () => {
