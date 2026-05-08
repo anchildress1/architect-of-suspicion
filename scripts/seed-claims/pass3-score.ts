@@ -121,33 +121,38 @@ Score every card against the claim. Return exactly ${cards.length} score objects
 </instruction>`;
 }
 
+/** Validate the scoring batch and clean up provider-side schema slop.
+ *
+ * Flash's `responseJsonSchema` doesn't enforce `enum` constraints or array
+ * length as strictly as gpt-5.4's strict mode did. The model occasionally
+ * returns duplicates or out-of-batch IDs even though the schema names them.
+ * Rather than fail the seed run on cosmetic drift, we clean up the array in
+ * place: drop out-of-batch IDs, drop duplicates (keep first), validate
+ * remaining ranges, then verify completeness against `batch`.
+ *
+ * Throws only when the surviving set still doesn't cover the batch — that's
+ * a real bug, not slop. Mutates `scores` in place to the cleaned subset. */
 function assertBatchScores(
   claim: GeneratedClaim,
   batch: CardRow[],
   scores: CardClaimScore[],
   offset: number,
 ): void {
-  if (scores.length !== batch.length) {
-    const missingIds = batch
-      .filter((c) => !scores.find((s) => s.card_id === c.objectID))
-      .map((c) => c.objectID);
-    throw new Error(
-      `[pass3] model returned ${scores.length} scores for ${batch.length} cards (claim="${claim.claim_text}", claim_id=${claim.id}, batch offset=${offset}). Missing card IDs: ${missingIds.join(', ')}`,
-    );
-  }
-
   const allowedIds = new Set(batch.map((c) => c.objectID));
+  const cleaned: CardClaimScore[] = [];
   const seen = new Set<string>();
-  const duplicateIds: string[] = [];
-  const unexpectedIds: string[] = [];
+  let droppedOutOfBatch = 0;
+  let droppedDuplicates = 0;
+
   for (const score of scores) {
     if (!allowedIds.has(score.card_id)) {
-      unexpectedIds.push(score.card_id);
+      droppedOutOfBatch += 1;
+      continue;
     }
     if (seen.has(score.card_id)) {
-      duplicateIds.push(score.card_id);
+      droppedDuplicates += 1;
+      continue;
     }
-    seen.add(score.card_id);
     if (!Number.isInteger(score.ambiguity) || score.ambiguity < 1 || score.ambiguity > 5) {
       throw new Error(
         `[pass3] invalid ambiguity=${score.ambiguity} for card_id=${score.card_id} (claim_id=${claim.id}). Expected integer 1..5.`,
@@ -158,17 +163,26 @@ function assertBatchScores(
         `[pass3] invalid surprise=${score.surprise} for card_id=${score.card_id} (claim_id=${claim.id}). Expected integer 1..5.`,
       );
     }
+    seen.add(score.card_id);
+    cleaned.push(score);
   }
-  if (unexpectedIds.length > 0) {
+
+  if (cleaned.length !== batch.length) {
+    const missingIds = batch.filter((c) => !seen.has(c.objectID)).map((c) => c.objectID);
     throw new Error(
-      `[pass3] model returned out-of-batch card IDs: ${unexpectedIds.join(', ')} (claim_id=${claim.id}, batch offset=${offset})`,
+      `[pass3] model returned ${cleaned.length} unique in-batch scores for ${batch.length} cards (claim="${claim.claim_text}", claim_id=${claim.id}, batch offset=${offset}). Missing card IDs: ${missingIds.join(', ')}`,
     );
   }
-  if (duplicateIds.length > 0) {
-    throw new Error(
-      `[pass3] model returned duplicate card IDs: ${duplicateIds.join(', ')} (claim_id=${claim.id}, batch offset=${offset})`,
+
+  if (droppedOutOfBatch > 0 || droppedDuplicates > 0) {
+    console.warn(
+      `[pass3] cleaned ${droppedOutOfBatch} out-of-batch + ${droppedDuplicates} duplicate score(s) for "${claim.claim_text}" (offset=${offset}); kept ${cleaned.length} unique`,
     );
   }
+
+  // Replace the caller's array contents with the cleaned subset.
+  scores.length = 0;
+  scores.push(...cleaned);
 }
 
 /** Compute a quality score for a claim given its floor-cleared cards.
