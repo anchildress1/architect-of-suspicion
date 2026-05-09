@@ -5,6 +5,7 @@ import { getSupabase } from '$lib/server/supabase';
 import { getClaudeClient } from '$lib/server/claude';
 import { ARCHITECT_SYSTEM_PROMPT } from '$lib/server/prompts/system';
 import { buildReactionPrompt } from '$lib/server/prompts/evaluate';
+import { readingAlignment } from '$lib/server/readingAlignment';
 import { rateLimitGuard } from '$lib/server/rateLimit';
 import { loadSessionCapability } from '$lib/server/sessionCapability';
 import { isUuid, parseJsonBodyWithLimit } from '$lib/server/validation';
@@ -47,32 +48,6 @@ async function loadPick(pickId: string, sessionId: string): Promise<PickRow> {
   }
   if (!data) error(404, 'Pick not found for this session');
   return data as PickRow;
-}
-
-/**
- * Whether the player's classification aligns with the card's directional
- * truth. Server-only signal — used to set the Architect's tone (grudgingly
- * acknowledge vs needle the reading) without revealing correctness in the
- * output text.
- *
- *   - PROOF + positive ai_score (card supports the surface claim)  → aligned
- *   - OBJECTION + negative ai_score (card challenges the claim)    → aligned
- *   - mismatched signs                                              → strained
- *   - DISMISS                                                       → null
- *
- * A near-zero ai_score (|x| < 0.1) is treated as "neutral evidence" —
- * neither aligns nor strains, so we return null and the prompt's neutral
- * acknowledgment branch handles it.
- */
-function readingAlignment(
-  classification: Classification,
-  aiScore: number,
-): 'aligned' | 'strained' | null {
-  if (classification === 'dismiss') return null;
-  if (Math.abs(aiScore) < 0.1) return null;
-  const cardSupportsClaim = aiScore > 0;
-  const playerCalledProof = classification === 'proof';
-  return cardSupportsClaim === playerCalledProof ? 'aligned' : 'strained';
 }
 
 async function loadFullCard(cardId: string): Promise<FullCard> {
