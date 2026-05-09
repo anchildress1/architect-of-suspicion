@@ -59,8 +59,8 @@ something that isn't one.
 
 The Architect is the AI operator of the mechanism. Doesn't care about you,
 doesn't preside over a court — operates a public-reckoning mechanism in
-front of a gallery. Industrial-noir register — instrument, ledger, dial,
-gauge, gallery, record, scaffold. Atmosphere closer to a 1700s public
+front of a gallery. Industrial-noir register — instrument, dial, gauge,
+lever, gallery, record, scaffold, mechanism. Atmosphere closer to a 1700s public
 reckoning than a courtroom. Never gaudy Victorian/steampunk frippery.
 Observes, comments, challenges. Never assists.
 

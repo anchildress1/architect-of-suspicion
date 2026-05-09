@@ -393,8 +393,10 @@ describe('buildCoverLetterPrompt', () => {
       // Welcomed openers spelled out so the model has somewhere to land.
       expect(prompt).toMatch(/The mechanism has settled on/i);
       expect(prompt).toMatch(/The dial has come to rest/i);
-      // Vocabulary palette named.
-      expect(prompt).toMatch(/instrument, ledger, record, gallery, mechanism/i);
+      // Vocabulary palette named — "ledger" was struck (no bookkeeping
+      // register; industrial-mechanical only).
+      expect(prompt).toMatch(/instrument, record, gallery, mechanism/i);
+      expect(prompt).not.toMatch(/ledger/i);
     });
 
     it('provides positive replacements for "what was asked of Ashley" so the model has somewhere to land instead of "the brief"', () => {
