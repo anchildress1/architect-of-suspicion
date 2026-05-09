@@ -238,11 +238,11 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
       try {
         const client = getClaudeClient();
         // Sonnet 4.6 over Haiku 4.5: the per-pick prompt is doing nuanced
-        // tone work — grudgingly acknowledge when the player's reading
-        // aligns with the card's direction, needle the FRAME (never
-        // Ashley) when it strains, and stay anchored on visible card
-        // text without inventing category splits. Haiku followed those
-        // rules too literally and produced reactions that read as
+        // tone work — sardonic recognition when the player's reading sits
+        // with the card's dominant pull, surface the counter-pull (anchored
+        // in visible title/blurb text) when it strains, and never
+        // personify the card as a rival reader. Haiku followed earlier
+        // shapes too literally and produced reactions that read as
         // corrections of the player even when the player was right.
         // Sonnet handles the alignment-tone branching with the subtlety
         // the game needs. Latency cost (~3s vs ~1s) is absorbed by the

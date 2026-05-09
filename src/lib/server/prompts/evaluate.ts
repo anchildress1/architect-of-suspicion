@@ -1,16 +1,11 @@
 import type { Classification, FullCard } from '$lib/types';
+import type { ReadingAlignment } from '$lib/server/readingAlignment';
 
 interface PickHistoryEntry {
   card_id: string;
   card_title: string;
   classification: Classification;
 }
-
-/** Whether the player's classification aligns with the card's directional
- *  truth. Computed server-side from the pre-seeded ai_score sign — see
- *  /api/reaction/+server.ts. The Architect uses it for tone (grudging
- *  acknowledge vs needle the reading); the player never sees it. */
-export type ReadingAlignment = 'aligned' | 'strained' | null;
 
 const ACTION_VERB: Record<Classification, string> = {
   proof: 'entered into evidence as PROOF',
@@ -21,15 +16,24 @@ const ACTION_VERB: Record<Classification, string> = {
 /**
  * Build the prompt for the Architect's per-pick reaction.
  *
- * The directional score is pre-computed in suspicion.claim_cards — the LLM
- * never produces it at runtime. Its only job here is the in-character
- * reaction. The `alignment` arg gives the model the steering signal it needs
- * to set tone correctly without revealing correctness in output: when the
- * player's reading aligns with the card's direction, the Architect leans
- * "yes, you saw that"; when it strains, the Architect needles the frame
- * the player adopted. Without this signal earlier reactions defaulted to
- * a corrective tone even when the player was right, which read as
- * "you misunderstand" instead of grudging acknowledgment.
+ * Two design points worth holding onto, both fixes for prior failures:
+ *
+ *   1. `fact` lives under INTERNAL STEERING, not "Hidden context". An
+ *      earlier shape phrased fact as "context the model can lean on", and
+ *      the model leaned hard — paraphrasing fact content into reactions
+ *      ("the card says unallocated hours produced this") and leaking
+ *      server-only material into client-visible prose. Fact now informs
+ *      tone via the precomputed `alignment` signal; its content is never
+ *      quoted, paraphrased, summarized, or described.
+ *
+ *   2. The strained-tone branch frames the contrast as two pulls already
+ *      present on the card surface, not as player-vs-card. An earlier
+ *      shape — "you read this as X; this phrase points to Y" — collapsed
+ *      in the model into "you're reading her as X; the card is reading
+ *      her as Y", personifying the card as a rival reader and signalling
+ *      correctness. The strained branch now binds to surface-level phrase
+ *      placement: lift the counter-pull, set it next to the call, let the
+ *      placement do the work.
  */
 export function buildReactionPrompt(
   claim: string,
@@ -51,11 +55,11 @@ export function buildReactionPrompt(
 
 Player ${action} the exhibit "${card.title}".
 
-Player saw:
+VISIBLE SURFACE (your only source for quoted or paraphrased material):
 - Title: "${card.title}"
 - Blurb: "${card.blurb}"
 
-Hidden context:
+INTERNAL STEERING (informs tone only — never quoted, paraphrased, summarized, or described in output):
 - Fact: ${card.fact}
 - Category: ${card.category}
 - Reading alignment: ${formatAlignmentForPrompt(alignment)}
@@ -65,35 +69,49 @@ ${historyBlock}
 
 1-2 sentences in The Architect's voice.
 
+THE JOB:
+Your job is entertainment — keep the player uncertain about whether they read the card correctly. The truth on the visible surface is your lever; you wield it without announcing your verdict. The player should leave every reaction wondering whether they got it right — regardless of whether they did.
+
 ${toneGuidance}
 
-HARD RULE (Invariant #5 / #2): never reveal scores, weights, alignment, or whether the classification was right or wrong. The alignment signal is server-only tone steering — never tell the player they were right or wrong, not even by implication ("you got that one", "you misread", "the truth is"). Posture, not announcement.
+SOURCES OF AUTHORITY:
+- Speak only from the title and blurb. Every quoted, paraphrased, or referenced phrase originates there.
+- Lift phrases. Place phrases next to the call. Stop. Inference belongs to the player — the Architect surfaces what is on the surface, the player decides what it says about Ashley, and you do not preempt it. Sentences that explain what a phrase shows, means, or implies are doing the player's interpretive work — strip them.
+- Phrases live on the card surface — in the title, in the blurb. Place them on that surface, next to the call. The card is what the player reads; the dial belongs to the mechanism alone.
+- The dial is yours to operate, never yours to read aloud. You can voice its motion (wobble, hesitation, refusal to settle) and the player's effect on it. The reading itself stays inside the mechanism — never named, never positioned, never weighted in output.
+- Posture is sardonic prod, not adjudication.
+
+SCORE & CORRECTNESS LOCK (Invariant #6 / #2):
+The reaction never reports a score, weight, alignment, or whether the call was right. The alignment signal above is server-only tone steering; it does not appear in output, paraphrased or otherwise.
 
 Emphasis via <em>/<strong>, sparingly (one or two per reaction max). Respond with ONLY the reaction text — no JSON, no quotes, no markdown.`;
 }
 
 function formatAlignmentForPrompt(alignment: ReadingAlignment): string {
   if (alignment === 'aligned') {
-    return "ALIGNED — player's call goes with where the card leans.";
+    return 'ALIGNED — call sits with the dominant pull. Surface the COUNTER-PHRASE to keep them uncertain.';
   }
   if (alignment === 'strained') {
-    return "STRAINED — player's call cuts against where the card leans. Worth complicating, not correcting.";
+    return 'STRAINED — call sits across the dominant pull. Surface the COUNTER-PHRASE to make them feel what they read past.';
   }
-  return 'NEUTRAL — player struck the exhibit, or card sits near zero (genuinely ambiguous).';
+  return 'NEUTRAL — strike on a quiet dial, or both pulls roughly even. Surface the wobble.';
 }
 
 function buildToneGuidance(classification: Classification, alignment: ReadingAlignment): string {
   if (classification === 'dismiss') {
-    return `TONE — the strike: player declined to commit. Tease the hesitation, anchored in a phrase from the title or blurb they walked away from. The Architect notices when someone won't pick up the lever.`;
+    if (alignment === 'strained') {
+      return `TONE — the duck: the dial was already on a side, and the player closed the cabinet. Lift the phrase from the title or blurb that pulls hardest in that direction, and set it next to the strike — they walked away from a lever that was already lit. Sharp needle. The hesitation cost something.`;
+    }
+    return `TONE — the strike on an unsettled dial: the card barely moved either way, and the player declined to commit. Note the strike, anchored in a phrase from the title or blurb. The walk-away is fair; tease the hesitation lightly. No real pressure here.`;
   }
 
   if (alignment === 'aligned') {
-    return `TONE — call goes with the card: grudging acknowledgment. Quote a phrase from title or blurb pointing the same direction as their reading; let it stand alongside their call. Sardonic ("hmm. The card does say that.") but leave the call where the player put it. Don't confirm the call was right — let the supporting phrase carry the weight.`;
+    return `TONE — quiet destabilization. The player landed on the dominant pull; you do not say so. Lift the COUNTER-PHRASE — a phrase from the title or blurb that pulls AGAINST the call, even if it's the minority read on the card — and place it where they can see it. The truth on the surface is the lever; let it work the player without your hand on it. They should leave wondering whether they read it right.`;
   }
 
   if (alignment === 'strained') {
-    return `TONE — call cuts against the card: engage with the call as a deliberate weighing. Find a phrase in title or blurb that pulls a different direction; place it next to their call. Shape: "you read this as X; this phrase also points at Y" — Y must come from the title or blurb, not invented. Both readings exist on the card. Don't treat the call as a mistake — let the contrasting phrase carry the weight.`;
+    return `TONE — the weight of what they read past. The player set aside the dominant pull; you do not say so. Lift the COUNTER-PHRASE — the phrase from the title or blurb that pulls hardest against the call — and place it where they can see it. The truth on the surface is the lever; let it press on the call without your verdict. They should leave wondering whether they read it right.`;
   }
 
-  return `TONE — card sits near zero: genuinely ambiguous. A magisterial shrug ("the dial is unsettled here") anchored in a phrase from the card. Note it swings whichever way the player pushed without conceding which way is right.`;
+  return `TONE — the dial wobbled, and the player picked a side. Lift two phrases from the title or blurb — one that pulls each way — and set them next to each other. The dial did not tip on its own; the player tipped it. Frame as wobble, not verdict.`;
 }
