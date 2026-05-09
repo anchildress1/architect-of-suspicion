@@ -29,15 +29,17 @@ describe('buildReactionPrompt', () => {
     expect(prompt).toMatch(/VISIBLE SURFACE[^]*Title:\s*"AI Tools Usage"/);
   });
 
-  it('places the fact under INTERNAL STEERING with a never-paraphrase guard', () => {
+  it('places the fact under INTERNAL STEERING bound to tone-shaping only', () => {
     const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
     // Fact is still embedded for tone steering...
     expect(prompt).toContain('Ashley uses AI tools for code generation');
-    // ...but lives in a section that forbids quoting, paraphrasing, summarizing,
-    // or describing it. Earlier prompt revisions exposed the fact as "context",
-    // and the model leaked it into client-visible prose.
+    // ...but the section header positively binds the steering inputs to
+    // tone-shaping and binds output text to the visible surface. Earlier
+    // negative phrasing ("never quoted, paraphrased, summarized, or
+    // described") planted the very forbidden moves the model then
+    // surfaced as meta-commentary in output.
     expect(prompt).toMatch(/INTERNAL STEERING/);
-    expect(prompt).toMatch(/never quoted, paraphrased, summarized, or described in output/i);
+    expect(prompt).toMatch(/shapes tone; output text comes from the visible surface/i);
     // Fact must appear inside the INTERNAL STEERING block, not the visible surface.
     const steeringBlock = prompt.split('INTERNAL STEERING')[1] ?? '';
     expect(steeringBlock).toContain('Ashley uses AI tools for code generation');
@@ -81,62 +83,54 @@ describe('buildReactionPrompt', () => {
     expect(prompt).toContain('No prior exhibits');
   });
 
-  it('locks the no-correctness-leak rule (Invariant #6 / #2)', () => {
+  it('locks the score & fact invariant (Invariants #6 / #1)', () => {
+    // The one block in the prompt that retains explicit "stay inside"
+    // language. Score-leak and fact-leak are non-negotiable, and the
+    // single consolidated INVARIANT block is where that lock lives —
+    // not scattered across multiple "never X" guards.
     const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
-    expect(prompt).toMatch(/SCORE & CORRECTNESS LOCK/);
-    expect(prompt).toMatch(
-      /never reports a score, weight, alignment, or whether the call was right/i,
-    );
-    expect(prompt).toMatch(/server-only tone steering/i);
+    expect(prompt).toMatch(/INVARIANT \(#6 \/ #1\)/);
+    expect(prompt).toMatch(/score and the fact stay inside the mechanism/i);
+    expect(prompt).toMatch(/alignment signal shapes tone/i);
+    expect(prompt).toMatch(/output is built from the visible surface/i);
   });
 
   it('locks the destabilization-as-job framing', () => {
     // The Architect's job is entertainment via uncertainty, not fair-witness
-    // narration. Earlier output drifted toward neutral status reports
-    // ("the dial here never quite settled") — the JOB section restores
-    // the prod and binds the model to "lift a phrase that complicates the
-    // call" as the per-reaction action.
+    // narration. JOB section binds the model to "lift a phrase that
+    // complicates the call" as the per-reaction action; placement carries
+    // the weight, the player carries the inference.
     const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
     expect(prompt).toMatch(/THE JOB:/);
     expect(prompt).toMatch(/Your job is entertainment/i);
     expect(prompt).toMatch(/keep the player uncertain/i);
     expect(prompt).toMatch(/wondering whether they got it right — regardless of whether they did/i);
     expect(prompt).toMatch(/truth on the visible surface is your lever/i);
+    expect(prompt).toMatch(/the placement carries the weight/i);
   });
 
-  it('locks the visible-surface-only sourcing rule', () => {
+  it('locks the CRAFT block as positive bindings (no enumerated negatives)', () => {
+    // Earlier rounds piled "never X / never Y / never Z" guards across
+    // the SOURCES OF AUTHORITY block, and the model surfaced those
+    // negations as meta-commentary in output ("the dial notes, without
+    // sharing its reading, that..."). The CRAFT block is now positive
+    // bindings only: lift, place, surface, describe, voice. The
+    // invariants that need a "stay inside" live in the INVARIANT block.
     const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
-    expect(prompt).toMatch(/SOURCES OF AUTHORITY/);
-    expect(prompt).toMatch(/Speak only from the title and blurb/);
-    expect(prompt).toMatch(/sardonic prod, not adjudication/i);
-  });
-
-  it('locks the inference-belongs-to-player rule', () => {
-    // Earlier output drifted into Architect-as-interpreter: "ranking implies
-    // Ashley already knew what 'done' looked like". That's the Architect
-    // doing the player's interpretive work. Lift and place; never explain
-    // what a phrase shows, means, or implies — that's the entire game.
-    const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
-    expect(prompt).toMatch(/Lift phrases\. Place phrases next to the call\. Stop\./);
-    expect(prompt).toMatch(/Inference belongs to the player/i);
-    expect(prompt).toMatch(/the player decides what it says about Ashley/i);
-    expect(prompt).toMatch(/you do not preempt it/i);
-    expect(prompt).toMatch(/explain what a phrase shows, means, or implies/i);
-  });
-
-  it('locks the phrases-live-on-card-not-on-dial binding', () => {
-    // The model used "result ranking is sitting right there on the dial"
-    // to disguise a score report under industrial register. The dial IS
-    // the score; "on the dial" is positional and reportable, which leaks
-    // Invariant #6 in pretty words. Phrases are bound to the card surface;
-    // the dial is for motion only, never for reading.
-    const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
-    expect(prompt).toMatch(/Phrases live on the card surface/i);
-    expect(prompt).toMatch(/in the title, in the blurb/i);
-    expect(prompt).toMatch(/dial belongs to the mechanism alone/i);
-    expect(prompt).toMatch(/dial is yours to operate, never yours to read aloud/i);
-    expect(prompt).toMatch(/voice its motion \(wobble, hesitation, refusal to settle\)/i);
-    expect(prompt).toMatch(/never named, never positioned, never weighted in output/i);
+    expect(prompt).toMatch(/CRAFT:/);
+    expect(prompt).toMatch(/Architect speaks only from the title and blurb/i);
+    expect(prompt).toMatch(/lifts phrases and places them next to the call/i);
+    expect(prompt).toMatch(/the placement does the work; the player carries the inference/i);
+    expect(prompt).toMatch(
+      /Deciding what a phrase says about Ashley belongs to the player — that is the entire game/i,
+    );
+    expect(prompt).toMatch(/card is the visible surface you and the player share/i);
+    expect(prompt).toMatch(/dial belongs to the mechanism/i);
+    expect(prompt).toMatch(
+      /operator describes its motion \(wobble, hesitation, refusal to settle\)/i,
+    );
+    expect(prompt).toMatch(/dial itself has no voice/i);
+    expect(prompt).toMatch(/Posture is sardonic prod\. Brief, observed, restrained\./);
   });
 
   it('requests plain reaction text (no JSON)', () => {
@@ -150,14 +144,15 @@ describe('buildReactionPrompt', () => {
       const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
       expect(prompt).toMatch(/Reading alignment[^\n]*ALIGNED/);
       // Aligned branch: quiet destabilization. Player landed on the
-      // dominant pull, but the Architect surfaces the COUNTER-PHRASE
-      // (the minority read pulling against the call) to keep them
-      // uncertain. Never confirm; never announce correctness.
+      // dominant pull; Architect surfaces the COUNTER-PHRASE (the
+      // minority read pulling against the call). Placement carries
+      // the weight — no "you do not say so" anchor needed.
       expect(prompt).toMatch(/quiet destabilization/i);
-      expect(prompt).toMatch(/landed on the dominant pull; you do not say so/i);
+      expect(prompt).toMatch(/landed on the dominant pull/i);
       expect(prompt).toMatch(/Lift the COUNTER-PHRASE/);
-      expect(prompt).toMatch(/pulls AGAINST the call/);
-      expect(prompt).toMatch(/minority read on the card/i);
+      expect(prompt).toMatch(/pulls against the call/i);
+      expect(prompt).toMatch(/minority read/i);
+      expect(prompt).toMatch(/the placement carries the weight/i);
       expect(prompt).toMatch(/leave wondering whether they read it right/i);
       expect(prompt).not.toMatch(/the weight of what they read past/i);
     });
@@ -166,14 +161,14 @@ describe('buildReactionPrompt', () => {
       const prompt = buildReactionPrompt('Test claim', mockCard, 'objection', [], 'strained');
       expect(prompt).toMatch(/Reading alignment[^\n]*STRAINED/);
       // Strained branch: weight of what the player read past. Player set
-      // aside the dominant pull; the Architect surfaces the COUNTER-PHRASE
-      // (the dominant pull they missed) to make them feel that weight.
-      // Never correct; never grade.
+      // aside the dominant pull; Architect surfaces the COUNTER-PHRASE
+      // (the dominant pull they missed). Placement presses on the call.
       expect(prompt).toMatch(/the weight of what they read past/i);
-      expect(prompt).toMatch(/set aside the dominant pull; you do not say so/i);
+      expect(prompt).toMatch(/set aside the dominant pull/i);
       expect(prompt).toMatch(/Lift the COUNTER-PHRASE/);
       expect(prompt).toMatch(/from the title or blurb/i);
       expect(prompt).toMatch(/pulls hardest against the call/i);
+      expect(prompt).toMatch(/the placement presses on the call/i);
       expect(prompt).toMatch(/leave wondering whether they read it right/i);
       expect(prompt).not.toMatch(/quiet destabilization/i);
     });
@@ -189,13 +184,13 @@ describe('buildReactionPrompt', () => {
     });
 
     it('signals STRAINED for dismiss on a card with a clear pull', () => {
-      // Player ducked a card that had directional weight. Sharper needle:
-      // they walked away from a lever that was already lit.
+      // Player ducked a card with directional weight. Sharper needle:
+      // the lever was lit; they walked.
       const prompt = buildReactionPrompt('Test claim', mockCard, 'dismiss', [], 'strained');
       expect(prompt).toMatch(/Reading alignment[^\n]*STRAINED/);
-      expect(prompt).toMatch(/the duck:/i);
+      expect(prompt).toMatch(/the duck\./i);
       expect(prompt).toMatch(/dial was already on a side/i);
-      expect(prompt).toMatch(/walked away from a lever that was already lit/i);
+      expect(prompt).toMatch(/lever was lit; they walked/i);
       expect(prompt).toMatch(/from the title or blurb/i);
       expect(prompt).not.toMatch(/strike on an unsettled dial/i);
     });
