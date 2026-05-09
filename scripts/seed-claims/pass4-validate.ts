@@ -133,33 +133,26 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-async function processBatch(
+/** One LLM call for `cards`. Parses, validates each arg's required fields,
+ *  and writes successful entries through to the cache. Skips entries the
+ *  model didn't return — the caller decides whether to retry the missing.
+ *  Throws only on per-arg validation failures (real bugs, not slop). */
+async function rewriteOnce(
   claim: GeneratedClaim,
-  batchCards: CardRow[],
+  cards: CardRow[],
   scoreById: Map<string, CardClaimScore>,
   cache: Pass4Cache,
-): Promise<Map<string, CardArgument>> {
+): Promise<{ rewrites: Map<string, CardArgument>; missingIds: string[] }> {
+  if (cards.length === 0) return { rewrites: new Map(), missingIds: [] };
   const client = clientFor(config.models.pass4);
-
-  // Cache lookup. Cards with hits skip the LLM call entirely; cards with
-  // misses fall through to the model. If every card in the batch is a hit,
-  // we never construct the request.
-  const cachedArgs = await cache.lookup(batchCards, claim, client.model);
-  const freshCards = batchCards.filter((c) => !cachedArgs.has(c.objectID));
-
-  if (freshCards.length === 0) {
-    return cachedArgs;
-  }
-
-  const freshIds = freshCards.map((c) => c.objectID);
-  const raw = await client.complete(buildPrompt(claim, freshCards, scoreById), {
+  const cardIds = cards.map((c) => c.objectID);
+  const raw = await client.complete(buildPrompt(claim, cards, scoreById), {
     system: SYSTEM_PROMPT,
-    // Gemini 3.1 Pro Preview's default thinking budget is non-trivial and
-    // counts against maxOutputTokens. 8k truncated with MAX_TOKENS; 24k
-    // leaves ~20k for thinking and ~4k for the actual rewrites (10 cards ×
-    // ~300 tokens). Still well under the model's sync output cap.
+    // 24k leaves ample room for thinking + ~6k of actual rewrites (20
+    // cards × ~300 tokens). Sized for Gemini's default thinking budget;
+    // OpenAI mini fits comfortably.
     maxTokens: 24000,
-    schema: schemaForBatch(freshIds),
+    schema: schemaForBatch(cardIds),
     reasoning: 'low',
   });
 
@@ -168,20 +161,32 @@ async function processBatch(
     parsed = JSON.parse(raw) as { arguments: RawCardArgument[] };
   } catch (err) {
     throw new Error(
-      `[pass4] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch of ${freshCards.length}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
+      `[pass4] JSON.parse failed for "${claim.claim_text}" (claim_id=${claim.id}) batch of ${cards.length}.\nRaw (first 500 chars): ${raw.slice(0, 500)}`,
       { cause: err },
     );
   }
 
-  if (!Array.isArray(parsed.arguments) || parsed.arguments.length !== freshIds.length) {
+  if (!Array.isArray(parsed.arguments)) {
     throw new Error(
-      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) returned ${parsed.arguments?.length ?? 0} args, expected ${freshIds.length}`,
+      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) returned non-array arguments`,
     );
   }
 
-  const freshById = new Map<string, CardRow>(freshCards.map((c) => [c.objectID, c]));
-  const batchArgs = new Map<string, CardArgument>();
+  const allowedIds = new Set(cardIds);
+  const cardById = new Map<string, CardRow>(cards.map((c) => [c.objectID, c]));
+  const rewrites = new Map<string, CardArgument>();
+  let droppedOutOfBatch = 0;
+  let droppedDuplicates = 0;
+
   for (const arg of parsed.arguments) {
+    if (!allowedIds.has(arg.card_id)) {
+      droppedOutOfBatch += 1;
+      continue;
+    }
+    if (rewrites.has(arg.card_id)) {
+      droppedDuplicates += 1;
+      continue;
+    }
     if (typeof arg.ai_score !== 'number' || Number.isNaN(arg.ai_score)) {
       throw new Error(
         `[pass4] invalid ai_score for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
@@ -197,11 +202,6 @@ async function processBatch(
         `[pass4] missing notes for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
       );
     }
-    if (batchArgs.has(arg.card_id)) {
-      throw new Error(
-        `[pass4] duplicate card_id=${arg.card_id} in batch for "${claim.claim_text}" (claim_id=${claim.id})`,
-      );
-    }
     const cardArg: CardArgument = {
       rewrittenBlurb: arg.rewritten_blurb.trim(),
       aiScore: clampScore(arg.ai_score),
@@ -212,27 +212,67 @@ async function processBatch(
       // room coverage with the full pool in hand.
       isParamount: false,
     };
-    batchArgs.set(arg.card_id, cardArg);
+    rewrites.set(arg.card_id, cardArg);
 
     // Write through to cache. Done in-loop so partial-batch failures still
     // persist the entries we did get back. Errors inside store() are logged
     // but don't fail the seed.
-    const sourceCard = freshById.get(arg.card_id);
+    const sourceCard = cardById.get(arg.card_id);
     if (sourceCard) {
       await cache.store(sourceCard, claim, client.model, cardArg);
     }
   }
 
-  const missing = freshIds.filter((id) => !batchArgs.has(id));
-  if (missing.length > 0) {
-    throw new Error(
-      `[pass4] batch for "${claim.claim_text}" (claim_id=${claim.id}) omitted ${missing.length} card(s). Missing: ${missing.join(', ')}`,
+  if (droppedOutOfBatch > 0 || droppedDuplicates > 0) {
+    console.warn(
+      `[pass4] cleaned ${droppedOutOfBatch} out-of-batch + ${droppedDuplicates} duplicate arg(s) for "${claim.claim_text}"; kept ${rewrites.size}`,
     );
+  }
+
+  const missingIds = cardIds.filter((id) => !rewrites.has(id));
+  return { rewrites, missingIds };
+}
+
+async function processBatch(
+  claim: GeneratedClaim,
+  batchCards: CardRow[],
+  scoreById: Map<string, CardClaimScore>,
+  cache: Pass4Cache,
+): Promise<Map<string, CardArgument>> {
+  const client = clientFor(config.models.pass4);
+
+  // Cache lookup. Cards with hits skip the LLM call entirely; cards with
+  // misses fall through to the model. If every card in the batch is a hit,
+  // we never construct the request.
+  const cachedArgs = await cache.lookup(batchCards, claim, client.model);
+  const freshCards = batchCards.filter((c) => !cachedArgs.has(c.objectID));
+  if (freshCards.length === 0) return cachedArgs;
+
+  const primary = await rewriteOnce(claim, freshCards, scoreById, cache);
+  const allArgs = new Map<string, CardArgument>(primary.rewrites);
+
+  // Same retry pattern as Pass 3: the model occasionally drops cards
+  // mid-batch. A small follow-up call with just the missing IDs is far
+  // less likely to drop. Cards still missing after retry are skipped
+  // with a warning and absent from the survivor pool — runPass4's
+  // survival check handles that gracefully.
+  if (primary.missingIds.length > 0) {
+    const missingCards = freshCards.filter((c) => primary.missingIds.includes(c.objectID));
+    console.warn(
+      `[pass4] retrying ${missingCards.length} missing card(s) for "${claim.claim_text}": ${primary.missingIds.join(', ')}`,
+    );
+    const retry = await rewriteOnce(claim, missingCards, scoreById, cache);
+    for (const [cardId, arg] of retry.rewrites) allArgs.set(cardId, arg);
+    if (retry.missingIds.length > 0) {
+      console.warn(
+        `[pass4] SKIPPED ${retry.missingIds.length} card(s) after retry for "${claim.claim_text}": ${retry.missingIds.join(', ')}`,
+      );
+    }
   }
 
   // Merge cached entries with fresh entries so callers see the full batch.
   const merged = new Map<string, CardArgument>(cachedArgs);
-  for (const [cardId, arg] of batchArgs) merged.set(cardId, arg);
+  for (const [cardId, arg] of allArgs) merged.set(cardId, arg);
   return merged;
 }
 
@@ -278,12 +318,16 @@ export async function runPass4(
       console.log(`[pass4]   batch ${i + 1}/${batches.length} (${batches[i].length} cards) ok`);
     }
 
-    // Survival check unchanged: minimum playable pool across all batches.
+    // Survival check: only count cards that successfully got rewrites.
+    // Cards skipped after retry just don't appear in rewrittenCards;
+    // claim survival still depends on minTotalCards + minRooms below,
+    // so partial coverage from one transient drop won't tank a claim
+    // unless the drop count is large enough to fail the survival floor.
     const rewrittenCards = claimCards.filter((c) => claimArguments.has(c.objectID));
     const missing = claimCards.filter((c) => !claimArguments.has(c.objectID));
     if (missing.length > 0) {
-      throw new Error(
-        `[pass4] "${claim.claim_text}" (claim_id=${claim.id}): ${missing.length} card(s) missing from combined batch output. Missing: ${missing.map((c) => c.objectID).join(', ')}`,
+      console.warn(
+        `[pass4] "${claim.claim_text}": ${missing.length}/${claimCards.length} card(s) skipped after retry — proceeding with partial pool`,
       );
     }
     argumentsByClaim.set(claim.id, claimArguments);
