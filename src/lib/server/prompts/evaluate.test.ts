@@ -84,13 +84,15 @@ describe('buildReactionPrompt', () => {
   });
 
   it('locks the score & fact invariant (Invariants #6 / #1)', () => {
-    // The one block in the prompt that retains explicit "stay inside"
-    // language. Score-leak and fact-leak are non-negotiable, and the
-    // single consolidated INVARIANT block is where that lock lives —
-    // not scattered across multiple "never X" guards.
+    // Score-leak and fact-leak are non-negotiable, so the INVARIANT block
+    // earns one strategic "never" — single target ("the score or the
+    // fact"), single verb ("report" covers quote, paraphrase, summarize,
+    // describe), concentrated in one block, tied to the named invariants.
+    // The earlier ~15 sprinkled negatives across the prompt got stripped;
+    // this one stays.
     const prompt = buildReactionPrompt('Test claim', mockCard, 'proof', [], 'aligned');
     expect(prompt).toMatch(/INVARIANT \(#6 \/ #1\)/);
-    expect(prompt).toMatch(/score and the fact stay inside the mechanism/i);
+    expect(prompt).toMatch(/Never report the score or the fact/);
     expect(prompt).toMatch(/alignment signal shapes tone/i);
     expect(prompt).toMatch(/output is built from the visible surface/i);
   });

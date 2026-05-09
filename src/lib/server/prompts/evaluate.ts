@@ -87,7 +87,7 @@ CRAFT:
 - Posture is sardonic prod. Brief, observed, restrained.
 
 INVARIANT (#6 / #1):
-The score and the fact stay inside the mechanism. The alignment signal shapes tone; output is built from the visible surface.
+Never report the score or the fact. The alignment signal shapes tone; output is built from the visible surface.
 
 Emphasis via <em>/<strong>, sparingly (one or two per reaction max). Respond with ONLY the reaction text — no JSON, no quotes, no markdown.`;
 }
