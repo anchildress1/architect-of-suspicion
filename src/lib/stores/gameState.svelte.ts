@@ -45,13 +45,36 @@ function emptyState(): GameState {
   };
 }
 
+/** Streaming reaction tokens fire updateFeedEntry per chunk — at 50-150
+ *  tokens per reaction, an immediate persist on each call meant a
+ *  synchronous JSON.stringify + sessionStorage.setItem per token. The
+ *  throttle batches those writes to one per cycle. Other callers
+ *  (initSession, addEvidence, setVerdict, etc.) still persist
+ *  immediately, and any immediate persist flushes a pending throttled
+ *  write so the latest state always lands on the next sessionStorage
+ *  read. */
+const PERSIST_THROTTLE_MS = 150;
+
 function createGameState() {
   const restored = loadState();
   let state = $state<GameState>(restored ?? emptyState());
   let attention = $state<number>(restored?.attention ?? BASELINE_ATTENTION);
+  let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
   function persist() {
+    if (persistTimer !== null) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
     saveState(state, attention);
+  }
+
+  function persistThrottled() {
+    if (persistTimer !== null) return;
+    persistTimer = setTimeout(() => {
+      persistTimer = null;
+      saveState(state, attention);
+    }, PERSIST_THROTTLE_MS);
   }
 
   return {
@@ -104,7 +127,8 @@ function createGameState() {
     },
     /** Replace the text of an existing feed entry without changing its id or
      *  timestamp. Used by the streaming reaction path to grow the Architect's
-     *  bubble token-by-token instead of churning new entries. */
+     *  bubble token-by-token instead of churning new entries. Persistence
+     *  is throttled because the streaming caller fires this per token. */
     updateFeedEntry(id: string, text: string) {
       const idx = state.feed.findIndex((e) => e.id === id);
       if (idx < 0) return;
@@ -112,7 +136,7 @@ function createGameState() {
       const next = state.feed.slice();
       next[idx] = { ...entry, text };
       state.feed = next;
-      persist();
+      persistThrottled();
     },
     setAttention(value: number) {
       attention = clampAttention(value);
