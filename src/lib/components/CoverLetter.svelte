@@ -87,7 +87,14 @@
   </footer>
 
   {#if closing}
-    <p class="letter-closing-line">&mdash; {closing}</p>
+    <p class="letter-closing-line">
+      &mdash;
+      {#each tokenizeReaction(closing) as segment, i (i)}
+        {#if segment.type === 'em'}<em>{segment.value}</em>
+        {:else if segment.type === 'strong'}<strong>{segment.value}</strong>
+        {:else}{segment.value}{/if}
+      {/each}
+    </p>
   {/if}
 
   <button class="letter-copy" type="button" onclick={copyToClipboard} aria-live="polite">
