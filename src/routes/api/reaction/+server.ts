@@ -33,6 +33,10 @@ interface PickRow {
   ai_reaction_text: string | null;
 }
 
+interface ReactionLockClaim {
+  lockedAt: string;
+}
+
 async function loadPick(pickId: string, sessionId: string): Promise<PickRow> {
   const { data, error: pickErr } = await getSupabase()
     .schema('suspicion')
@@ -109,27 +113,32 @@ async function loadHistory(
   }));
 }
 
-async function persistReactionText(pickId: string, text: string): Promise<void> {
-  // Clear the generation lock alongside the text so a future read sees a
-  // clean state — durable evidence the generation completed.
-  const { error: updateErr } = await getSupabase()
+async function completeReactionGeneration(
+  pickId: string,
+  lockedAt: string,
+  text: string | null,
+): Promise<boolean> {
+  const { data, error: completeErr } = await getSupabase()
     .schema('suspicion')
-    .from('picks')
-    .update({ ai_reaction_text: text, reaction_locked_at: null })
-    .eq('id', pickId);
+    .rpc('complete_reaction_generation', {
+      p_pick_id: pickId,
+      p_locked_at: lockedAt,
+      p_text: text,
+    });
 
-  if (updateErr) {
-    // Log only — the player already saw the reaction stream; failing to
-    // persist is a downstream-analytics problem, not a UX one.
-    console.error('[reaction] failed to persist reaction text:', updateErr.message);
+  if (completeErr) {
+    console.error('[reaction] completion RPC failed:', completeErr.message);
+    return false;
   }
+
+  return Array.isArray(data) && data.length > 0;
 }
 
 /**
- * Atomically claim ownership of reaction generation for this pick. Returns
- * `true` if this request now owns the generation, `false` if another request
- * holds the lock (and we must NOT call Claude — see the migration comment
- * for the race we're preventing).
+ * Atomically claim ownership of reaction generation for this pick. Returns the
+ * lock timestamp if this request now owns generation, `null` if another
+ * request holds the lock (and we must NOT call Claude — see the migration
+ * comment for the race we're preventing).
  *
  * Implemented as an RPC (suspicion.try_claim_reaction_lock) rather than a
  * builder-chain UPDATE: PostgREST validates column names in chain UPDATEs
@@ -139,10 +148,10 @@ async function persistReactionText(pickId: string, text: string): Promise<void> 
  * so the cache state is irrelevant. The function does the same conditional
  * UPDATE — only succeeds when the row is unclaimed (ai_reaction_text NULL
  * AND reaction_locked_at NULL or older than the lock timeout) — and returns
- * the pick id when the claim succeeds, empty set when another request
- * holds the lock.
+ * the precise lock timestamp when the claim succeeds, empty set when another
+ * request holds the lock.
  */
-async function tryClaimReactionLock(pickId: string): Promise<boolean> {
+async function tryClaimReactionLock(pickId: string): Promise<ReactionLockClaim | null> {
   const lockTimeoutSeconds = Math.round(REACTION_LOCK_TIMEOUT_MS / 1000);
 
   const { data, error: claimErr } = await getSupabase()
@@ -157,7 +166,10 @@ async function tryClaimReactionLock(pickId: string): Promise<boolean> {
     error(500, 'Failed to claim reaction generation lock');
   }
 
-  return Array.isArray(data) && data.length > 0;
+  if (!Array.isArray(data) || data.length === 0) return null;
+
+  const row = data[0] as { locked_at: string };
+  return { lockedAt: row.locked_at };
 }
 
 export const POST: RequestHandler = async ({ request, getClientAddress, cookies }) => {
@@ -193,8 +205,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
   // race the lock exists to prevent. Re-read the pick once in case the
   // text landed in the gap between our load and our claim attempt; if
   // still pending, return 409 so the client knows to retry.
-  const claimed = await tryClaimReactionLock(pick.id);
-  if (!claimed) {
+  const claim = await tryClaimReactionLock(pick.id);
+  if (!claim) {
     const refreshed = await loadPick(pick.id, session.sessionId);
     if (refreshed.ai_reaction_text && refreshed.ai_reaction_text.length > 0) {
       return new Response(refreshed.ai_reaction_text, {
@@ -215,10 +227,17 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
     });
   }
 
-  const [card, history] = await Promise.all([
-    loadFullCard(pick.card_id),
-    loadHistory(session.sessionId, pick.id),
-  ]);
+  let card: FullCard;
+  let history: Array<{ card_id: string; card_title: string; classification: Classification }>;
+  try {
+    [card, history] = await Promise.all([
+      loadFullCard(pick.card_id),
+      loadHistory(session.sessionId, pick.id),
+    ]);
+  } catch (err) {
+    await completeReactionGeneration(pick.id, claim.lockedAt, null);
+    throw err;
+  }
 
   const alignment = readingAlignment(pick.classification, pick.ai_score);
   const userPrompt = buildReactionPrompt(
@@ -271,19 +290,20 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
         const finalText = collected.trim();
         if (!finalText) {
+          await completeReactionGeneration(pick.id, claim.lockedAt, null);
           if (!streamed) controller.enqueue(encoder.encode(FALLBACK_REACTION));
           controller.close();
           return;
         }
 
+        await completeReactionGeneration(pick.id, claim.lockedAt, finalText);
         controller.close();
-        // Fire-and-forget persist — don't block stream close on the DB write.
-        void persistReactionText(pick.id, finalText);
       } catch (err) {
         console.error(
           '[reaction] Claude reaction call failed:',
           err instanceof Error ? err.message : err,
         );
+        await completeReactionGeneration(pick.id, claim.lockedAt, null);
         if (!streamed) controller.enqueue(encoder.encode(FALLBACK_REACTION));
         controller.close();
       }

@@ -2,6 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import { gameState } from '$lib/stores/gameState.svelte';
   import { requestNarration } from '$lib/narrate';
+  import { streamReactionText } from '$lib/reactionClient';
   import ArchitectPanel from '$lib/components/ArchitectPanel.svelte';
   import WitnessCard from '$lib/components/WitnessCard.svelte';
   import WitnessQueue from '$lib/components/WitnessQueue.svelte';
@@ -123,44 +124,10 @@
     }
   }
 
-  const FALLBACK_REACTION =
-    'Interesting choice. I had thoughts on that one, but the mechanism seized before I could share them.';
-
   async function streamReaction(pickId: string, reactionEntryId: string) {
-    let collected = '';
-    try {
-      const res = await fetch('/api/reaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pick_id: pickId }),
-      });
-      if (!res.ok || !res.body) {
-        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
-        return;
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) {
-          collected += decoder.decode(value, { stream: true });
-          gameState.updateFeedEntry(reactionEntryId, collected);
-        }
-      }
-      const flush = decoder.decode();
-      if (flush) {
-        collected += flush;
-        gameState.updateFeedEntry(reactionEntryId, collected);
-      }
-      if (!collected.trim()) {
-        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
-      }
-    } catch {
-      if (!collected.trim()) {
-        gameState.updateFeedEntry(reactionEntryId, FALLBACK_REACTION);
-      }
-    }
+    await streamReactionText(pickId, {
+      onText: (text) => gameState.updateFeedEntry(reactionEntryId, text),
+    });
   }
 
   async function applyEvaluateSuccess(

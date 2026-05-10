@@ -72,7 +72,7 @@ interface MockOptions {
   historyError?: unknown;
   titleRows?: Array<{ objectID: string; title: string }>;
   titlesError?: unknown;
-  updateError?: unknown;
+  completionError?: unknown;
   /** Override the result of tryClaimReactionLock's atomic UPDATE.
    *  - true (default): the conditional UPDATE matches and we own the lock.
    *  - false: another request holds the lock (text still NULL on re-read).
@@ -82,7 +82,7 @@ interface MockOptions {
   lockError?: unknown;
 }
 
-const updateCalls: Array<Record<string, unknown>> = [];
+const completionCalls: Array<Record<string, unknown>> = [];
 const lockClaimCalls: Array<Record<string, unknown>> = [];
 
 const defaultPick = {
@@ -103,7 +103,7 @@ const defaultCard = {
 };
 
 function setupSupabase(opts: MockOptions = {}) {
-  updateCalls.length = 0;
+  completionCalls.length = 0;
   lockClaimCalls.length = 0;
 
   // tryClaimReactionLock RPC mock. The RPC returns a TABLE — Supabase JS
@@ -114,8 +114,18 @@ function setupSupabase(opts: MockOptions = {}) {
     if (fnName === 'try_claim_reaction_lock') {
       lockClaimCalls.push(args);
       return Promise.resolve({
-        data: lockClaimSucceedsValue === true ? [{ id: args.p_pick_id }] : [],
+        data:
+          lockClaimSucceedsValue === true
+            ? [{ id: args.p_pick_id, locked_at: '2026-05-09T12:00:00.000Z' }]
+            : [],
         error: opts.lockError ?? null,
+      });
+    }
+    if (fnName === 'complete_reaction_generation') {
+      completionCalls.push(args);
+      return Promise.resolve({
+        data: opts.completionError ? null : [{ id: args.p_pick_id }],
+        error: opts.completionError ?? null,
       });
     }
     return Promise.resolve({ data: null, error: null });
@@ -146,15 +156,12 @@ function setupSupabase(opts: MockOptions = {}) {
     return {};
   });
 
-  // suspicion.picks call ordering. The lock claim is now an RPC (mocked
-  // above via mockSchemaRpc), so it doesn't appear in this table-call
-  // sequence at all. The .schema('suspicion').from('picks') chain only
-  // covers reads + the final persist:
+  // suspicion.picks call ordering. Both claim + completion now happen via
+  // RPC, so the .schema('suspicion').from('picks') chain only covers reads:
   //
   //   Lock-succeeded path (default):
   //     1. loadPick — select.eq.eq.maybeSingle
   //     2. loadHistory — select.eq.neq.order
-  //     3. persistReactionText — update.eq
   //
   //   Lock-failed path (lockClaim: false | 'cached'):
   //     1. loadPick — select.eq.eq.maybeSingle
@@ -201,7 +208,6 @@ function setupSupabase(opts: MockOptions = {}) {
     }
     // Lock-succeeded path:
     //   2 → loadHistory (select.eq.neq.order)
-    //   3 → persistReactionText (update.eq)
     if (picksCallCount === 2) {
       return {
         select: vi.fn().mockReturnValue({
@@ -215,14 +221,7 @@ function setupSupabase(opts: MockOptions = {}) {
         }),
       };
     }
-    return {
-      update: vi.fn().mockImplementation((row: Record<string, unknown>) => {
-        updateCalls.push(row);
-        return {
-          eq: vi.fn().mockResolvedValue({ error: opts.updateError ?? null }),
-        };
-      }),
-    };
+    return {};
   });
 }
 
@@ -305,20 +304,16 @@ describe('POST /api/reaction', () => {
     expect(body).toBe('The mechanism turns.');
     expect(res.headers.get('Content-Type')).toContain('text/plain');
 
-    // Wait a microtask cycle for the fire-and-forget persist to land.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
     const callArgs = mockStream.mock.calls[0][0];
     expect(callArgs.model).toBe('claude-sonnet-4-6');
     expect(Array.isArray(callArgs.system)).toBe(true);
     expect(callArgs.system[0].cache_control).toEqual({ type: 'ephemeral' });
 
-    expect(updateCalls).toHaveLength(1);
-    // Persist clears the lock alongside the text — durable evidence that
-    // the generation completed.
-    expect(updateCalls[0]).toEqual({
-      ai_reaction_text: 'The mechanism turns.',
-      reaction_locked_at: null,
+    expect(completionCalls).toHaveLength(1);
+    expect(completionCalls[0]).toEqual({
+      p_pick_id: validPickId,
+      p_locked_at: '2026-05-09T12:00:00.000Z',
+      p_text: 'The mechanism turns.',
     });
     // Generation also acquired the lock first via the
     // try_claim_reaction_lock RPC (the route uses RPC to bypass
@@ -370,7 +365,12 @@ describe('POST /api/reaction', () => {
 
     expect(body.length).toBeGreaterThan(0);
     expect(body).toContain('mechanism seized');
-    expect(updateCalls).toHaveLength(0);
+    expect(completionCalls).toHaveLength(1);
+    expect(completionCalls[0]).toEqual({
+      p_pick_id: validPickId,
+      p_locked_at: '2026-05-09T12:00:00.000Z',
+      p_text: null,
+    });
   });
 
   it('serves a fallback when Claude returns empty deltas', async () => {
@@ -381,7 +381,12 @@ describe('POST /api/reaction', () => {
     const body = await readAll(res);
 
     expect(body).toContain('mechanism seized');
-    expect(updateCalls).toHaveLength(0);
+    expect(completionCalls).toHaveLength(1);
+    expect(completionCalls[0]).toEqual({
+      p_pick_id: validPickId,
+      p_locked_at: '2026-05-09T12:00:00.000Z',
+      p_text: null,
+    });
   });
 
   it('threads pick history (with resolved titles) into the reaction prompt', async () => {
@@ -425,5 +430,19 @@ describe('POST /api/reaction', () => {
 
     const userPrompt = mockStream.mock.calls[0][0].messages[0].content as string;
     expect(userPrompt).toContain('(unknown)');
+  });
+
+  it('releases the lock when pre-stream card loading fails', async () => {
+    setupSupabase({ card: null });
+
+    await expect(POST(makeRequest({ pick_id: validPickId }))).rejects.toThrow('Card not found');
+
+    expect(completionCalls).toHaveLength(1);
+    expect(completionCalls[0]).toEqual({
+      p_pick_id: validPickId,
+      p_locked_at: '2026-05-09T12:00:00.000Z',
+      p_text: null,
+    });
+    expect(mockStream).not.toHaveBeenCalled();
   });
 });
