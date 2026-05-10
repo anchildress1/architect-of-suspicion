@@ -30,9 +30,9 @@ Shared helpers live in `src/lib/server/`:
 - `validation.ts` — UUID checks, JSON body size limits
 - `sessionCapability.ts` — mint/verify capability tokens, set/clear cookies
 
-### Summons (landing page)
+### Landing page (`/`)
 
-`src/routes/+page.server.ts` picks a claim during SSR via `pickRandomClaim()` so the dossier renders on the first byte without a client fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page returns `{ claim: null }` and renders a muted "docket unavailable" state — no browser console errors.
+`src/routes/+page.server.ts` picks a claim during SSR via `pickRandomClaim()` so the entry-point record renders on the first byte without a client fetch. When the pick fails (e.g. Supabase unavailable in LHCI), the page returns `{ claim: null }` and renders a muted "record unavailable" state — no browser console errors.
 
 ### `POST /api/sessions`
 
@@ -170,7 +170,28 @@ Generates the cover letter from collected evidence.
 }
 ```
 
-**Server-side:** verifies the capability token, fetches all picks for the session from `suspicion.picks`, retrieves full card data for each, passes to Claude. Persists `cover_letter` and `architect_closing` back onto the session row so a refresh after a sessionStorage flush still surfaces the verdict.
+**Server-side:** verifies the capability token, then loads three things in
+parallel:
+
+1. The claim's truth context — `hireable_truth` + `desired_verdict` from
+   `suspicion.claims`. The brief always reveals `hireable_truth` regardless
+   of verdict; `desired_verdict` only swings the rhetorical opener.
+2. The paramount card pool — every `suspicion.claim_cards` row with
+   `is_paramount = true`, joined to `public.cards` for the full record
+   (including `fact`, server-only). The brief surfaces these whether the
+   player ruled them or not.
+3. All picks for the session from `suspicion.picks`, joined to `public.cards`.
+
+The route partitions the picks: paramount cards get their classification
+attached (or `null` when skipped, which the prompt calls out as a gap);
+non-paramount Proof + Objection rulings become personalization. Dismiss
+rulings stay struck. The combined context is passed to Claude.
+
+Persists `cover_letter` and `architect_closing` back onto the session row so
+a refresh after a sessionStorage flush still surfaces the verdict. The route
+returns 500 if the truth context is missing OR the paramount pool is empty —
+the prompt is never asked to invent its framing or ride personalization
+alone (AGENTS.md Invariant #8).
 
 **Response:**
 
@@ -240,6 +261,17 @@ CREATE TABLE suspicion.picks (
 ### `suspicion.claims` and `suspicion.claim_cards`
 
 Populated by the offline claim engine (`scripts/seed-claims`) via the `replace_claim_seed` RPC (`SECURITY DEFINER`, granted to `service_role` only). At runtime the app reads these tables but never writes to them.
+
+`suspicion.claims` carries `hireable_truth` (NOT NULL with non-empty CHECK)
+and `desired_verdict` (NOT NULL CHECK in `('accuse','pardon')`). Together
+they anchor the runtime cover letter prompt: `hireable_truth` is the single
+positive trait the brief reveals regardless of verdict; `desired_verdict`
+flags whether the surface claim is true or false of Ashley, swinging only
+the rhetorical opener. `suspicion.claim_cards.is_paramount` (boolean,
+default false) flags the cards essential to revealing the truth — the brief
+surfaces them whether or not the player ruled them, calling out
+paramount-but-skipped as gaps. See PRD.md §"Cover Letter" and Pass 1 / Pass
+2 / Pass 4 of [`CLAIM-ENGINE-PRD.md`](CLAIM-ENGINE-PRD.md).
 
 ```sql
 CREATE TABLE suspicion.claim_cards (
@@ -351,7 +383,7 @@ architect-of-suspicion/
 │   │   │   ├── EvidenceTally.svelte   # Proof / Objection / Struck counts
 │   │   │   ├── WitnessCard.svelte     # The exhibit on stage (with stamps)
 │   │   │   ├── WitnessQueue.svelte    # Right-rail queue
-│   │   │   ├── CoverLetter.svelte     # Sealed editorial-noir letter
+│   │   │   ├── CoverLetter.svelte     # Sealed industrial-noir record
 │   │   │   ├── Resume.svelte          # Static resume
 │   │   │   └── MobileGate.svelte      # <768px notice
 │   │   ├── stores/                    # Svelte 5 runes-based game state

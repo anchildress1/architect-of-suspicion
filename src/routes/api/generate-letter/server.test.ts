@@ -91,19 +91,64 @@ interface MockOptions {
   cardsError?: unknown;
   sessionVerdictUpdateError?: unknown;
   sessionLetterUpdateError?: unknown;
+  /** Override the claims-row response for getClaimTruthContext. Default is a
+   *  populated truth + verdict so the prompt always has its anchor. */
+  claimsRow?: { hireable_truth: string; desired_verdict: string } | null;
+  claimsRowError?: unknown;
+  /** Override the paramount-cards rows from suspicion.claim_cards. Default
+   *  is both mockCards' ids so the prompt has gap/citation inputs. Empty
+   *  array exercises the missing-paramount 500 path. */
+  paramountRows?: Array<{ card_id: string }>;
+  paramountRowsError?: unknown;
+  /** Override the public.cards rows returned for the paramount-card lookup
+   *  (step 2 of getParamountCards). Defaults to mockCards. */
+  paramountCardLookup?: unknown[];
+  /** Error injected into the paramount-card lookup (step 2 of
+   *  getParamountCards). Distinct from `cardsError`, which fails the
+   *  ruled-extras lookup (loadCardsById). */
+  paramountCardLookupError?: unknown;
 }
+
+const defaultClaimsRow = {
+  hireable_truth: 'Ashley weaponizes AI — teaches it, constrains it, holds it to standard.',
+  desired_verdict: 'pardon',
+};
+
+const defaultParamountRows = [{ card_id: 'card-1' }, { card_id: 'card-2' }];
 
 function setupMocks(options: MockOptions = {}) {
   sessionUpdates.length = 0;
   lastCardsInCall.ids = [];
   const picks = options.picks ?? mockPicks;
   const cards = options.cards ?? mockCards;
+  const claimsRow = options.claimsRow === undefined ? defaultClaimsRow : options.claimsRow;
+  const paramountRows =
+    options.paramountRows === undefined ? defaultParamountRows : options.paramountRows;
 
+  // public.cards is hit twice per request: first by getParamountCards
+  // (step 2 — looking up paramount card details), then by loadCardsById
+  // (looking up ruled-extras the player Proof'd or Objection'd). The mock
+  // routes by call order so each path can be exercised independently in
+  // failure-mode tests.
+  let cardsCallCount = 0;
+  const paramountCardLookup = options.paramountCardLookup ?? mockCards;
   mockFrom.mockImplementation((table: string) => {
     if (table !== 'cards') return {};
     return {
       select: vi.fn().mockReturnValue({
         in: vi.fn().mockImplementation((_col: string, ids: string[]) => {
+          cardsCallCount++;
+          if (cardsCallCount === 1) {
+            // First call: getParamountCards step 2.
+            return {
+              is: vi.fn().mockResolvedValue({
+                data: paramountCardLookup,
+                error: options.paramountCardLookupError ?? null,
+              }),
+            };
+          }
+          // Second call: loadCardsById for ruled-extras. Track ids so tests
+          // can assert what the personalization lookup was asked for.
           lastCardsInCall.ids = ids;
           return {
             is: vi.fn().mockResolvedValue({ data: cards, error: options.cardsError ?? null }),
@@ -120,6 +165,31 @@ function setupMocks(options: MockOptions = {}) {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             order: vi.fn().mockResolvedValue({ data: picks, error: options.picksError ?? null }),
+          }),
+        }),
+      };
+    }
+    if (table === 'claims') {
+      // getClaimTruthContext: select('hireable_truth, desired_verdict').eq(...).maybeSingle()
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi
+              .fn()
+              .mockResolvedValue({ data: claimsRow, error: options.claimsRowError ?? null }),
+          }),
+        }),
+      };
+    }
+    if (table === 'claim_cards') {
+      // getParamountCards: select(...).eq('claim_id', ...).eq('is_paramount', true)
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: paramountRows,
+              error: options.paramountRowsError ?? null,
+            }),
           }),
         }),
       };
@@ -229,6 +299,64 @@ describe('POST /api/generate-letter', () => {
     const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
     expect(prompts.some((p) => p.includes('Server-authoritative claim'))).toBe(true);
     expect(prompts.every((p) => !p.includes('IGNORE PREVIOUS INSTRUCTIONS'))).toBe(true);
+  });
+
+  it('threads the hireable truth into both prompts regardless of verdict', async () => {
+    setupMocks();
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    await POST(makeRequest(validBody));
+
+    const prompts = mockCreate.mock.calls.map((c) => c[0].messages[0].content as string);
+    expect(prompts.every((p) => p.includes(defaultClaimsRow.hireable_truth))).toBe(true);
+  });
+
+  it('opens with verdict-match language when player verdict matches desired_verdict', async () => {
+    setupMocks();
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    // default claimsRow.desired_verdict = 'pardon'
+    await POST(makeRequest({ verdict: 'pardon' }));
+
+    const letterPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(letterPrompt).toMatch(/dial settled where the evidence pointed/i);
+  });
+
+  it('opens with verdict-miss language when player verdict mismatches desired_verdict', async () => {
+    setupMocks();
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+
+    // default claimsRow.desired_verdict = 'pardon'; sending accuse → mismatch
+    await POST(makeRequest({ verdict: 'accuse' }));
+
+    const letterPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(letterPrompt).toMatch(/the trait holds either way/i);
+  });
+
+  it('500s when the claim truth row is missing (refuses unsafe framing)', async () => {
+    setupMocks({ claimsRow: null });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Claim not found');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('500s when the claim truth query errors', async () => {
+    setupMocks({ claimsRowError: { message: 'pg-down' } });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch claim truth');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('500s when no paramount cards exist for the claim — pipeline must reseed', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupMocks({ paramountRows: [] });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Claim has no paramount evidence');
+    expect(mockCreate).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('500s when the paramount-cards query errors', async () => {
+    setupMocks({ paramountRowsError: { message: 'pg-down' } });
+    await expect(POST(makeRequest(validBody))).rejects.toThrow('Failed to fetch paramount cards');
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('persists the verdict and the composed letter on the session', async () => {

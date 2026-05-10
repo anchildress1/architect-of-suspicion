@@ -1,8 +1,14 @@
+<div align="center">
+
+![Social banner image of mansion](https://repository-images.githubusercontent.com/1209993645/83f1f92a-f811-4c1f-9c11-fe79633ac46d)
+
 # Architect of Suspicion
 
 [![CI](https://github.com/anchildress1/architect-of-suspicion/actions/workflows/ci.yml/badge.svg)](https://github.com/anchildress1/architect-of-suspicion/actions/workflows/ci.yml) [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=anchildress1_architect-of-suspicion&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=anchildress1_architect-of-suspicion) [![License: Polyform Shield 1.0.0](https://img.shields.io/badge/license-Polyform%20Shield%201.0.0-blue.svg)](LICENSE)
 
-A single-player investigative game that turns a software engineer's career into a mansion of evidence. You're handed an accusation — _"Ashley depends on AI too much"_, _"Ashley avoids hard problems"_ — and sent to rule on the witnesses. The Architect, a magistrate who doesn't care about you, reacts to every call. When the gallery has heard enough, you Accuse or Pardon, and the record seals into a cover letter written from your verdict.
+</div>
+
+A single-player investigative game that turns a software engineer's career into a mansion of evidence. You're handed an accusation — _"Ashley depends on AI too much"_, _"Ashley avoids hard problems"_ — and sent to rule on the witnesses. The Architect, an AI operator running the public-reckoning mechanism, reacts to every call. When the gallery has heard enough, you Accuse or Pardon, and the record seals into a cover letter written from your verdict.
 
 It's a resume that argues with you.
 
@@ -111,7 +117,11 @@ Server-side only. Never check these into the repo, never expose them to the clie
 
 ## License
 
-Released under the [Polyform Shield License 1.0.0](LICENSE). Source-available; commercial use that competes with the licensor's offering is not permitted.
+Released under the [Polyform Shield License 1.0.0](LICENSE). Source-available, not open-source — read the license before you build a paid SaaS on top of it.
+
+- **You can:** use it, fork it, learn from it, ship it inside your day job, hand it to a client.
+- **You can't:** sell it, rebrand it, host it as paid SaaS, or otherwise monetize it without explicit written permission.
+- **Public forks:** include the LICENSE file and credit the original work.
 
 ---
 

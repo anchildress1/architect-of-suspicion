@@ -100,10 +100,19 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
 
   try {
     const client = getClaudeClient();
+    // cache_control marker is harmless at current prompt sizes (sub-4096
+    // tokens, below Haiku's caching threshold) and auto-activates if the
+    // prompt grows past it.
     const response = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 200,
-      system: ARCHITECT_SYSTEM_PROMPT,
+      system: [
+        {
+          type: 'text',
+          text: ARCHITECT_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
       messages: [{ role: 'user', content: prompt }],
     });
 
