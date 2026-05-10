@@ -34,20 +34,20 @@ export const config = {
     // better-shaped provocative claims in our tests. Prompt is tuned for
     // Claude's XML-ish section tags; see pass2-claims.ts.
     pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-opus-4-7'),
-    // Pass 3: bulk structured scoring (OpenAI per PRD). gpt-5.5 — first
-    // fully-retrained base model since GPT-4.5, with stronger instruction
-    // adherence than 5.4 and the verbosity knob that lets structured-only
-    // output stay terse. Prompt tuned per OpenAI's GPT-5.2/5.5 cookbook:
-    // CTCO layout, reasoning_effort='low' (GPT-5.5 dropped 'minimal' — so
-    // 'low' is the lowest tier with real deliberation for the theory-of-
-    // mind scoring step), verbosity='low'. See pass3-score.ts.
-    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gpt-5.5'),
-    // Pass 4: adversarial — MUST be a different vendor than Pass 2 (Google
-    // per PRD). Pro over Flash-Lite-Preview — Pass 4 does the heaviest
-    // per-claim work (validate + rewrite 30-50 blurbs + assign ai_score per
-    // claim) and only runs on the top-N selected claims, so the spend is
-    // proportionate to the stakes.
-    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gemini-3.1-pro-preview'),
+    // Pass 3: bulk structured scoring. gemini-3-flash-preview at ~$0.50/M
+    // input + $3/M output is roughly 5x cheaper than gpt-5.4 for the same
+    // task and Flash's enum-constrained JSON output handles the 50-card
+    // batch shape reliably. Prompt was originally tuned for OpenAI's CTCO
+    // format but Flash respects the same structure. Override to gpt-5.4
+    // if Flash scoring quality drops on borderline cards.
+    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gemini-3-flash-preview'),
+    // Pass 4: adversarial — MUST be a different vendor than Pass 2. With
+    // Pass 2 on Anthropic (Opus 4.7), gpt-5.4-mini satisfies that
+    // constraint at ~$0.75/M input + $4.50/M output, roughly 3x cheaper
+    // than gpt-5.4 flagship. Strict mode + verbosity knob still apply on
+    // mini, so the schema-enforcement story is unchanged. Override to
+    // gpt-5.4 if rewrite quality on borderline cards drops noticeably.
+    pass4: str('CLAIM_ENGINE_PASS4_MODEL', 'gpt-5.4-mini'),
   },
   targets: {
     // Pass 2 generates this many candidate claims. More = better odds of finding
@@ -56,8 +56,12 @@ export const config = {
     // Pass 3 selects this many top-ranked claims to send to Pass 4.
     select: num('CLAIM_ENGINE_SELECT_CLAIMS', 7),
     // Pass 3 keeps this many top-scoring cards per claim (sorted by
-    // ambiguity+surprise descending). Keeps pools claim-specific and bounded.
-    topCards: num('CLAIM_ENGINE_TOP_CARDS', 50),
+    // ambiguity+surprise descending). Effectively uncapped at 10_000 so
+    // every floor-clearing card reaches Pass 4 — paramount selection
+    // works on |ai_score| (a different signal from ambiguity+surprise),
+    // and capping here threw out cards that would have been paramount.
+    // Override to a smaller value to bound Pass 4 cost when iterating.
+    topCards: num('CLAIM_ENGINE_TOP_CARDS', 10_000),
     // Pass 4 survival floor: rewritten cards per claim.
     minTotalCards: num('CLAIM_ENGINE_MIN_TOTAL_CARDS', 30),
     // Pass 4 survival floor: distinct gameplay rooms that must be covered.
@@ -71,13 +75,20 @@ export const config = {
     // Cards per scoring batch. Smaller = fewer output tokens per call.
     // 50 cards × ~48 tokens/entry ≈ 2,400 tokens output — well within any limit.
     scoreBatch: num('CLAIM_ENGINE_SCORE_BATCH', 50),
-    // Cards per Pass 4 rewrite batch. 10 keeps each call around ~3k output
-    // tokens of actual rewrite + notes, leaving headroom for Gemini 3.1
-    // Pro's non-trivial default thinking budget under maxOutputTokens.
-    // A flaky batch only costs its own retry — not the whole claim's spend.
-    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 10),
+    // Cards per Pass 4 rewrite batch. 20 cards × ~300 tokens/rewrite ≈ 6k
+    // output, well under maxTokens=24k after Gemini's default thinking
+    // budget (~15k typical). Halving the batch count vs the prior default
+    // of 10 cuts per-batch system-prompt overhead in half. If a model
+    // hits the truncation throw on a 20-card batch, override
+    // CLAIM_ENGINE_PASS4_BATCH=10 to fall back to the conservative size.
+    pass4Batch: num('CLAIM_ENGINE_PASS4_BATCH', 20),
   },
   dryRun: bool('CLAIM_ENGINE_DRY_RUN', false),
+  // Disable the Pass 4 rewrite cache. Set to true (or `1`) when iterating on
+  // the Pass 4 prompt itself and you need every (card, claim) pair to
+  // re-run, even though the prompt-version hash should normally invalidate
+  // automatically. Leaving the cache enabled is the cost-reduction default.
+  cacheDisabled: bool('CLAIM_ENGINE_CACHE_DISABLED', false),
 } as const;
 
 export type Config = typeof config;

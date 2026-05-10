@@ -54,15 +54,25 @@ export const CATEGORY_TO_ROOM: Record<string, RoomSlug> = {
   Experience: 'back-hall',
 };
 
-export interface Tension {
-  theme: string;
-  description: string;
+/** A candidate hireable truth Pass 1 surfaces. The truth is the underlying
+ *  positive professional trait the brief always reveals. The reasonable_doubt
+ *  framing is how the trait can be questioned in good faith — Pass 2 turns
+ *  that into the surface claim. */
+export interface HireableTruth {
+  /** The underlying positive trait, one sentence. ("Ashley weaponizes AI",
+   *  not "Ashley uses AI a lot".) */
+  truth: string;
+  /** How a reasonable observer could doubt the truth from limited evidence —
+   *  the seed of a claim. */
+  reasonable_doubt: string;
+  /** Card categories that carry the strongest signal for this truth. Used by
+   *  Pass 2 to ground the claim and by Pass 3 to bias scoring. */
   categories: string[];
 }
 
-/** Raw output of Pass 1. */
-export interface TensionMap {
-  tensions: Tension[];
+/** Raw output of Pass 1 — candidate truths to feed claim generation. */
+export interface TruthMap {
+  truths: HireableTruth[];
   notes?: string;
 }
 
@@ -70,9 +80,28 @@ export interface TensionMap {
 export interface GeneratedClaim {
   /** Stable pipeline-local key; assigned after Pass 2 parsing. */
   id: string;
+  /** The surface accusation — reasonable-doubt framing of the underlying
+   *  truth. ("Ashley uses AI too much" — claim_text. "Ashley weaponizes AI"
+   *  — hireable_truth.) */
   claim_text: string;
+  /** Brief rationale for which evidence the claim hangs on. */
   rationale: string;
-  tensions_targeted: string[];
+  /** Pass 1 truths the claim derives from — quoted truth strings, used for
+   *  audit/debug logs only. Not persisted to the DB. */
+  truths_targeted: string[];
+  /** The single positive professional trait the brief reveals regardless of
+   *  verdict. Pass 2 carries this from Pass 1; persist writes it to
+   *  `suspicion.claims.hireable_truth`. */
+  hireable_truth: string;
+  /** Whether the surface claim is actually TRUE of Ashley:
+   *  - `accuse` — the surface accusation aligns with the truth (player
+   *    Accuses to be right)
+   *  - `pardon` — the surface accusation is false; the truth contradicts it
+   *    (player Pardons to be right)
+   *  Persisted to `suspicion.claims.desired_verdict`. Drives the rhetorical
+   *  opener of the brief — match means the player saw the truth clearly,
+   *  miss means the record corrects them. */
+  desired_verdict: 'accuse' | 'pardon';
 }
 
 /** Per-card score for a given claim (Pass 3 output). */
@@ -114,6 +143,12 @@ export interface CardArgument {
    *  Persisted to `suspicion.claim_cards.notes`. Never crosses the wire to
    *  the client (same posture as `fact` on public.cards). */
   notes: string;
+  /** True for the small set of cards essential to revealing the
+   *  hireable_truth in the brief. The runtime cover letter prompt surfaces
+   *  these even if the player skipped them — paramount-but-skipped becomes
+   *  an explicit "the player did not call X to the stand" gap call-out. Set
+   *  by persist after Pass 4 from |ai_score| with room-coverage balancing. */
+  isParamount: boolean;
 }
 
 /** Pass 4 combined output: validation results + per-card arguments. */

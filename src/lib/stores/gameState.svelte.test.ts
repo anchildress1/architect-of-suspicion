@@ -82,6 +82,97 @@ describe('gameState', () => {
       gameState.removeFeedEntry('missing');
       expect(gameState.current.feed).toHaveLength(1);
     });
+
+    describe('updateFeedEntry', () => {
+      it('replaces the text on an existing entry without changing id/timestamp', () => {
+        gameState.addFeedEntry({ id: 'r', type: 'reaction', text: 'first', timestamp: 5 });
+        gameState.updateFeedEntry('r', 'second');
+        const entry = gameState.current.feed.find((e) => e.id === 'r');
+        expect(entry?.text).toBe('second');
+        expect(entry?.timestamp).toBe(5);
+      });
+
+      it('is a no-op when id not present', () => {
+        gameState.addFeedEntry({ id: 'r', type: 'reaction', text: 'first', timestamp: 5 });
+        gameState.updateFeedEntry('missing', 'second');
+        expect(gameState.current.feed.find((e) => e.id === 'r')?.text).toBe('first');
+      });
+
+      it('throttles sessionStorage writes during streaming bursts', () => {
+        // Streaming reactions fire updateFeedEntry per token. Per-call
+        // persist would mean dozens-to-hundreds of synchronous writes per
+        // reaction; the throttle batches them to one per 150ms cycle.
+        const setItem = vi.fn();
+        const fakeStorage = {
+          getItem: () => null,
+          setItem,
+          removeItem: () => {},
+          clear: () => {},
+          length: 0,
+          key: () => null,
+        } as unknown as Storage;
+        (globalThis as { sessionStorage?: Storage }).sessionStorage = fakeStorage;
+        vi.useFakeTimers();
+
+        try {
+          gameState.addFeedEntry({ id: 'r', type: 'reaction', text: '', timestamp: 1 });
+          const baselineCalls = setItem.mock.calls.length;
+
+          for (let i = 1; i <= 20; i++) {
+            gameState.updateFeedEntry('r', `chunk ${i}`);
+          }
+          // No setItem calls fired during the burst — all batched.
+          expect(setItem.mock.calls.length - baselineCalls).toBe(0);
+
+          // After the throttle window, exactly one persist fires for the burst.
+          vi.advanceTimersByTime(200);
+          expect(setItem.mock.calls.length - baselineCalls).toBeGreaterThanOrEqual(1);
+        } finally {
+          vi.useRealTimers();
+          delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
+        }
+      });
+
+      it('flushes a pending throttled write when an immediate persist runs', () => {
+        // Other state mutations (setVerdict, addEvidence, etc.) call
+        // persist() directly. Pending throttled writes must flush so the
+        // latest state always lands on the next sessionStorage read.
+        const setItem = vi.fn();
+        const fakeStorage = {
+          getItem: () => null,
+          setItem,
+          removeItem: () => {},
+          clear: () => {},
+          length: 0,
+          key: () => null,
+        } as unknown as Storage;
+        (globalThis as { sessionStorage?: Storage }).sessionStorage = fakeStorage;
+        vi.useFakeTimers();
+
+        try {
+          gameState.addFeedEntry({ id: 'r', type: 'reaction', text: '', timestamp: 1 });
+          const baselineCalls = setItem.mock.calls.length;
+
+          gameState.updateFeedEntry('r', 'mid-stream chunk');
+          // Throttle pending — no persist yet.
+          expect(setItem.mock.calls.length - baselineCalls).toBe(0);
+
+          // Immediate-persist path runs (setAttention triggers persist()).
+          gameState.setAttention(60);
+          // Exactly one persist fired (the throttle was flushed in-line).
+          // Each persist writes STORAGE_KEY + ATTENTION_KEY = 2 setItem calls.
+          const callsAfterSet = setItem.mock.calls.length - baselineCalls;
+          expect(callsAfterSet).toBe(2);
+
+          // Advancing past the throttle window does not double-fire.
+          vi.advanceTimersByTime(300);
+          expect(setItem.mock.calls.length - baselineCalls).toBe(callsAfterSet);
+        } finally {
+          vi.useRealTimers();
+          delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
+        }
+      });
+    });
   });
 
   describe('attention', () => {

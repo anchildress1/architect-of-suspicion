@@ -35,36 +35,64 @@ The solution: don't change the cards in `public.cards`. Instead, generate claim-
 6. **Output is deterministic once written.** The game reads static crossref data. No AI calls for card dealing or claim selection.
 7. **Run frequency: monthly or on card corpus changes.** Not per-session, not per-deploy.
 
-### Pass 1: Tension Analysis
+### Pass 1: Truth Discovery
 
 **Input:** Full card corpus from `public.cards` (all fields including `fact`).
 
-**Task:** Identify fault lines in the portfolio — places where the same evidence can be read two contradictory ways, where career decisions contain inherent tension, where themes across categories conflict with each other.
+**Task:** Discover the underlying hireable truths the corpus reveals about
+how Ashley works. Each truth is a single positive professional trait grounded
+in 5+ specific cards across 3+ categories. Each truth is paired with a
+**reasonable-doubt framing** — how an observer reading the corpus quickly
+could plausibly doubt it. The doubt becomes the surface accusation Pass 2
+generates; the truth is what the brief reveals at the end.
 
-**Output:** A tension map — not claims yet, but raw material. Themes, contradictions, ambiguities. Examples:
+**Output:** A truth map — 8-15 candidate truths, each with its
+reasonable-doubt framing and the categories carrying the strongest signal.
+Examples:
 
-- "Speed vs. quality appears across Experimentation (fast iteration) and Constraints (testing gaps)"
-- "Leadership recognition in Awards contradicts independence signals in Work Style"
-- "Philosophy cards about restraint could read as strategic thinking OR risk aversion"
+- truth: "Ashley weaponizes AI — teaches it, constrains it, holds it to standard."
+  doubt: "Ashley uses AI too much."
+- truth: "Ashley builds constraints before features so failure modes become design tools."
+  doubt: "Ashley over-engineers everything."
+- truth: "Ashley ships rough drafts to learn faster, then iterates names and structure once the shape is real."
+  doubt: "Ashley doesn't polish before shipping."
 
-**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`) with adaptive thinking (effort=high).
+**Why this shape:** the previous "tension analysis" model framed Pass 1 as
+finding fault lines that could be argued either way, which pushed downstream
+passes toward dual-reading framings. The corrected model anchors each claim
+on a single positive truth — two recruiters investigating the same claim
+reach the same conclusion about Ashley.
+
+**Model:** Claude Sonnet 4.6 (`claude-sonnet-4-6`) with adaptive thinking (effort=medium).
 
 ### Pass 2: Claim Generation
 
-**Input:** Tension map from Pass 1 + full card corpus.
+**Input:** Truth map from Pass 1 + full card corpus.
 
-**Task:** Generate 15 candidate claims that maximize the number of cards sitting on a fault line. A good claim:
+**Task:** Generate 15 candidate claims. Each claim has three parts:
 
-- Creates genuine ambiguity for cards across **multiple rooms** (not just one category)
-- Is specific enough to evaluate against individual cards
-- Is framed as an accusation that a reasonable person could argue either way
-- Doesn't require domain expertise to understand
+- `claim_text` — the surface accusation (a reasonable-doubt framing of an
+  underlying truth). The question the player investigates.
+- `hireable_truth` — the single positive professional trait the brief reveals
+  at the end. Drawn from a Pass 1 truth or a sharper version of one.
+- `desired_verdict` — `accuse` if the surface claim is roughly TRUE of Ashley
+  (the hireable_truth refines the accusation); `pardon` if FALSE (the
+  hireable_truth contradicts it).
 
 Casting wide here is intentional — Pass 3 will rank and select the best 5.
 
-**Output:** 15 claim strings, each with a brief rationale explaining which tensions it targets.
+**Output:** 15 candidate claims with the three fields above plus a rationale
+citing the truths targeted. Both `claim_text` and `hireable_truth` must read
+as professional-style observations; character indictments
+(competence/integrity/ethics/professionalism) are forbidden even when
+"exonerated" by the truth.
 
-**Model:** GPT 5.4 (`gpt-5.4`) with reasoning_effort=medium. Different provider than Pass 1 (Anthropic) — broadens model diversity across the pipeline.
+**Honesty contract:** Pass 4 cross-checks each claim's `desired_verdict`
+against the average `ai_score` sign of its surviving card pool. A mismatch
+(claim says accuse but evidence leans pardon) drops the claim. There is no
+benefit to fudging the orientation.
+
+**Model:** Claude Opus 4.7 (`claude-opus-4-7`) with adaptive thinking (effort=medium).
 
 ### Pass 3: Card-Claim Scoring + Claim Ranking
 
@@ -99,9 +127,30 @@ Rewriting rules:
 
 The model also produces a one-sentence proof and one-sentence objection per card (grounded in fact) to inform the rewrite framing. These are not stored.
 
-**Survival floor:** A claim survives if its pool has ≥ 30 rewritten cards (`CLAIM_ENGINE_MIN_TOTAL_CARDS`) covering ≥ 5 gameplay rooms (`CLAIM_ENGINE_MIN_ROOMS`). This is a playability minimum — Pass 3 ranking handles quality selection. Claims that pass are written to Supabase; claims that fail are dropped for this run.
+**Survival floor:** A claim survives if all three hold:
 
-**Output:** For each surviving claim: `rewritten_blurb` for every card in its pool. Stored in `suspicion.claim_cards.rewritten_blurb` — this is the text the player sees at runtime, not `public.cards.blurb`.
+1. Pool has ≥ 30 rewritten cards (`CLAIM_ENGINE_MIN_TOTAL_CARDS`).
+2. Pool covers ≥ 5 gameplay rooms (`CLAIM_ENGINE_MIN_ROOMS`).
+3. **Verdict alignment:** the average `ai_score` across the rewritten pool
+   has the same sign as `claim.desired_verdict` (accuse → positive, pardon
+   → negative) and `|avg|` clears 0.1. Mismatches drop the claim — Pass 2
+   declared an orientation the rewriter's evidence won't support.
+
+Pass 3 ranking handles quality selection above the floor. Claims that pass
+all three checks are written to Supabase; claims that fail are dropped for
+this run with their `cut_reason` logged.
+
+**Paramount selection:** Survivors get a small subset of cards flagged
+`is_paramount`. The set is the top 5 by `|ai_score|` descending, with
+room-coverage balancing (expand up to 8 if fewer than 3 distinct rooms are
+hit). Paramount cards are the ones the runtime brief surfaces regardless of
+whether the player ruled them — paramount-but-skipped becomes a gap callout.
+
+**Output:** For each surviving claim: `rewritten_blurb` for every card in
+its pool, plus `is_paramount` flags on the must-surface set. Stored in
+`suspicion.claim_cards` (along with `rewritten_blurb`, `ai_score`,
+`ambiguity`, `surprise`, `notes`) — `rewritten_blurb` is the text the player
+sees at runtime, not `public.cards.blurb`.
 
 **Model:** Gemini Flash Lite. Different provider than Passes 1-2 (Anthropic) — avoids self-confirmation bias on rewrite framing.
 
@@ -114,6 +163,10 @@ CREATE TABLE suspicion.claims (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   claim_text text NOT NULL,
   rationale text,
+  -- Single underlying hireable truth the brief reveals regardless of verdict.
+  hireable_truth text NOT NULL CHECK (length(btrim(hireable_truth)) > 0),
+  -- 'accuse' if the surface claim is roughly TRUE of Ashley, 'pardon' if FALSE.
+  desired_verdict text NOT NULL CHECK (desired_verdict IN ('accuse', 'pardon')),
   room_coverage smallint NOT NULL,
   total_eligible_cards smallint NOT NULL,
   created_at timestamptz DEFAULT now()
@@ -124,10 +177,21 @@ CREATE TABLE suspicion.claim_cards (
   card_id uuid NOT NULL REFERENCES public.cards("objectID") ON DELETE RESTRICT,
   ambiguity smallint NOT NULL CHECK (ambiguity BETWEEN 1 AND 5),
   surprise smallint NOT NULL CHECK (surprise BETWEEN 1 AND 5),
+  ai_score numeric(3,2) NOT NULL DEFAULT 0.0
+           CHECK (ai_score >= -1.0 AND ai_score <= 1.0),
   rewritten_blurb text NOT NULL,  -- claim-specific player-facing text; replaces public.cards.blurb at runtime
+  notes text,  -- server-only audit note (Pass 4 reasoning trail)
+  is_paramount boolean NOT NULL DEFAULT false,  -- runtime brief surfaces these regardless of player rulings
   PRIMARY KEY (claim_id, card_id)
 );
 ```
+
+`hireable_truth` and `desired_verdict` are populated by Pass 2 and consumed
+by the runtime cover letter prompt — see PRD.md §"Cover Letter" and
+AGENTS.md Invariant #8. `is_paramount` is set by Pass 4 after rewriting,
+flagging the cards essential to revealing the truth. The
+`replace_claim_seed` RPC enforces non-empty truth, valid verdict, and
+defaults `is_paramount` to false.
 
 ### Impact on Game Runtime
 
@@ -224,7 +288,7 @@ For a corpus of ~258 eligible cards, 15 candidate claims, 5 selected for rewriti
 
 | Pass                      | Model             | Calls                  | Cost (est.)             |
 | ------------------------- | ----------------- | ---------------------- | ----------------------- |
-| Pass 1: Tension analysis  | Claude Sonnet     | 1                      | ~$0.50                  |
+| Pass 1: Truth discovery   | Claude Sonnet     | 1                      | ~$0.50                  |
 | Pass 2: Claim generation  | GPT 5.4           | 1                      | ~$0.50                  |
 | Pass 3: Scoring (batched) | GPT 5.4 Mini      | 15 claims × ~6 batches | ~$1.00-2.00             |
 | Pass 4: Rewriting         | Gemini Flash Lite | 5 claims × 50 cards    | ~$0.50-1.00             |
