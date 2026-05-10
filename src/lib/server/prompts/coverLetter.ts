@@ -71,7 +71,7 @@ EVIDENCE
 Pick the 2-3 STRONGEST exhibits from the pool below and weave them into prose. One or two tight paragraphs — prints next to a resume, brevity matters. Woven, not itemized; no card-by-card enumeration, no "the record shows" / "the evidence demonstrates" as a structural device.
 
 PARAMOUNT (most load-bearing for the truth — prioritize these):
-${paramountBlock || '  (No paramount evidence loaded — pipeline bug; reveal the truth from claim text alone.)'}
+${paramountBlock}
 
 PERSONAL INVESTIGATION (exhibits engaged during the examination — personalization; the truth doesn't depend on them):
 ${extrasBlock || '  (No additional engaged evidence beyond the paramount set.)'}

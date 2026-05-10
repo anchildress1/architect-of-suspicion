@@ -269,10 +269,17 @@ describe('buildCoverLetterPrompt', () => {
       expect(prompt).toMatch(/brevity reads as confidence/i);
     });
 
-    it('warns when no paramount cards loaded — pipeline bug fallback', () => {
+    it('emits an empty paramount block when no paramount cards are loaded', () => {
+      // The route refuses to call this prompt when paramountCards.length === 0
+      // (the empty-paramount path 500s in /api/generate-letter/+server.ts), so
+      // there is no in-prompt fallback to display — an unreachable fallback
+      // would just be dead code that hides invariant drift if the route's
+      // guard ever changed. The PARAMOUNT block renders empty here; the
+      // route is the source of truth on whether to call.
       const prompt = buildCoverLetterPrompt('Test claim', 'pardon', truthContext, [], []);
-      expect(prompt).toMatch(/No paramount evidence loaded/i);
-      expect(prompt).toMatch(/pipeline bug/i);
+      expect(prompt).not.toMatch(/No paramount evidence loaded/i);
+      expect(prompt).not.toMatch(/pipeline bug/i);
+      expect(prompt).toMatch(/PARAMOUNT \(most load-bearing for the truth/);
     });
   });
 
