@@ -195,5 +195,13 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       expect(PASS4).toMatch(/integrity/i);
       expect(PASS4).toMatch(/professionalism/i);
     });
+
+    it('requires title and blurb to be rewritten in third person (Ashley or she/her)', () => {
+      expect(PASS4).toMatch(/rewritten_title/);
+      expect(PASS4).toMatch(/rewritten_blurb/);
+      expect(PASS4).toMatch(/third person/i);
+      expect(PASS4).toMatch(/Ashley/);
+      expect(PASS4).toMatch(/she\/her/);
+    });
   });
 });

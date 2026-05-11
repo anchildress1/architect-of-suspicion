@@ -130,8 +130,12 @@ export interface Pass3Result {
   selected: GeneratedClaim[];
 }
 
-/** Per-card claim-specific output of Pass 4: rewritten blurb + directional score. */
+/** Per-card claim-specific output of Pass 4: rewritten title + blurb + directional score. */
 export interface CardArgument {
+  /** Player-facing title rewritten to third person (Ashley or she/her).
+   *  Same rewrite posture as rewrittenBlurb — the runtime reads this instead
+   *  of public.cards.title so the player never sees first-person voice. */
+  rewrittenTitle: string;
   /** Player-facing blurb rewritten to create tension against this claim. */
   rewrittenBlurb: string;
   /** Directional score in [-1.0, 1.0]. Sign = direction (positive supports

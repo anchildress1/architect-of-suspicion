@@ -140,7 +140,7 @@ export async function getParamountCards(
   const { data: claimRows, error: claimErr } = await supabase
     .schema('suspicion')
     .from('claim_cards')
-    .select('card_id')
+    .select('card_id, rewritten_title, rewritten_blurb')
     .eq('claim_id', claimId)
     .eq('is_paramount', true);
 
@@ -149,14 +149,29 @@ export async function getParamountCards(
     return { cards: [], error: 'Failed to fetch paramount cards' };
   }
 
-  const cardIds = (claimRows ?? []).map((r) => (r as { card_id: string }).card_id);
+  // Cover letter prompt anchors on the player-facing surface (rewritten
+  // title + blurb). Pulling from public.cards would feed the model
+  // first-person source text the player never saw.
+  const claimRowsByCardId = new Map<string, { rewritten_title: string; rewritten_blurb: string }>();
+  for (const row of (claimRows ?? []) as Array<{
+    card_id: string;
+    rewritten_title: string;
+    rewritten_blurb: string;
+  }>) {
+    claimRowsByCardId.set(row.card_id, {
+      rewritten_title: row.rewritten_title,
+      rewritten_blurb: row.rewritten_blurb,
+    });
+  }
+
+  const cardIds = Array.from(claimRowsByCardId.keys());
   if (cardIds.length === 0) {
     return { cards: [], error: null };
   }
 
   const { data: cardRows, error: cardErr } = await supabase
     .from('cards')
-    .select('objectID, title, blurb, fact, category, signal')
+    .select('objectID, fact, category, signal')
     .in('objectID', cardIds)
     .is('deleted_at', null);
 
@@ -165,7 +180,19 @@ export async function getParamountCards(
     return { cards: [], error: 'Failed to fetch paramount cards' };
   }
 
-  const cards = (cardRows ?? []) as FullCard[];
+  type PublicPart = Omit<FullCard, 'title' | 'blurb'>;
+  const cards: FullCard[] = ((cardRows ?? []) as PublicPart[])
+    .map((c) => {
+      const claimRow = claimRowsByCardId.get(c.objectID);
+      return claimRow
+        ? ({
+            ...c,
+            title: claimRow.rewritten_title,
+            blurb: claimRow.rewritten_blurb,
+          } as FullCard)
+        : null;
+    })
+    .filter((c): c is FullCard => c !== null);
 
   // Consistency check: every claim_cards.is_paramount row should resolve to a
   // live public.cards row. The on_card_soft_delete trigger

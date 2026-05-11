@@ -54,25 +54,55 @@ async function loadPick(pickId: string, sessionId: string): Promise<PickRow> {
   return data as PickRow;
 }
 
-async function loadFullCard(cardId: string): Promise<FullCard> {
-  const { data, error: cardError } = await getSupabase()
-    .from('cards')
-    .select('objectID, title, blurb, fact, category, signal')
-    .eq('objectID', cardId)
-    .is('deleted_at', null)
-    .maybeSingle();
+async function loadFullCard(cardId: string, claimId: string): Promise<FullCard> {
+  const supabase = getSupabase();
 
-  if (cardError) {
-    console.error('[reaction] cards read failed:', cardError.message);
+  // The reaction prompt frames title+blurb as the "VISIBLE SURFACE" the model
+  // and the player share — quoting source the player can't see breaks the
+  // game's authority contract. The player sees rewritten_title and
+  // rewritten_blurb from suspicion.claim_cards, so the FullCard handed to
+  // the prompt must use the same values. Only `fact`, `category`, and
+  // `signal` still come from public.cards.
+  const [publicRes, claimRes] = await Promise.all([
+    supabase
+      .from('cards')
+      .select('objectID, fact, category, signal')
+      .eq('objectID', cardId)
+      .is('deleted_at', null)
+      .maybeSingle(),
+    supabase
+      .schema('suspicion')
+      .from('claim_cards')
+      .select('rewritten_title, rewritten_blurb')
+      .eq('claim_id', claimId)
+      .eq('card_id', cardId)
+      .maybeSingle(),
+  ]);
+
+  if (publicRes.error) {
+    console.error('[reaction] cards read failed:', publicRes.error.message);
     error(500, 'Failed to read card');
   }
-  if (!data) error(404, 'Card not found');
-  return data as FullCard;
+  if (!publicRes.data) error(404, 'Card not found');
+
+  if (claimRes.error) {
+    console.error('[reaction] claim_cards read failed:', claimRes.error.message);
+    error(500, 'Failed to read card');
+  }
+  if (!claimRes.data) error(404, 'Card not found for this claim');
+
+  const publicPart = publicRes.data as Omit<FullCard, 'title' | 'blurb'>;
+  const { rewritten_title, rewritten_blurb } = claimRes.data as {
+    rewritten_title: string;
+    rewritten_blurb: string;
+  };
+  return { ...publicPart, title: rewritten_title, blurb: rewritten_blurb };
 }
 
 async function loadHistory(
   sessionId: string,
   excludePickId: string,
+  claimId: string,
 ): Promise<Array<{ card_id: string; card_title: string; classification: Classification }>> {
   const supabase = getSupabase();
   const { data: picks, error: picksErr } = await supabase
@@ -92,10 +122,15 @@ async function loadHistory(
   if (rows.length === 0) return [];
 
   const ids = rows.map((p) => p.card_id as string);
+  // History titles come from suspicion.claim_cards.rewritten_title so the
+  // model's references to prior exhibits match what the player actually saw
+  // when they ruled them.
   const { data: titleRows, error: titlesErr } = await supabase
-    .from('cards')
-    .select('objectID, title')
-    .in('objectID', ids);
+    .schema('suspicion')
+    .from('claim_cards')
+    .select('card_id, rewritten_title')
+    .eq('claim_id', claimId)
+    .in('card_id', ids);
 
   if (titlesErr) {
     console.error('[reaction] history titles read failed:', titlesErr.message);
@@ -103,7 +138,7 @@ async function loadHistory(
   }
 
   const titlesById = Object.fromEntries(
-    (titleRows ?? []).map((r) => [r.objectID as string, r.title as string]),
+    (titleRows ?? []).map((r) => [r.card_id as string, r.rewritten_title as string]),
   );
 
   return rows.map((p) => ({
@@ -231,8 +266,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
   let history: Array<{ card_id: string; card_title: string; classification: Classification }>;
   try {
     [card, history] = await Promise.all([
-      loadFullCard(pick.card_id),
-      loadHistory(session.sessionId, pick.id),
+      loadFullCard(pick.card_id, session.claimId),
+      loadHistory(session.sessionId, pick.id, session.claimId),
     ]);
   } catch (err) {
     await completeReactionGeneration(pick.id, claim.lockedAt, null);

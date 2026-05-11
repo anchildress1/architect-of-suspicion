@@ -31,12 +31,13 @@ type ClaimRow = {
   card_id: string;
   ambiguity: number;
   surprise: number;
+  rewritten_title: string;
   rewritten_blurb: string;
 };
 
 type CardRow = {
   objectID: string;
-  title: string;
+  title?: string;
   category: string;
 };
 
@@ -85,9 +86,27 @@ describe('fetchClaimDeck', () => {
   it('returns Witness-ordered cards (least ambiguity*surprise first)', async () => {
     setupQueries(
       [
-        { card_id: 'aaa', ambiguity: 5, surprise: 5, rewritten_blurb: 'high charge' },
-        { card_id: 'bbb', ambiguity: 1, surprise: 2, rewritten_blurb: 'low charge' },
-        { card_id: 'ccc', ambiguity: 3, surprise: 3, rewritten_blurb: 'mid charge' },
+        {
+          card_id: 'aaa',
+          ambiguity: 5,
+          surprise: 5,
+          rewritten_title: 'High title',
+          rewritten_blurb: 'high charge',
+        },
+        {
+          card_id: 'bbb',
+          ambiguity: 1,
+          surprise: 2,
+          rewritten_title: 'Low title',
+          rewritten_blurb: 'low charge',
+        },
+        {
+          card_id: 'ccc',
+          ambiguity: 3,
+          surprise: 3,
+          rewritten_title: 'Mid title',
+          rewritten_blurb: 'mid charge',
+        },
       ],
       [
         { objectID: 'aaa', title: 'High', category: 'Decisions' },
@@ -104,7 +123,18 @@ describe('fetchClaimDeck', () => {
   });
 
   it('uses claim_id in step-1 query and category + deleted_at in step-2 query', async () => {
-    setupQueries([{ card_id: VALID_CARD_ID, ambiguity: 1, surprise: 1, rewritten_blurb: 'x' }], []);
+    setupQueries(
+      [
+        {
+          card_id: VALID_CARD_ID,
+          ambiguity: 1,
+          surprise: 1,
+          rewritten_title: 't',
+          rewritten_blurb: 'x',
+        },
+      ],
+      [],
+    );
 
     await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
 
@@ -116,8 +146,8 @@ describe('fetchClaimDeck', () => {
   it('breaks ties deterministically by objectID', async () => {
     setupQueries(
       [
-        { card_id: 'z-id', ambiguity: 2, surprise: 3, rewritten_blurb: 'z' },
-        { card_id: 'a-id', ambiguity: 2, surprise: 3, rewritten_blurb: 'a' },
+        { card_id: 'z-id', ambiguity: 2, surprise: 3, rewritten_title: 'Z', rewritten_blurb: 'z' },
+        { card_id: 'a-id', ambiguity: 2, surprise: 3, rewritten_title: 'A', rewritten_blurb: 'a' },
       ],
       [
         { objectID: 'z-id', title: 'Z', category: 'Awards' },
@@ -132,13 +162,41 @@ describe('fetchClaimDeck', () => {
 
   it('substitutes rewritten_blurb for the player-facing blurb', async () => {
     setupQueries(
-      [{ card_id: VALID_CARD_ID, ambiguity: 3, surprise: 3, rewritten_blurb: 'pulls two ways' }],
+      [
+        {
+          card_id: VALID_CARD_ID,
+          ambiguity: 3,
+          surprise: 3,
+          rewritten_title: 'Mid title',
+          rewritten_blurb: 'pulls two ways',
+        },
+      ],
       [{ objectID: VALID_CARD_ID, title: 'Card', category: 'Awards' }],
     );
 
     const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
 
     expect(cards[0].blurb).toBe('pulls two ways');
+  });
+
+  it('substitutes rewritten_title for the player-facing title (never public.cards.title)', async () => {
+    setupQueries(
+      [
+        {
+          card_id: VALID_CARD_ID,
+          ambiguity: 3,
+          surprise: 3,
+          rewritten_title: 'Ashley archived the experiment',
+          rewritten_blurb: 'pulls two ways',
+        },
+      ],
+      // public.cards.title (first-person source) — must NOT bleed through.
+      [{ objectID: VALID_CARD_ID, title: 'I archived the experiment', category: 'Awards' }],
+    );
+
+    const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
+
+    expect(cards[0].title).toBe('Ashley archived the experiment');
   });
 
   it('rejects invalid claim_id without hitting the DB', async () => {
@@ -180,7 +238,15 @@ describe('fetchClaimDeck', () => {
 
   it('returns error and empty cards when step-2 (cards) fails', async () => {
     setupQueries(
-      [{ card_id: VALID_CARD_ID, ambiguity: 2, surprise: 2, rewritten_blurb: 'x' }],
+      [
+        {
+          card_id: VALID_CARD_ID,
+          ambiguity: 2,
+          surprise: 2,
+          rewritten_title: 't',
+          rewritten_blurb: 'x',
+        },
+      ],
       null,
       null,
       { message: 'cards-down' },
@@ -203,7 +269,18 @@ describe('fetchClaimDeck', () => {
   });
 
   it('skips claim_cards rows whose card_id has no match in public.cards', async () => {
-    setupQueries([{ card_id: 'dangling', ambiguity: 2, surprise: 2, rewritten_blurb: 'x' }], []);
+    setupQueries(
+      [
+        {
+          card_id: 'dangling',
+          ambiguity: 2,
+          surprise: 2,
+          rewritten_title: 't',
+          rewritten_blurb: 'x',
+        },
+      ],
+      [],
+    );
 
     const { cards } = await fetchClaimDeck(VALID_CLAIM_ID, 'Awards');
 
@@ -213,8 +290,8 @@ describe('fetchClaimDeck', () => {
   it('skips cards filtered out by category in step-2', async () => {
     setupQueries(
       [
-        { card_id: 'aaa', ambiguity: 1, surprise: 1, rewritten_blurb: 'x' },
-        { card_id: 'bbb', ambiguity: 1, surprise: 1, rewritten_blurb: 'y' },
+        { card_id: 'aaa', ambiguity: 1, surprise: 1, rewritten_title: 'A', rewritten_blurb: 'x' },
+        { card_id: 'bbb', ambiguity: 1, surprise: 1, rewritten_title: 'B', rewritten_blurb: 'y' },
       ],
       // step-2 only returns the matching-category card
       [{ objectID: 'aaa', title: 'A', category: 'Decisions' }],
