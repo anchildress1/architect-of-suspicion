@@ -31,20 +31,19 @@
     {#each gameState.current.feed as entry (entry.id)}
       <div class="feed-entry feed-{entry.type}">
         <p class="feed-time">{formatTime(entry.timestamp)}</p>
-        {#if entry.type === 'reaction'}
-          <!-- Architect reactions tokenize allowlisted <em>/<strong>;
-               anything else (markdown, disallowed tags, attributes) renders
-               as literal text. No {@html} = no XSS surface. -->
-          <p class="feed-text">
-            {#each tokenizeReaction(entry.text) as segment, i (i)}
-              {#if segment.type === 'em'}<em>{segment.value}</em>
-              {:else if segment.type === 'strong'}<strong>{segment.value}</strong>
-              {:else}{segment.value}{/if}
-            {/each}
-          </p>
-        {:else}
-          <p class="feed-text">{entry.text}</p>
-        {/if}
+        <!-- All entry types tokenize allowlisted <em>/<strong>. Narration
+             shares The Architect's system prompt and emits emphasis tags;
+             rendering raw would leak them as literal characters. Action
+             entries are programmer-set strings with no tags, so the
+             tokenizer passes them through as a single text segment. No
+             {@html} = no XSS surface. -->
+        <p class="feed-text">
+          {#each tokenizeReaction(entry.text) as segment, i (i)}
+            {#if segment.type === 'em'}<em>{segment.value}</em>
+            {:else if segment.type === 'strong'}<strong>{segment.value}</strong>
+            {:else}{segment.value}{/if}
+          {/each}
+        </p>
       </div>
     {/each}
   {/if}
