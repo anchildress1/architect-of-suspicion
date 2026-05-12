@@ -7,7 +7,7 @@ function makeModels(overrides: Partial<Config['models']> = {}): Config['models']
     pass1: 'claude-sonnet-4-6',
     pass2: 'gpt-5.4',
     pass3: 'gpt-5.4-mini',
-    pass4: 'gemini-3.1-flash-lite-preview',
+    pass4: 'gemini-3.1-flash-lite',
     ...overrides,
   };
 }

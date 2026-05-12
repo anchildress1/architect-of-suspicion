@@ -34,13 +34,13 @@ export const config = {
     // better-shaped provocative claims in our tests. Prompt is tuned for
     // Claude's XML-ish section tags; see pass2-claims.ts.
     pass2: str('CLAIM_ENGINE_PASS2_MODEL', 'claude-opus-4-7'),
-    // Pass 3: bulk structured scoring. gemini-3-flash-preview at ~$0.50/M
+    // Pass 3: bulk structured scoring. gemini-3.1-flash-lite at ~$0.50/M
     // input + $3/M output is roughly 5x cheaper than gpt-5.4 for the same
     // task and Flash's enum-constrained JSON output handles the 50-card
     // batch shape reliably. Prompt was originally tuned for OpenAI's CTCO
     // format but Flash respects the same structure. Override to gpt-5.4
     // if Flash scoring quality drops on borderline cards.
-    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gemini-3-flash-preview'),
+    pass3: str('CLAIM_ENGINE_PASS3_MODEL', 'gemini-3.1-flash-lite'),
     // Pass 4: adversarial — MUST be a different vendor than Pass 2. With
     // Pass 2 on Anthropic (Opus 4.7), gpt-5.4-mini satisfies that
     // constraint at ~$0.75/M input + $4.50/M output, roughly 3x cheaper

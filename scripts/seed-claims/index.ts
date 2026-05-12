@@ -103,7 +103,7 @@ export async function main(): Promise<void> {
     })());
 
   // pass3-score-v4: bumped because the default Pass 3 model changed
-  // (gpt-5.4 → gemini-3-flash-preview) and the topCards cap was removed
+  // (gpt-5.4 → gemini-3.1-flash-lite) and the topCards cap was removed
   // (default 50 → 10000). Cached scores from a different model are
   // suspect; cached `selected` arrays were ranked against the old
   // top-50-cap pool shape.

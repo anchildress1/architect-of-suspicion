@@ -4,7 +4,7 @@
  *  Output: top-N claims ranked by card-pool quality, with their claim-specific
  *          card pools — ready for Pass 4 gameplay validation.
  *
- *  Model:  gemini-3-flash-preview — bulk structured scoring at ~5x lower
+ *  Model:  gemini-3.1-flash-lite — bulk structured scoring at ~5x lower
  *          cost than gpt-5.4 for the same task. Flash respects the
  *          enum-constrained card_id schema reliably; the post-parse
  *          asserts in assertBatchScores remain the correctness backstop.
@@ -82,7 +82,7 @@ Strict JSON matching the provided schema. One object per card. No prose.
 /** Build a batch-specific schema that constrains `card_id` to the exact UUID
  *  set in the batch via JSON Schema `enum`. Drops `minItems`/`maxItems` and
  *  `additionalProperties: false` to stay inside Gemini's `responseJsonSchema`
- *  validator (Pass 3 now runs on gemini-3-flash-preview; the prior gpt-5.4
+ *  validator (Pass 3 now runs on gemini-3.1-flash-lite; the prior gpt-5.4
  *  configuration accepted those keywords under strict mode). Post-parse
  *  asserts in assertBatchScores below enforce batch-size and required-field
  *  presence in JS, so correctness is preserved without provider-side
