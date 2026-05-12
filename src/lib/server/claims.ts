@@ -148,26 +148,16 @@ export async function getParamountCards(
     console.error('[claims] getParamountCards (step 1) failed:', claimErr.message);
     return { cards: [], error: 'Failed to fetch paramount cards' };
   }
+  if (!claimRows || claimRows.length === 0) {
+    return { cards: [], error: null };
+  }
 
   // Cover letter prompt anchors on the player-facing surface (rewritten
   // title + blurb). Pulling from public.cards would feed the model
   // first-person source text the player never saw.
-  const claimRowsByCardId = new Map<string, { rewritten_title: string; rewritten_blurb: string }>();
-  for (const row of (claimRows ?? []) as Array<{
-    card_id: string;
-    rewritten_title: string;
-    rewritten_blurb: string;
-  }>) {
-    claimRowsByCardId.set(row.card_id, {
-      rewritten_title: row.rewritten_title,
-      rewritten_blurb: row.rewritten_blurb,
-    });
-  }
-
-  const cardIds = Array.from(claimRowsByCardId.keys());
-  if (cardIds.length === 0) {
-    return { cards: [], error: null };
-  }
+  type ClaimRow = { card_id: string; rewritten_title: string; rewritten_blurb: string };
+  const typedClaimRows = claimRows as ClaimRow[];
+  const cardIds = typedClaimRows.map((r) => r.card_id);
 
   const { data: cardRows, error: cardErr } = await supabase
     .from('cards')
@@ -181,18 +171,20 @@ export async function getParamountCards(
   }
 
   type PublicPart = Omit<FullCard, 'title' | 'blurb'>;
-  const cards: FullCard[] = ((cardRows ?? []) as PublicPart[])
-    .map((c) => {
-      const claimRow = claimRowsByCardId.get(c.objectID);
-      return claimRow
-        ? ({
-            ...c,
-            title: claimRow.rewritten_title,
-            blurb: claimRow.rewritten_blurb,
-          } as FullCard)
-        : null;
-    })
-    .filter((c): c is FullCard => c !== null);
+  const cardMap = new Map<string, PublicPart>(
+    (cardRows as PublicPart[]).map((c) => [c.objectID, c]),
+  );
+
+  const cards: FullCard[] = [];
+  for (const row of typedClaimRows) {
+    const card = cardMap.get(row.card_id);
+    if (!card) continue;
+    cards.push({
+      ...card,
+      title: row.rewritten_title,
+      blurb: row.rewritten_blurb,
+    });
+  }
 
   // Consistency check: every claim_cards.is_paramount row should resolve to a
   // live public.cards row. The on_card_soft_delete trigger

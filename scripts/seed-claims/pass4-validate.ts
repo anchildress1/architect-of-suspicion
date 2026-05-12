@@ -1,17 +1,17 @@
 /** Pass 4: Claim Validation + Card Rewrite.
  *
  *  Input:  claims (Pass 2) + scored pairs (Pass 3) + the eligible card pools.
- *  Output: validated claims with final card pools, AND claim-specific blurb
- *          rewrites for every surviving card.
+ *  Output: validated claims with final card pools, AND claim-specific title
+ *          + blurb rewrites for every surviving card.
  *
  *  Batched: each claim's card pool is split into chunks of `pass4Batch` cards
- *  (default 15) and sent in separate calls. A hiccup on one chunk retries
+ *  (default 20) and sent in separate calls. A hiccup on one chunk retries
  *  just that chunk — not the whole claim. Output schema is trimmed to only
- *  the fields we persist (rewritten_blurb, ai_score, notes) — proof/objection
- *  were scratch-reasoning tokens the DB never stored. Each batch's schema
- *  pins `card_id` to an enum of that batch's UUIDs and uses minItems/maxItems
- *  equal to the batch length so the model physically cannot skip, duplicate,
- *  or invent an ID.
+ *  the fields we persist (rewritten_title, rewritten_blurb, ai_score, notes)
+ *  — proof/objection were scratch-reasoning tokens the DB never stored. Each
+ *  batch's schema pins `card_id` to an enum of that batch's UUIDs and uses
+ *  minItems/maxItems equal to the batch length so the model physically cannot
+ *  skip, duplicate, or invent an ID.
  */
 
 import { clientFor } from './clients';

@@ -412,6 +412,17 @@ describe('getParamountCards', () => {
     expect(mockPublicFrom).not.toHaveBeenCalled();
   });
 
+  it('returns empty array (no step 2 query) when claim_cards data is null without error', async () => {
+    // Defensive guard: PostgREST docs say `data` is non-null on success, but
+    // the type is `T[] | null`. If the driver ever returns null without an
+    // error, treat it as "no paramount cards" rather than crashing on null.
+    setup({ claimRows: null });
+    const { cards, error } = await getParamountCards('claim-1');
+    expect(cards).toEqual([]);
+    expect(error).toBeNull();
+    expect(mockPublicFrom).not.toHaveBeenCalled();
+  });
+
   it('returns error string and empty cards on step 1 failure', async () => {
     setup({ claimRows: null, claimErr: { message: 'pg-down' } });
     const { cards, error } = await getParamountCards('claim-1');
