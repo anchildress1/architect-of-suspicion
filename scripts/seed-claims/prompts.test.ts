@@ -203,5 +203,18 @@ describe('seed prompts: single-truth + recruiter-safety invariants', () => {
       expect(PASS4).toMatch(/Ashley/);
       expect(PASS4).toMatch(/she\/her/);
     });
+
+    it('binds the blurb to exhibit register, not narrator argument', () => {
+      // The earlier prompt told the model to write blurbs "creating
+      // claim-specific tension," which produced comparative meta-commentary
+      // like "that reads less like X and more like Y" — the narrator
+      // arguing the verdict instead of describing the work. Replacement
+      // framing: court-exhibit voice, self-containment test, weight lives
+      // in the score and in fact selection, never in the prose.
+      expect(PASS4).toMatch(/exhibit/i);
+      expect(PASS4).toMatch(/self[- ]contain/i);
+      expect(PASS4).toMatch(/neutral observation/i);
+      expect(PASS4).not.toMatch(/creating claim[- ]specific tension/i);
+    });
   });
 });

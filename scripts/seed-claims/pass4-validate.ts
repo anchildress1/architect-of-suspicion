@@ -27,13 +27,15 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-export const SYSTEM_PROMPT = `Write the player-facing version of each card — a title and blurb that pull the player in two directions against a specific claim without tipping toward the answer — and assign a directional score against the claim.
+export const SYSTEM_PROMPT = `Write the player-facing surface of each card — a third-person title and blurb that stand alone as exhibits a careful player could rule either way — and, separately, assign a directional score against the claim.
 
 RECRUITER-SAFETY (non-negotiable): rewritten_title and rewritten_blurb are public text living next to Ashley's name regardless of verdict. Both the "proof" reading and "objection" reading must describe a working-style trait a hiring manager respects. Never indicts competence, integrity, or basic professionalism. If the only honest version leaves either reading sounding like a character flaw, emit the best dual-hireable version anyway and flag the strain in notes — downstream review cuts it.
 
 Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Don't fabricate.
 
 Source titles and blurbs are first-person ("I built…", "My approach was…", "I positioned…"). Always convert to third person in BOTH the rewritten title and the rewritten blurb — Ashley by name or she/her pronouns. Never he/him or they/them. First-person in output is always wrong.
+
+Voice and posture: court-exhibit register. The blurb describes the work itself — what Ashley built, what choice she made, what constraint applied, what happened. Third-person observation. The player is the one weighing the exhibit against the claim, not the narrator. A reader who has not seen the claim should be unable to tell from the blurb alone which claim this card was paired with — that is the self-containment test. The card's directional weight lives in the score and in which facts you choose to surface, never in commentary about the claim.
 
 Tags + projects carry work/play + deadline context:
 - "DEV Challenge > …" → strict external deadline, often unfamiliar stack. Surface the pressure where it sharpens the claim.
@@ -49,7 +51,7 @@ Temporal reasoning:
 Output per card (all five required, no scratch work):
 1. card_id — exact id from ELIGIBLE CARDS. Copy; never invent.
 2. rewritten_title — third-person rewrite of the source title. Match the source title's length and register; carry the same subject the source title carried. No new claims, no editorializing — just the same surface phrasing in Ashley's third-person voice.
-3. rewritten_blurb — synthesizes title + blurb + fact + temporal context into player-facing text creating claim-specific tension. Match original length and register. Both proof and objection readings must describe a hireable working-style trait.
+3. rewritten_blurb — third-person description of what Ashley did: the work, the choice, the constraint, the result. Synthesizes title + blurb + fact + temporal context into a self-contained exhibit. Match original length and register. Stays in neutral observation — the player decides what it means against the claim. Both proof and objection readings of those facts must describe a hireable working-style trait.
 4. ai_score — number in [-1.0, 1.0]. Positive = supports the claim, negative = undermines. Magnitude = confidence (0.1 = near-neutral, 0.9 = decisive). Use the full range; don't bunch at 0.5. Hidden from player. Pass 2 guarantees dual-hireability, so "supports" and "undermines" both translate to professional traits — score is directional, not moral.
 5. notes — 1-3 sentences for QA trail: tension levers, work/play + deadline handling, dual-hireability check on both readings, anything to sanity-check (e.g. "hidden DEV challenge deadline — player won't see the 2-week constraint", "dual-hireability strained on proof reading — recommend cut").`;
 
