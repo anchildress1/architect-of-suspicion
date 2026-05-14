@@ -17,6 +17,7 @@ export interface ClaimCardSeedRow {
   ambiguity: number;
   surprise: number;
   ai_score: number;
+  rewritten_title: string;
   rewritten_blurb: string;
   /** Server-only auditor note. Persisted to `suspicion.claim_cards.notes`. */
   notes: string;
@@ -125,6 +126,11 @@ export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
         );
       }
       assertAiScore(arg.aiScore, cardId, input.claim);
+      if (typeof arg.rewrittenTitle !== 'string' || arg.rewrittenTitle.trim().length === 0) {
+        throw new Error(
+          `Missing rewritten_title for card ${cardId} on claim "${input.claim.claim_text}" (${input.claim.id})`,
+        );
+      }
       if (typeof arg.notes !== 'string' || arg.notes.trim().length === 0) {
         throw new Error(
           `Missing notes for card ${cardId} on claim "${input.claim.claim_text}" (${input.claim.id})`,
@@ -136,6 +142,7 @@ export function buildSeedPayload(inputs: PersistInput[]): ClaimSeedRow[] {
         ambiguity: score.ambiguity,
         surprise: score.surprise,
         ai_score: arg.aiScore,
+        rewritten_title: arg.rewrittenTitle,
         rewritten_blurb: arg.rewrittenBlurb,
         notes: arg.notes,
         is_paramount: arg.isParamount === true,

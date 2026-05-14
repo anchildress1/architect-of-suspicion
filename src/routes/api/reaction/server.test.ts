@@ -68,9 +68,11 @@ interface MockOptions {
   pickError?: unknown;
   card?: Record<string, unknown> | null;
   cardError?: unknown;
+  claimCard?: Record<string, unknown> | null;
+  claimCardError?: unknown;
   history?: Array<{ id: string; card_id: string; classification: string }>;
   historyError?: unknown;
-  titleRows?: Array<{ objectID: string; title: string }>;
+  titleRows?: Array<{ card_id: string; rewritten_title: string }>;
   titlesError?: unknown;
   completionError?: unknown;
   /** Override the result of tryClaimReactionLock's atomic UPDATE.
@@ -95,11 +97,14 @@ const defaultPick = {
 
 const defaultCard = {
   objectID: validCardId,
-  title: 'Refactored to escape',
-  blurb: 'Player blurb',
   fact: 'Hidden context.',
   category: 'Decisions',
   signal: 5,
+};
+
+const defaultClaimCard = {
+  rewritten_title: 'Refactored to escape',
+  rewritten_blurb: 'Player blurb',
 };
 
 function setupSupabase(opts: MockOptions = {}) {
@@ -131,11 +136,11 @@ function setupSupabase(opts: MockOptions = {}) {
     return Promise.resolve({ data: null, error: null });
   });
 
-  // public.cards — full card lookup
+  // public.cards — full card lookup (no longer used for title/blurb;
+  // those come from suspicion.claim_cards). Only the loadFullCard call
+  // path goes through here now (eq.is.maybeSingle).
   mockFrom.mockImplementation((table: string) => {
     if (table === 'cards') {
-      // Heuristic: full-card path uses .eq().is().maybeSingle();
-      // history-titles path uses .in()
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -145,10 +150,6 @@ function setupSupabase(opts: MockOptions = {}) {
                 error: opts.cardError ?? null,
               }),
             }),
-          }),
-          in: vi.fn().mockResolvedValue({
-            data: opts.titleRows ?? [],
-            error: opts.titlesError ?? null,
           }),
         }),
       };
@@ -172,7 +173,38 @@ function setupSupabase(opts: MockOptions = {}) {
   const lockClaimSucceeds = opts.lockClaim ?? true;
   const cachedAfterRace = lockClaimSucceeds === 'cached';
   let picksCallCount = 0;
+  let claimCardsCallCount = 0;
   mockSchemaFrom.mockImplementation((table: string) => {
+    if (table === 'claim_cards') {
+      claimCardsCallCount++;
+      // loadFullCard claim_cards lookup: select(rewritten_title,
+      // rewritten_blurb).eq.eq.maybeSingle. Comes before loadHistory.
+      if (claimCardsCallCount === 1) {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: opts.claimCard === undefined ? defaultClaimCard : opts.claimCard,
+                  error: opts.claimCardError ?? null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      // loadHistory titles lookup: select(card_id, rewritten_title).eq.in
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: opts.titleRows ?? [],
+              error: opts.titlesError ?? null,
+            }),
+          }),
+        }),
+      };
+    }
     if (table !== 'picks') return {};
     picksCallCount++;
     if (picksCallCount === 1) {
@@ -389,6 +421,27 @@ describe('POST /api/reaction', () => {
     });
   });
 
+  it('pulls the current card title and blurb from suspicion.claim_cards (rewritten, not public)', async () => {
+    // VISIBLE SURFACE in the reaction prompt must match what the player
+    // saw on the card. public.cards is first-person source; the player
+    // sees the third-person rewrite from suspicion.claim_cards. Quoting
+    // from public.cards would feed the model phrasing the player never
+    // saw and break the card-authority contract.
+    setupSupabase({
+      claimCard: {
+        rewritten_title: 'Ashley shipped a rough draft',
+        rewritten_blurb: 'Pragmatic over polished, she pushed before the polish landed.',
+      },
+    });
+    mockStream.mockReturnValue(makeFakeStream(['ok']));
+
+    await POST(makeRequest({ pick_id: validPickId }));
+
+    const userPrompt = mockStream.mock.calls[0][0].messages[0].content as string;
+    expect(userPrompt).toContain('Ashley shipped a rough draft');
+    expect(userPrompt).toContain('Pragmatic over polished, she pushed before the polish landed.');
+  });
+
   it('threads pick history (with resolved titles) into the reaction prompt', async () => {
     setupSupabase({
       history: [
@@ -398,8 +451,14 @@ describe('POST /api/reaction', () => {
           classification: 'proof',
         },
       ],
+      // History titles come from suspicion.claim_cards.rewritten_title so
+      // every cited prior exhibit reads in Ashley's third-person voice —
+      // matches what the player saw when they ruled it.
       titleRows: [
-        { objectID: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', title: 'Refactored to escape' },
+        {
+          card_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          rewritten_title: 'Ashley archived the experiment',
+        },
       ],
     });
     mockStream.mockReturnValue(makeFakeStream(['ok']));
@@ -408,7 +467,7 @@ describe('POST /api/reaction', () => {
     await readAll(res);
 
     const userPrompt = mockStream.mock.calls[0][0].messages[0].content as string;
-    expect(userPrompt).toContain('Refactored to escape');
+    expect(userPrompt).toContain('Ashley archived the experiment');
     expect(userPrompt).toContain('proof');
   });
 

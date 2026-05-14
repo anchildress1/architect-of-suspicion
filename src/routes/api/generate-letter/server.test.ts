@@ -62,22 +62,36 @@ const mockPicks = [
   { card_id: 'card-3', classification: 'dismiss' },
 ];
 
+/** public.cards rows now exclude title and blurb — those come from
+ *  suspicion.claim_cards (rewritten). The mock returns only the fields the
+ *  consumer still pulls from public.cards. */
 const mockCards = [
   {
     objectID: 'card-1',
-    title: 'AI Tools Usage',
-    blurb: 'AI usage',
     fact: 'Ashley uses AI tools.',
     category: 'Philosophy',
     signal: 5,
   },
   {
     objectID: 'card-2',
-    title: 'Manual Testing',
-    blurb: 'Manual processes',
     fact: 'Ashley tests by hand too.',
     category: 'Engineering',
     signal: 3,
+  },
+];
+
+/** suspicion.claim_cards rows for the same cards — supply rewritten title
+ *  and blurb so the consumer can hydrate the FullCard. */
+const mockClaimCardRows = [
+  {
+    card_id: 'card-1',
+    rewritten_title: 'AI Tools Usage',
+    rewritten_blurb: 'AI usage',
+  },
+  {
+    card_id: 'card-2',
+    rewritten_title: 'Manual Testing',
+    rewritten_blurb: 'Manual processes',
   },
 ];
 
@@ -98,8 +112,20 @@ interface MockOptions {
   /** Override the paramount-cards rows from suspicion.claim_cards. Default
    *  is both mockCards' ids so the prompt has gap/citation inputs. Empty
    *  array exercises the missing-paramount 500 path. */
-  paramountRows?: Array<{ card_id: string }>;
+  paramountRows?: Array<{
+    card_id: string;
+    rewritten_title: string;
+    rewritten_blurb: string;
+  }>;
   paramountRowsError?: unknown;
+  /** Override the claim_cards rows for loadCardsById (ruled-extras lookup).
+   *  Defaults to mockClaimCardRows. */
+  ruledClaimCardRows?: Array<{
+    card_id: string;
+    rewritten_title: string;
+    rewritten_blurb: string;
+  }>;
+  ruledClaimCardRowsError?: unknown;
   /** Override the public.cards rows returned for the paramount-card lookup
    *  (step 2 of getParamountCards). Defaults to mockCards. */
   paramountCardLookup?: unknown[];
@@ -114,7 +140,10 @@ const defaultClaimsRow = {
   desired_verdict: 'pardon',
 };
 
-const defaultParamountRows = [{ card_id: 'card-1' }, { card_id: 'card-2' }];
+const defaultParamountRows = [
+  { card_id: 'card-1', rewritten_title: 'AI Tools Usage', rewritten_blurb: 'AI usage' },
+  { card_id: 'card-2', rewritten_title: 'Manual Testing', rewritten_blurb: 'Manual processes' },
+];
 
 function setupMocks(options: MockOptions = {}) {
   sessionUpdates.length = 0;
@@ -159,6 +188,7 @@ function setupMocks(options: MockOptions = {}) {
   });
 
   let sessionUpdateCallCount = 0;
+  let claimCardsCallCount = 0;
   mockSchemaFrom.mockImplementation((table: string) => {
     if (table === 'picks') {
       return {
@@ -182,13 +212,29 @@ function setupMocks(options: MockOptions = {}) {
       };
     }
     if (table === 'claim_cards') {
-      // getParamountCards: select(...).eq('claim_id', ...).eq('is_paramount', true)
+      claimCardsCallCount++;
+      // 1st call: getParamountCards step 1 — select(card_id,
+      // rewritten_title, rewritten_blurb).eq(claim_id).eq(is_paramount).
+      if (claimCardsCallCount === 1) {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: paramountRows,
+                error: options.paramountRowsError ?? null,
+              }),
+            }),
+          }),
+        };
+      }
+      // 2nd call: loadCardsById ruled-extras — select(card_id,
+      // rewritten_title, rewritten_blurb).eq(claim_id).in(card_id).
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({
-              data: paramountRows,
-              error: options.paramountRowsError ?? null,
+            in: vi.fn().mockResolvedValue({
+              data: options.ruledClaimCardRows ?? mockClaimCardRows,
+              error: options.ruledClaimCardRowsError ?? null,
             }),
           }),
         }),

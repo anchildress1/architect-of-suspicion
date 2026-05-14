@@ -66,20 +66,59 @@ async function loadRuledPicks(sessionId: string): Promise<RuledPick[]> {
     }));
 }
 
-async function loadCardsById(ids: string[]): Promise<Record<string, FullCard>> {
+async function loadCardsById(ids: string[], claimId: string): Promise<Record<string, FullCard>> {
   if (ids.length === 0) return {};
-  const { data, error: cardsError } = await getSupabase()
-    .from('cards')
-    .select('objectID, title, blurb, fact, category, signal')
-    .in('objectID', ids)
-    .is('deleted_at', null);
+  const supabase = getSupabase();
 
-  if (cardsError) {
-    console.error('[generate-letter] cards read failed:', cardsError.message);
+  // Cover letter prompts anchor on the player-facing surface. Title and
+  // blurb come from suspicion.claim_cards (rewritten); fact/category/signal
+  // come from public.cards.
+  const [publicRes, claimRes] = await Promise.all([
+    supabase
+      .from('cards')
+      .select('objectID, fact, category, signal')
+      .in('objectID', ids)
+      .is('deleted_at', null),
+    supabase
+      .schema('suspicion')
+      .from('claim_cards')
+      .select('card_id, rewritten_title, rewritten_blurb')
+      .eq('claim_id', claimId)
+      .in('card_id', ids),
+  ]);
+
+  if (publicRes.error) {
+    console.error('[generate-letter] cards read failed:', publicRes.error.message);
+    error(500, 'Failed to fetch cards');
+  }
+  if (claimRes.error) {
+    console.error('[generate-letter] claim_cards read failed:', claimRes.error.message);
     error(500, 'Failed to fetch cards');
   }
 
-  return Object.fromEntries((data ?? []).map((c) => [c.objectID as string, c as FullCard]));
+  const claimRowsById = new Map<string, { rewritten_title: string; rewritten_blurb: string }>();
+  for (const row of (claimRes.data ?? []) as Array<{
+    card_id: string;
+    rewritten_title: string;
+    rewritten_blurb: string;
+  }>) {
+    claimRowsById.set(row.card_id, {
+      rewritten_title: row.rewritten_title,
+      rewritten_blurb: row.rewritten_blurb,
+    });
+  }
+
+  const out: Record<string, FullCard> = {};
+  for (const c of (publicRes.data ?? []) as Array<Omit<FullCard, 'title' | 'blurb'>>) {
+    const claimRow = claimRowsById.get(c.objectID);
+    if (!claimRow) continue;
+    out[c.objectID] = {
+      ...c,
+      title: claimRow.rewritten_title,
+      blurb: claimRow.rewritten_blurb,
+    };
+  }
+  return out;
 }
 
 /**
@@ -197,7 +236,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress, cookies 
   }
 
   const ruledPicks = await loadRuledPicks(session.sessionId);
-  const pickedCards = await loadCardsById(ruledPicks.map((p) => p.card_id));
+  const pickedCards = await loadCardsById(
+    ruledPicks.map((p) => p.card_id),
+    session.claimId,
+  );
 
   const missingCards = ruledPicks.filter((p) => !pickedCards[p.card_id]);
   if (missingCards.length > 0) {

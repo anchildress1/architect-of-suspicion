@@ -48,6 +48,7 @@ export function pass4CacheKey(
 
 interface CachedRow {
   input_hash: string;
+  rewritten_title: string;
   rewritten_blurb: string;
   ai_score: number | string;
   notes: string;
@@ -123,7 +124,7 @@ export function buildPass4Cache(options: BuildPass4CacheOptions): Pass4Cache {
       const { data, error } = await supabase
         .schema('suspicion')
         .from('pass4_cache')
-        .select('input_hash, rewritten_blurb, ai_score, notes')
+        .select('input_hash, rewritten_title, rewritten_blurb, ai_score, notes')
         .in('input_hash', hashes);
 
       if (error) {
@@ -141,6 +142,7 @@ export function buildPass4Cache(options: BuildPass4CacheOptions): Pass4Cache {
         if (!cardId) continue;
         const aiScore = typeof row.ai_score === 'string' ? Number(row.ai_score) : row.ai_score;
         result.set(cardId, {
+          rewrittenTitle: row.rewritten_title,
           rewrittenBlurb: row.rewritten_blurb,
           aiScore,
           notes: row.notes,
@@ -160,6 +162,7 @@ export function buildPass4Cache(options: BuildPass4CacheOptions): Pass4Cache {
         claim_text: claim.claim_text,
         prompt_version: promptVersion,
         model_id: modelId,
+        rewritten_title: arg.rewrittenTitle,
         rewritten_blurb: arg.rewrittenBlurb,
         ai_score: arg.aiScore,
         notes: arg.notes,

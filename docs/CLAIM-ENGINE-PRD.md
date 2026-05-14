@@ -246,7 +246,7 @@ GEMINI_API_KEY=<key>
 CLAIM_ENGINE_PASS1_MODEL=claude-sonnet-4-6      # Tension analysis
 CLAIM_ENGINE_PASS2_MODEL=gpt-5.4                # Claim generation
 CLAIM_ENGINE_PASS3_MODEL=gpt-5.4-mini          # Card-claim scoring + ranking
-CLAIM_ENGINE_PASS4_MODEL=gemini-3.1-flash-lite-preview  # Claim-specific rewriting
+CLAIM_ENGINE_PASS4_MODEL=gemini-3.1-flash-lite  # Claim-specific rewriting
 
 # Pipeline tuning (defaults shown)
 CLAIM_ENGINE_GENERATE_CLAIMS=15      # Pass 2 candidate count

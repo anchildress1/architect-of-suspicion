@@ -2,6 +2,7 @@
   import '../app.css';
   import { onNavigate } from '$app/navigation';
   import MobileGate from '$lib/components/MobileGate.svelte';
+  import ResetButton from '$lib/components/ResetButton.svelte';
 
   let { children } = $props();
 
@@ -19,6 +20,7 @@
 </script>
 
 <MobileGate />
+<ResetButton />
 
 <div class="vignette">
   {@render children()}

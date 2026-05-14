@@ -27,6 +27,7 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
       [
         'card-1',
         {
+          rewrittenTitle: 'Rewritten Title 1',
           rewrittenBlurb: 'Rewrite 1',
           aiScore: 0.6,
           notes: 'Leans on hidden DEV deadline.',
@@ -36,6 +37,7 @@ function makeInput(overrides: Partial<PersistInput> = {}): PersistInput {
       [
         'card-2',
         {
+          rewrittenTitle: 'Rewritten Title 2',
           rewrittenBlurb: 'Rewrite 2',
           aiScore: -0.4,
           notes: 'Work-vs-play ambiguity intentional.',
@@ -76,6 +78,7 @@ describe('buildSeedPayload', () => {
             ambiguity: 4,
             surprise: 4,
             ai_score: 0.6,
+            rewritten_title: 'Rewritten Title 1',
             rewritten_blurb: 'Rewrite 1',
             notes: 'Leans on hidden DEV deadline.',
             is_paramount: true,
@@ -85,6 +88,7 @@ describe('buildSeedPayload', () => {
             ambiguity: 2,
             surprise: 5,
             ai_score: -0.4,
+            rewritten_title: 'Rewritten Title 2',
             rewritten_blurb: 'Rewrite 2',
             notes: 'Work-vs-play ambiguity intentional.',
             is_paramount: false,
@@ -108,7 +112,16 @@ describe('buildSeedPayload', () => {
   it('throws when an argument is missing for an eligible card', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: 'ok', isParamount: true }],
+        [
+          'card-1',
+          {
+            rewrittenTitle: 'Title 1',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 0.6,
+            notes: 'ok',
+            isParamount: true,
+          },
+        ],
       ]),
     });
 
@@ -118,8 +131,26 @@ describe('buildSeedPayload', () => {
   it('throws when ai_score is out of [-1.0, 1.0] bounds', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 1.5, notes: 'ok', isParamount: true }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
+        [
+          'card-1',
+          {
+            rewrittenTitle: 'Title 1',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 1.5,
+            notes: 'ok',
+            isParamount: true,
+          },
+        ],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
       ]),
     });
 
@@ -131,20 +162,111 @@ describe('buildSeedPayload', () => {
       arguments: new Map([
         [
           'card-1',
-          { rewrittenBlurb: 'Rewrite 1', aiScore: Number.NaN, notes: 'ok', isParamount: true },
+          {
+            rewrittenTitle: 'Title 1',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: Number.NaN,
+            notes: 'ok',
+            isParamount: true,
+          },
         ],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
       ]),
     });
 
     expect(() => buildSeedPayload([invalid])).toThrow(/expected number in \[-1\.0, 1\.0\]/);
   });
 
+  it('throws when rewritten_title is missing', () => {
+    const invalid = makeInput({
+      arguments: new Map([
+        [
+          'card-1',
+          {
+            rewrittenTitle: '',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 0.6,
+            notes: 'ok',
+            isParamount: true,
+          },
+        ],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
+      ]),
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing rewritten_title/);
+  });
+
+  it('throws when rewritten_title is only whitespace', () => {
+    const invalid = makeInput({
+      arguments: new Map([
+        [
+          'card-1',
+          {
+            rewrittenTitle: '   ',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 0.6,
+            notes: 'ok',
+            isParamount: true,
+          },
+        ],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
+      ]),
+    });
+
+    expect(() => buildSeedPayload([invalid])).toThrow(/Missing rewritten_title/);
+  });
+
   it('throws when notes is missing', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: '', isParamount: true }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
+        [
+          'card-1',
+          {
+            rewrittenTitle: 'Title 1',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 0.6,
+            notes: '',
+            isParamount: true,
+          },
+        ],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
       ]),
     });
 
@@ -154,8 +276,26 @@ describe('buildSeedPayload', () => {
   it('throws when notes is only whitespace', () => {
     const invalid = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: '   ', isParamount: true }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
+        [
+          'card-1',
+          {
+            rewrittenTitle: 'Title 1',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 0.6,
+            notes: '   ',
+            isParamount: true,
+          },
+        ],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
       ]),
     });
 
@@ -242,8 +382,26 @@ describe('buildSeedPayload', () => {
   it('throws when no card on a surviving claim is paramount — pipeline bug', () => {
     const noneFlagged = makeInput({
       arguments: new Map([
-        ['card-1', { rewrittenBlurb: 'Rewrite 1', aiScore: 0.6, notes: 'ok', isParamount: false }],
-        ['card-2', { rewrittenBlurb: 'Rewrite 2', aiScore: -0.4, notes: 'ok', isParamount: false }],
+        [
+          'card-1',
+          {
+            rewrittenTitle: 'Title 1',
+            rewrittenBlurb: 'Rewrite 1',
+            aiScore: 0.6,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
+        [
+          'card-2',
+          {
+            rewrittenTitle: 'Title 2',
+            rewrittenBlurb: 'Rewrite 2',
+            aiScore: -0.4,
+            notes: 'ok',
+            isParamount: false,
+          },
+        ],
       ]),
     });
 

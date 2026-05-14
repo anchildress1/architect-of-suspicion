@@ -122,6 +122,7 @@ describe('buildPass4Cache (disabled mode)', () => {
     const hits = await cache.lookup([card], claim, 'gpt-5.4');
     expect(hits.size).toBe(0);
     await cache.store(card, claim, 'gpt-5.4', {
+      rewrittenTitle: 't',
       rewrittenBlurb: 'x',
       aiScore: 0.1,
       notes: 'x',

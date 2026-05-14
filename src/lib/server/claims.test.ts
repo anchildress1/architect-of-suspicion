@@ -286,10 +286,9 @@ describe('getParamountCards', () => {
   const mockCardsIn = vi.fn();
   const mockCardsIs = vi.fn();
 
+  type ClaimRow = { card_id: string; rewritten_title: string; rewritten_blurb: string };
   type CardRow = {
     objectID: string;
-    title: string;
-    blurb: string;
     fact: string;
     category: string;
     signal: number;
@@ -305,7 +304,7 @@ describe('getParamountCards', () => {
     cardRows,
     cardErr = null,
   }: {
-    claimRows: Array<{ card_id: string }> | null;
+    claimRows: ClaimRow[] | null;
     claimErr?: unknown;
     cardRows?: CardRow[] | null;
     cardErr?: unknown;
@@ -325,7 +324,10 @@ describe('getParamountCards', () => {
   }
 
   it('queries claim_cards then public.cards filtered to paramount=true', async () => {
-    setup({ claimRows: [{ card_id: 'c-1' }], cardRows: [] });
+    setup({
+      claimRows: [{ card_id: 'c-1', rewritten_title: 't', rewritten_blurb: 'b' }],
+      cardRows: [],
+    });
     await getParamountCards('claim-1');
 
     expect(mockSchemaFrom).toHaveBeenCalledWith('claim_cards');
@@ -338,24 +340,13 @@ describe('getParamountCards', () => {
 
   it('returns the joined cards array on a hit', async () => {
     setup({
-      claimRows: [{ card_id: 'c-1' }, { card_id: 'c-2' }],
+      claimRows: [
+        { card_id: 'c-1', rewritten_title: 'Card One', rewritten_blurb: 'b1' },
+        { card_id: 'c-2', rewritten_title: 'Card Two', rewritten_blurb: 'b2' },
+      ],
       cardRows: [
-        {
-          objectID: 'c-1',
-          title: 'Card One',
-          blurb: 'b1',
-          fact: 'f1',
-          category: 'Awards',
-          signal: 5,
-        },
-        {
-          objectID: 'c-2',
-          title: 'Card Two',
-          blurb: 'b2',
-          fact: 'f2',
-          category: 'Constraints',
-          signal: 4,
-        },
+        { objectID: 'c-1', fact: 'f1', category: 'Awards', signal: 5 },
+        { objectID: 'c-2', fact: 'f2', category: 'Constraints', signal: 4 },
       ],
     });
 
@@ -363,6 +354,24 @@ describe('getParamountCards', () => {
 
     expect(error).toBeNull();
     expect(cards.map((c) => c.objectID)).toEqual(['c-1', 'c-2']);
+  });
+
+  it('hydrates FullCard.title and FullCard.blurb from claim_cards (never public.cards)', async () => {
+    setup({
+      claimRows: [
+        {
+          card_id: 'c-1',
+          rewritten_title: 'Ashley archived the experiment',
+          rewritten_blurb: 'pulls two ways',
+        },
+      ],
+      cardRows: [{ objectID: 'c-1', fact: 'f1', category: 'Awards', signal: 5 }],
+    });
+
+    const { cards } = await getParamountCards('claim-1');
+
+    expect(cards[0].title).toBe('Ashley archived the experiment');
+    expect(cards[0].blurb).toBe('pulls two ways');
   });
 
   it('fails loud when paramount source rows are missing (consistency violation)', async () => {
@@ -376,17 +385,11 @@ describe('getParamountCards', () => {
     // the operator can reseed.
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     setup({
-      claimRows: [{ card_id: 'c-orphan' }, { card_id: 'c-1' }],
-      cardRows: [
-        {
-          objectID: 'c-1',
-          title: 'Card One',
-          blurb: 'b1',
-          fact: 'f1',
-          category: 'Awards',
-          signal: 5,
-        },
+      claimRows: [
+        { card_id: 'c-orphan', rewritten_title: 'orphan', rewritten_blurb: 'orphan' },
+        { card_id: 'c-1', rewritten_title: 'Card One', rewritten_blurb: 'b1' },
       ],
+      cardRows: [{ objectID: 'c-1', fact: 'f1', category: 'Awards', signal: 5 }],
     });
 
     const { cards, error } = await getParamountCards('claim-1');
@@ -409,6 +412,17 @@ describe('getParamountCards', () => {
     expect(mockPublicFrom).not.toHaveBeenCalled();
   });
 
+  it('returns empty array (no step 2 query) when claim_cards data is null without error', async () => {
+    // Defensive guard: PostgREST docs say `data` is non-null on success, but
+    // the type is `T[] | null`. If the driver ever returns null without an
+    // error, treat it as "no paramount cards" rather than crashing on null.
+    setup({ claimRows: null });
+    const { cards, error } = await getParamountCards('claim-1');
+    expect(cards).toEqual([]);
+    expect(error).toBeNull();
+    expect(mockPublicFrom).not.toHaveBeenCalled();
+  });
+
   it('returns error string and empty cards on step 1 failure', async () => {
     setup({ claimRows: null, claimErr: { message: 'pg-down' } });
     const { cards, error } = await getParamountCards('claim-1');
@@ -418,7 +432,7 @@ describe('getParamountCards', () => {
 
   it('returns error string and empty cards on step 2 failure', async () => {
     setup({
-      claimRows: [{ card_id: 'c-1' }],
+      claimRows: [{ card_id: 'c-1', rewritten_title: 't', rewritten_blurb: 'b' }],
       cardRows: null,
       cardErr: { message: 'cards-down' },
     });

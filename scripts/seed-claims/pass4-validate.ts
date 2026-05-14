@@ -1,17 +1,17 @@
 /** Pass 4: Claim Validation + Card Rewrite.
  *
  *  Input:  claims (Pass 2) + scored pairs (Pass 3) + the eligible card pools.
- *  Output: validated claims with final card pools, AND claim-specific blurb
- *          rewrites for every surviving card.
+ *  Output: validated claims with final card pools, AND claim-specific title
+ *          + blurb rewrites for every surviving card.
  *
  *  Batched: each claim's card pool is split into chunks of `pass4Batch` cards
- *  (default 15) and sent in separate calls. A hiccup on one chunk retries
+ *  (default 20) and sent in separate calls. A hiccup on one chunk retries
  *  just that chunk — not the whole claim. Output schema is trimmed to only
- *  the fields we persist (rewritten_blurb, ai_score, notes) — proof/objection
- *  were scratch-reasoning tokens the DB never stored. Each batch's schema
- *  pins `card_id` to an enum of that batch's UUIDs and uses minItems/maxItems
- *  equal to the batch length so the model physically cannot skip, duplicate,
- *  or invent an ID.
+ *  the fields we persist (rewritten_title, rewritten_blurb, ai_score, notes)
+ *  — proof/objection were scratch-reasoning tokens the DB never stored. Each
+ *  batch's schema pins `card_id` to an enum of that batch's UUIDs and uses
+ *  minItems/maxItems equal to the batch length so the model physically cannot
+ *  skip, duplicate, or invent an ID.
  */
 
 import { clientFor } from './clients';
@@ -27,13 +27,15 @@ import type {
 } from './types';
 import { CATEGORY_TO_ROOM, type RoomSlug } from './types';
 
-export const SYSTEM_PROMPT = `Write the player-facing version of each card — a blurb that pulls the player in two directions against a specific claim without tipping toward the answer — and assign a directional score against the claim.
+export const SYSTEM_PROMPT = `Write the player-facing surface of each card — a third-person title and blurb that stand alone as exhibits a careful player could rule either way — and, separately, assign a directional score against the claim.
 
-RECRUITER-SAFETY (non-negotiable): rewritten_blurb is public text living next to Ashley's name regardless of verdict. Both the "proof" reading and "objection" reading must describe a working-style trait a hiring manager respects. Never indicts competence, integrity, or basic professionalism. If the only honest version leaves either reading sounding like a character flaw, emit the best dual-hireable version anyway and flag the strain in notes — downstream review cuts it.
+RECRUITER-SAFETY (non-negotiable): rewritten_title and rewritten_blurb are public text living next to Ashley's name regardless of verdict. Both the "proof" reading and "objection" reading must describe a working-style trait a hiring manager respects. Never indicts competence, integrity, or basic professionalism. If the only honest version leaves either reading sounding like a character flaw, emit the best dual-hireable version anyway and flag the strain in notes — downstream review cuts it.
 
 Raw materials per card: title, blurb, fact, created_at, tags, projects. Use all of them. Don't fabricate.
 
-Source blurbs are first-person ("I built…", "My approach was…"). Always convert to third person — Ashley by name or she/her pronouns. Never he/him or they/them. First-person in output is always wrong.
+Source titles and blurbs are first-person ("I built…", "My approach was…", "I positioned…"). Always convert to third person in BOTH the rewritten title and the rewritten blurb — Ashley by name or she/her pronouns. Never he/him or they/them. First-person in output is always wrong.
+
+Voice and posture: court-exhibit register. The blurb describes the work itself — what Ashley built, what choice she made, what constraint applied, what happened. Third-person observation. The player is the one weighing the exhibit against the claim, not the narrator. A reader who has not seen the claim should be unable to tell from the blurb alone which claim this card was paired with — that is the self-containment test. The card's directional weight lives in the score and in which facts you choose to surface, never in commentary about the claim.
 
 Tags + projects carry work/play + deadline context:
 - "DEV Challenge > …" → strict external deadline, often unfamiliar stack. Surface the pressure where it sharpens the claim.
@@ -46,11 +48,12 @@ Temporal reasoning:
 - SAME period + contradiction, or pattern consistent across all years → strengthens the claim.
 - Surface timing in rewritten_blurb when it adds tension ("early in Ashley's career", "more recently") without signaling which reading it supports.
 
-Output per card (all four required, no scratch work):
+Output per card (all five required, no scratch work):
 1. card_id — exact id from ELIGIBLE CARDS. Copy; never invent.
-2. rewritten_blurb — synthesizes title + blurb + fact + temporal context into player-facing text creating claim-specific tension. Match original length and register. Both proof and objection readings must describe a hireable working-style trait.
-3. ai_score — number in [-1.0, 1.0]. Positive = supports the claim, negative = undermines. Magnitude = confidence (0.1 = near-neutral, 0.9 = decisive). Use the full range; don't bunch at 0.5. Hidden from player. Pass 2 guarantees dual-hireability, so "supports" and "undermines" both translate to professional traits — score is directional, not moral.
-4. notes — 1-3 sentences for QA trail: tension levers, work/play + deadline handling, dual-hireability check on both readings, anything to sanity-check (e.g. "hidden DEV challenge deadline — player won't see the 2-week constraint", "dual-hireability strained on proof reading — recommend cut").`;
+2. rewritten_title — third-person rewrite of the source title. Match the source title's length and register; carry the same subject the source title carried. No new claims, no editorializing — just the same surface phrasing in Ashley's third-person voice.
+3. rewritten_blurb — third-person description of what Ashley did: the work, the choice, the constraint, the result. Synthesizes title + blurb + fact + temporal context into a self-contained exhibit. Match original length and register. Stays in neutral observation — the player decides what it means against the claim. Both proof and objection readings of those facts must describe a hireable working-style trait.
+4. ai_score — number in [-1.0, 1.0]. Positive = supports the claim, negative = undermines. Magnitude = confidence (0.1 = near-neutral, 0.9 = decisive). Use the full range; don't bunch at 0.5. Hidden from player. Pass 2 guarantees dual-hireability, so "supports" and "undermines" both translate to professional traits — score is directional, not moral.
+5. notes — 1-3 sentences for QA trail: tension levers, work/play + deadline handling, dual-hireability check on both readings, anything to sanity-check (e.g. "hidden DEV challenge deadline — player won't see the 2-week constraint", "dual-hireability strained on proof reading — recommend cut").`;
 
 /** Build a batch-specific schema. Pass 4 runs on an OpenAI model
  *  (gpt-5.4-mini by default) with strict mode enabled (see clients.ts),
@@ -70,11 +73,12 @@ function schemaForBatch(batchIds: string[]): Record<string, unknown> {
           type: 'object',
           properties: {
             card_id: { type: 'string', enum: batchIds },
+            rewritten_title: { type: 'string' },
             rewritten_blurb: { type: 'string' },
             ai_score: { type: 'number', minimum: -1, maximum: 1 },
             notes: { type: 'string' },
           },
-          required: ['card_id', 'rewritten_blurb', 'ai_score', 'notes'],
+          required: ['card_id', 'rewritten_title', 'rewritten_blurb', 'ai_score', 'notes'],
           additionalProperties: false,
         },
       },
@@ -115,6 +119,7 @@ Produce one argument object per card above, in the same order. Every card_id fro
 
 interface RawCardArgument {
   card_id: string;
+  rewritten_title: string;
   rewritten_blurb: string;
   ai_score: number;
   notes: string;
@@ -192,6 +197,11 @@ async function rewriteOnce(
         `[pass4] invalid ai_score for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
       );
     }
+    if (typeof arg.rewritten_title !== 'string' || arg.rewritten_title.trim().length === 0) {
+      throw new Error(
+        `[pass4] missing rewritten_title for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
+      );
+    }
     if (typeof arg.rewritten_blurb !== 'string' || arg.rewritten_blurb.trim().length === 0) {
       throw new Error(
         `[pass4] missing rewritten_blurb for card_id=${arg.card_id} on "${claim.claim_text}" (claim_id=${claim.id})`,
@@ -203,6 +213,7 @@ async function rewriteOnce(
       );
     }
     const cardArg: CardArgument = {
+      rewrittenTitle: arg.rewritten_title.trim(),
       rewrittenBlurb: arg.rewritten_blurb.trim(),
       aiScore: clampScore(arg.ai_score),
       notes: arg.notes.trim(),

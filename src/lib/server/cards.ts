@@ -6,12 +6,12 @@ type ClaimCardRow = {
   card_id: string;
   ambiguity: number;
   surprise: number;
+  rewritten_title: string;
   rewritten_blurb: string;
 };
 
 type PublicCardRow = {
   objectID: string;
-  title: string;
   category: string;
 };
 
@@ -37,7 +37,7 @@ export async function fetchClaimDeck(
   let claimQuery = db
     .schema('suspicion')
     .from('claim_cards')
-    .select('card_id, ambiguity, surprise, rewritten_blurb')
+    .select('card_id, ambiguity, surprise, rewritten_title, rewritten_blurb')
     .eq('claim_id', claimId);
 
   if (safeExclude.length > 0) {
@@ -57,7 +57,7 @@ export async function fetchClaimDeck(
 
   const { data: cardRows, error: cardError } = await db
     .from('cards')
-    .select('objectID, title, category')
+    .select('objectID, category')
     .in('objectID', cardIds)
     .eq('category', category)
     .is('deleted_at', null);
@@ -77,7 +77,7 @@ export async function fetchClaimDeck(
     if (!card) continue;
     cards.push({
       objectID: card.objectID,
-      title: card.title,
+      title: row.rewritten_title,
       blurb: row.rewritten_blurb,
       category: card.category,
       weight: row.ambiguity * row.surprise,
